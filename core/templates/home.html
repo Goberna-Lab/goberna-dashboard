@@ -254,7 +254,14 @@
       <div class="grid">
         <div class="hero-card">
           <div class="hero-left">
-            <h2>Bienvenido, {{ username }} 👋</h2>
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <button class="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center" 
+                        onclick="window.toggleSidebar()" 
+                        style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); border:none;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 style="margin:0;">Bienvenido, {{ username }} 👋</h2>
+            </div>
             <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
