@@ -103,5 +103,6 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db' # Comparte sesión por DB
 
 # URLs EXTERNAS (Para los links del dashboard)
 MAIN_APP_URL = os.getenv('MAIN_APP_URL', 'https://app.goberna.pe')
+LOGIN_URL = f"{MAIN_APP_URL}/ingresar/"  # Redirigir al login principal si falta sesión
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
