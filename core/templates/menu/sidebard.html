@@ -1,17 +1,9 @@
 {% load static %}
-<!-- v2.1 Satélite - Sidebar Idéntico Adaptado -->
-<!-- 
-     NOTA: Este sidebar copia la estética y estructura del original.
-     Los enlaces apuntan a MAIN_APP_URL.
-     La lógica de permisos complejos se ha simplificado.
--->
+<!-- v2.2 Satélite - Sidebar Idéntico Mejorado (Colapsable y Visualmente Pulido) -->
 <style>
     /* =========================================================
-       SIDEBAR UI (Copiado de Main App)
-       - Agregamos el color de fondo explícito aquí por si falta global css
-       - Copiamos las clases del style block original
+       SIDEBAR GLOBAL STYLES
     ========================================================= */
-    /* ... (styles start) ... */
     .sidebar {
       width: 280px;
       background: #0f172a; 
@@ -20,59 +12,204 @@
       flex-direction: column;
       padding: 0; 
       color: white;
-      transition: width 0.3s ease; /* Animate width */
-      overflow-x: hidden; /* Hide overflow content during transition */
+      transition: width 0.3s ease;
+      overflow-x: hidden; /* Vital para efecto colapsar */
+      flex-shrink: 0; /* Evita que el flex del layout lo aplaste */
+      z-index: 1000;
+      position: relative;
     }
-    
-    /* Collapsed State */
-    .sidebar.collapsed {
-        width: 80px;
-    }
-    .sidebar.collapsed .logo {
-        padding: 24px 0 24px 0;
-        justify-content: center;
-    }
-    .sidebar.collapsed .logo-text, 
-    .sidebar.collapsed .logo-img { 
-        display: none; 
-    }
-    .sidebar.collapsed .logo::after {
-        content: "G"; /* Mini logo text */
-        font-weight: 800;
-        font-size: 24px;
-        color: white;
-    }
-    
-    .sidebar.collapsed .nav-link span,
-    .sidebar.collapsed .toggle-submenu,
-    .sidebar.collapsed .nav-submenu {
-        display: none !important;
-    }
-    
-    .sidebar.collapsed .nav-link {
-        justify-content: center;
-        padding: 12px 0;
-    }
-    .sidebar.collapsed .nav-link i {
-        margin: 0;
-        font-size: 1.2em;
-    }
-    
-    /* ... (original CSS continued) ... */
-    
+
+    /* Logo Area */
     .logo {
         padding: 24px 0 24px 28px;
         display: flex;
         align-items: center;
         gap: 12px;
-        min-height: 80px; /* Prevent jump on collapse */
+        min-height: 80px;
+        white-space: nowrap;
+        overflow: hidden;
     }
-    /* ... */
+    .logo-img { width: 32px; height: 32px; flex-shrink: 0; }
+    .logo-text { font-weight: 800; font-size: 20px; letter-spacing: 0.5px; color: #fff; opacity: 1; transition: opacity 0.2s; }
+
+    /* Navigation Container */
+    .sidebar .nav { 
+        padding: 0 16px; 
+        width: 100%; 
+        gap: 6px; 
+    }
+    
+    /* Nav Items (General) */
+    .sidebar > .nav > .nav-item > .nav-link,
+    .d-flex-menu {
+      color: rgba(255,255,255,0.75);
+      border-radius: 12px;
+      padding: 12px 14px 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.2s ease, color 0.2s ease;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .sidebar > .nav > .nav-item > .nav-link:hover,
+    .sidebar > .nav > .nav-item > .nav-link.active,
+    .d-flex-menu:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+    
+    .sidebar .nav-link i, .d-flex-menu i { 
+        width: 20px; 
+        text-align: center; 
+        flex-shrink: 0; 
+        font-size: 1.1em; 
+    }
+
+    /* Active Indicator (Amarillo a la izquierda) */
+    .nav-item.active-indicator::before {
+      content: "";
+      position: absolute;
+      left: -16px; /* Compensar padding container */
+      top: 10px;
+      bottom: 10px;
+      width: 4px;
+      background: #f5c544;
+      border-radius: 0 4px 4px 0;
+      display: none; /* Oculto por defecto en satélite si no estamos en esa ruta */
+    }
+    .nav-item.active-indicator .nav-link { color: #fff; background: rgba(255,255,255,0.1); }
+    /* Activar indicador visualmente para "Inicio" si es la ruta actual */
+    .nav-item.active-indicator.active-real::before { display: block; }
+
+    /* =========================================================
+       SUBMENU LOGIC (Matriculas & Movimientos)
+    ========================================================= */
+    .matriculas-menu, .movimientos-menu { width: 100%; }
+    
+    /* El contenedor del link + flecha */
+    .d-flex-menu {
+        justify-content: space-between;
+        padding-right: 4px !important; /* Espacio para el botón flecha */
+    }
+    
+    /* El link dentro del d-flex-menu que lleva el texto */
+    .d-flex-menu .menu-label-link { 
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        background: transparent !important; 
+        color: inherit !important;
+        text-decoration: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Botón Flecha (Toggle) */
+    .toggle-submenu {
+        background: transparent !important;
+        border: none !important;
+        color: inherit !important;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: transform 0.3s ease, color 0.2s;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+    }
+    .toggle-submenu:hover { background: rgba(255,255,255,0.1) !important; opacity: 1; }
+    .toggle-submenu:focus { outline: none; }
+    
+    /* Submenu List */
+    .nav-submenu {
+        list-style: none;
+        padding-left: 0;
+        margin-top: 2px;
+        display: none; /* Oculto inicial */
+        overflow: hidden;
+        width: 100%;
+    }
+    .nav-submenu.show { display: block; animation: slideDown 0.2s ease-out; }
+    
+    .nav-submenu .nav-link {
+        padding-left: 48px !important;
+        font-size: 0.9em;
+        color: rgba(255,255,255,0.6) !important;
+        white-space: nowrap;
+    }
+    .nav-submenu .nav-link:hover { color: #fff !important; }
+
+    /* Rotación de flecha cuando está abierto */
+    .d-flex-menu.expanded .toggle-submenu { transform: rotate(180deg); }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Footer Items positioning */
+    .mt-auto { margin-top: auto !important; }
+    .bottom { margin-bottom: 20px; }
+
+    /* =========================================================
+       COLLAPSED STATE (Mini Sidebar)
+       Clase .collapsed en <aside class="sidebar collapsed">
+    ========================================================= */
+    .sidebar.collapsed { width: 80px; }
+    
+    /* Ocultar textos */
+    .sidebar.collapsed .logo-text,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .d-flex-menu span,
+    .sidebar.collapsed .d-flex-menu .toggle-submenu,
+    .sidebar.collapsed .menu-label-link span {
+        display: none !important;
+    }
+
+    /* Centrar items */
+    .sidebar.collapsed .logo { padding-left: 0; justify-content: center; }
+    .sidebar.collapsed .nav { padding: 0 10px; }
+    .sidebar.collapsed .nav-item { display: flex; justify-content: center; }
+    
+    .sidebar.collapsed .nav-link,
+    .sidebar.collapsed .d-flex-menu {
+        justify-content: center;
+        padding: 12px 0;
+        width: 100%;
+    }
+    
+    /* Ajustes iconos en colapsado */
+    .sidebar.collapsed .nav-link i, 
+    .sidebar.collapsed .d-flex-menu i { 
+        margin: 0; 
+        font-size: 1.3em; 
+    }
+    
+    /* Logo Especial "G" */
+    .sidebar.collapsed .logo-img { display: none; }
+    .sidebar.collapsed .logo::after {
+        content: "G";
+        font-weight: 800;
+        font-size: 28px;
+        color: white;
+    }
+
+    /* Submenus en colapsado: Ocultarlos forzosamente salvo hover (feature opcional, por ahora ocultos) */
+    .sidebar.collapsed .nav-submenu { display: none !important; }
+    
 </style>
 
 <aside class="sidebar" id="sidebar">
-    <!-- ... (logo and menu items as before) ... -->
-    <!-- (No changes needed to HTML structure for basic collapse, handled by CSS) -->
     <!-- Logo -->
     <div class="logo">
       <img src="https://i.postimg.cc/rFxsm3xS/icono-goberna.png" alt="Goberna Logo" class="logo-img">
@@ -81,9 +218,9 @@
 
     <!-- Menú -->
     <ul class="nav flex-column">
-      <!-- ... (items) ... -->
-      <!-- INICIO (Dashboard en Vercel) -->
-      <li class="nav-item active-indicator">
+      
+      <!-- INICIO -->
+      <li class="nav-item active-indicator active-real">
         <a class="nav-link active" href="/" title="Inicio">
           <i class="fas fa-home"></i>
           <span>Inicio (Dashboard)</span>
@@ -116,11 +253,11 @@
 
       <!-- MATRÍCULAS (Dropdown) -->
       <li class="nav-item matriculas-menu">
-        <div class="d-flex-menu" onclick="toggleSubmenu('matriculasSub')">
-          <a class="nav-link" href="#" title="Matrículas">
+        <div class="d-flex-menu" onclick="toggleSubmenu(this, 'matriculasSub')" title="Matrículas">
+          <div class="menu-label-link">
             <i class="fas fa-graduation-cap"></i>
             <span>Matrículas</span>
-          </a>
+          </div>
           <button class="toggle-submenu"><i class="fas fa-chevron-down"></i></button>
         </div>
         <ul class="nav flex-column nav-submenu" id="matriculasSub">
@@ -152,15 +289,14 @@
 
       <!-- MOVIMIENTOS (Dropdown) -->
       <li class="nav-item movimientos-menu">
-        <div class="d-flex-menu" onclick="toggleSubmenu('movimientosSub')">
-          <a class="nav-link" href="#" title="Movimientos">
+        <div class="d-flex-menu" onclick="toggleSubmenu(this, 'movimientosSub')" title="Movimientos">
+          <div class="menu-label-link">
             <i class="fas fa-exchange-alt"></i>
             <span>Movimientos</span>
-          </a>
+          </div>
           <button class="toggle-submenu"><i class="fas fa-chevron-down"></i></button>
         </div>
         <ul class="nav flex-column nav-submenu" id="movimientosSub">
-           <!-- Links apuntando a las rutas comunes de movimientos -->
            <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/proveedores">Proveedores</a></li>
            <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/locales-ubicaciones">Locales</a></li>
            <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/motivos">Motivos</a></li>
@@ -203,39 +339,52 @@
 </aside>
 
 <script>
-    function toggleSubmenu(id) {
-        // En modo colapsado, abrir submenu podría ser extraño, mejor no hacer nada o expandir sidebar
+    // Función global para ser llamada desde home.html
+    window.toggleSidebar = function() {
         const sidebar = document.getElementById('sidebar');
-        if (sidebar.classList.contains('collapsed')) {
-            // Si está colapsado, expandirlo primero
-            toggleSidebar(); // Función que definiremos globalmente o aquí
+        if(!sidebar) return;
+        
+        sidebar.classList.toggle('collapsed');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebar_collapsed', isCollapsed); // Persistencia
+        
+        // Si colapsamos, cerramos todos los submenus abiertos para limpieza visual
+        if(isCollapsed) {
+            document.querySelectorAll('.nav-submenu.show').forEach(el => el.classList.remove('show'));
+            document.querySelectorAll('.d-flex-menu.expanded').forEach(el => el.classList.remove('expanded'));
+        }
+    };
+    
+    function toggleSubmenu(triggerElement, menuId) {
+        const sidebar = document.getElementById('sidebar');
+        
+        // Si está colapsado, al intentar abrir submenu, expandimos sidebar primero (UX amigable)
+        if (sidebar && sidebar.classList.contains('collapsed')) {
+            window.toggleSidebar(); // Expande
+            // Pequeño delay para dejar que la animación termine antes de abrir el menu
             setTimeout(() => {
-                const el = document.getElementById(id);
-                if(el) el.classList.toggle('show');
+                const el = document.getElementById(menuId);
+                const parent = triggerElement; 
+                if(el) el.classList.add('show');
+                if(parent) parent.classList.add('expanded');
             }, 300);
             return;
         }
         
-        const el = document.getElementById(id);
+        // Comportamiento normal (Toggle)
+        const el = document.getElementById(menuId);
         if(el) {
             el.classList.toggle('show');
+            triggerElement.classList.toggle('expanded');
         }
-    }
-    
-    // Función global para ser llamada desde home.html
-    window.toggleSidebar = function() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('collapsed');
-        // Opcional: Guardar estado en localStorage
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('sidebar_collapsed', isCollapsed);
     }
     
     // Restaurar estado al cargar
     document.addEventListener("DOMContentLoaded", () => {
         const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
-        if(isCollapsed) {
-            document.getElementById('sidebar').classList.add('collapsed');
+        const sidebar = document.getElementById('sidebar');
+        if(sidebar && isCollapsed) {
+            sidebar.classList.add('collapsed');
         }
     });
 </script>
