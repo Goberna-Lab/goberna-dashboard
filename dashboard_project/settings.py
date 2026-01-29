@@ -58,7 +58,7 @@ WSGI_APPLICATION = 'dashboard_project.wsgi.app' # Variable 'app' para Vercel
 
 # BASE DE DATOS
 # Se inyectarán via variables en Vercel
-import dj_database_url
+# (Import eliminado por no uso y error en deployment)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
