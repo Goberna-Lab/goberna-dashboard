@@ -8,8 +8,8 @@ pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SEGURIDAD: Leer de entorno
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dummy-key-for-build')
+# SEGURIDAD: Leer de entorno, pero con fallback a la CLAVE DE PRODUCCIÓN REAL para que funcionen las sesiones
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-ov(dc)=bd23)=dn^!8_667!f=7ggt8+_nvd%_0#j5oij=tpt%u')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*'] # Vercel usa dominios dinámicos, restringir en prod si se desea
