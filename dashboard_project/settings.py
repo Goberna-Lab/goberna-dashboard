@@ -98,7 +98,7 @@ MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 
 # SESIÓN COMPARTIDA (CLAVE PARA EL LOGIN)
 # Ajustar esto al dominio real, ej: ".goberna.pe"
-SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', None) 
+SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', '.goberna.pe') 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db' # Comparte sesión por DB
 
 # URLs EXTERNAS (Para los links del dashboard)
