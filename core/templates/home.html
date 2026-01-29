@@ -9,7 +9,13 @@
   <style>
     body { margin: 0; background: #f3f6fb; color: #0f172a; font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .page { min-height: 100vh; min-width: 100vw; width: 100%; display: flex; gap: 0; box-sizing: border-box; }
-    .page > .sidebar { flex: 0 0 280px; }
+    .page > .sidebar { 
+        flex: 0 0 280px; 
+        transition: flex-basis 0.3s ease, width 0.3s ease; /* Animate flex change */
+    }
+    body.sidebar-collapsed .page > .sidebar {
+        flex: 0 0 80px;
+    }
     :root {
       --home-primary: #193b59;
       --home-muted: #6b7280;
