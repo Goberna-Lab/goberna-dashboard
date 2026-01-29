@@ -1,390 +1,54 @@
-{% load static %}
-<!-- v2.2 Satélite - Sidebar Idéntico Mejorado (Colapsable y Visualmente Pulido) -->
-<style>
-    /* =========================================================
-       SIDEBAR GLOBAL STYLES
-    ========================================================= */
-    .sidebar {
-      width: 280px;
-      background: #0f172a; 
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding: 0; 
-      color: white;
-      transition: width 0.3s ease;
-      overflow-x: hidden; /* Vital para efecto colapsar */
-      flex-shrink: 0; /* Evita que el flex del layout lo aplaste */
-      z-index: 1000;
-      position: relative;
-    }
+.sidebar {
+  width: 280px;
+}
 
-    /* Logo Area */
-    .logo {
-        padding: 24px 0 24px 28px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-height: 80px;
-        white-space: nowrap;
-        overflow: hidden;
-    }
-    .logo-img { width: 32px; height: 32px; flex-shrink: 0; }
-    .logo-text { font-weight: 800; font-size: 20px; letter-spacing: 0.5px; color: #fff; opacity: 1; transition: opacity 0.2s; }
+.nav-submenu {
+  display: none;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.35s ease;
+  opacity: 0;
+  padding-left: 0;
+  /* quitar indent extra */
+}
 
-    /* Navigation Container */
-    .sidebar .nav { 
-        padding: 0 16px; 
-        width: 100%; 
-        gap: 6px; 
-    }
-    
-    /* Nav Items (General) */
-    .sidebar > .nav > .nav-item > .nav-link,
-    .d-flex-menu {
-      color: rgba(255,255,255,0.75);
-      border-radius: 12px;
-      padding: 12px 14px 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: background 0.2s ease, color 0.2s ease;
-      font-weight: 500;
-      text-decoration: none;
-      white-space: nowrap;
-      cursor: pointer;
-      position: relative;
-    }
-    
-    .sidebar > .nav > .nav-item > .nav-link:hover,
-    .sidebar > .nav > .nav-item > .nav-link.active,
-    .d-flex-menu:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-    }
-    
-    .sidebar .nav-link i, .d-flex-menu i { 
-        width: 20px; 
-        text-align: center; 
-        flex-shrink: 0; 
-        font-size: 1.1em; 
-    }
+.show-submenu .nav-submenu {
+  display: block;
+  max-height: 500px;
+  opacity: 1;
+}
 
-    /* Active Indicator (Amarillo a la izquierda) */
-    .nav-item.active-indicator::before {
-      content: "";
-      position: absolute;
-      left: -16px; /* Compensar padding container */
-      top: 10px;
-      bottom: 10px;
-      width: 4px;
-      background: #f5c544;
-      border-radius: 0 4px 4px 0;
-      display: none; /* Oculto por defecto en satélite si no estamos en esa ruta */
-    }
-    .nav-item.active-indicator .nav-link { color: #fff; background: rgba(255,255,255,0.1); }
-    /* Activar indicador visualmente para "Inicio" si es la ruta actual */
-    .nav-item.active-indicator.active-real::before { display: block; }
+.nav-submenu .nav-link {
+  padding-left: 1.25rem;
+  /* igual que primer nivel */
+  padding-right: 1.25rem;
+}
 
-    /* =========================================================
-       SUBMENU LOGIC (Matriculas & Movimientos)
-    ========================================================= */
-    .matriculas-menu, .movimientos-menu { width: 100%; }
-    
-    /* El contenedor del link + flecha */
-    .d-flex-menu {
-        justify-content: space-between;
-        padding-right: 4px !important; /* Espacio para el botón flecha */
-    }
-    
-    /* El link dentro del d-flex-menu que lleva el texto */
-    .d-flex-menu .menu-label-link { 
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex: 1;
-        background: transparent !important; 
-        color: inherit !important;
-        text-decoration: none;
-        border: none;
-        padding: 0;
-        margin: 0;
-    }
+.movimientos-menu .d-flex {
+  width: 100%;
+}
 
-    /* Botón Flecha (Toggle) */
-    .toggle-submenu {
-        background: transparent !important;
-        border: none !important;
-        color: inherit !important;
-        padding: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        opacity: 0.7;
-        transition: transform 0.3s ease, color 0.2s;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-    }
-    .toggle-submenu:hover { background: rgba(255,255,255,0.1) !important; opacity: 1; }
-    .toggle-submenu:focus { outline: none; }
-    
-    /* Submenu List */
-    .nav-submenu {
-        list-style: none;
-        padding-left: 0;
-        margin-top: 2px;
-        display: none; /* Oculto inicial */
-        overflow: hidden;
-        width: 100%;
-    }
-    .nav-submenu.show { display: block; animation: slideDown 0.2s ease-out; }
-    
-    .nav-submenu .nav-link {
-        padding-left: 48px !important;
-        font-size: 0.9em;
-        color: rgba(255,255,255,0.6) !important;
-        white-space: nowrap;
-    }
-    .nav-submenu .nav-link:hover { color: #fff !important; }
+.toggle-submenu {
+  color: #fff;
+  padding: 0;
+  margin: 0 0.25rem 0 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
 
-    /* Rotación de flecha cuando está abierto */
-    .d-flex-menu.expanded .toggle-submenu { transform: rotate(180deg); }
+.movimientos-menu:hover .toggle-submenu,
+.movimientos-menu:focus-within .toggle-submenu,
+.movimientos-menu.show-submenu .toggle-submenu {
+  opacity: 1;
+}
 
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-5px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+.movimientos-menu .nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-    /* Footer Items positioning */
-    .mt-auto { margin-top: auto !important; }
-    .bottom { margin-bottom: 20px; }
-
-    /* =========================================================
-       COLLAPSED STATE (Mini Sidebar)
-       Clase .collapsed en <aside class="sidebar collapsed">
-    ========================================================= */
-    .sidebar.collapsed { width: 80px; }
-    
-    /* Ocultar textos */
-    .sidebar.collapsed .logo-text,
-    .sidebar.collapsed .nav-link span,
-    .sidebar.collapsed .d-flex-menu span,
-    .sidebar.collapsed .d-flex-menu .toggle-submenu,
-    .sidebar.collapsed .menu-label-link span {
-        display: none !important;
-    }
-
-    /* Centrar items */
-    .sidebar.collapsed .logo { padding-left: 0; justify-content: center; }
-    .sidebar.collapsed .nav { padding: 0 10px; }
-    .sidebar.collapsed .nav-item { display: flex; justify-content: center; }
-    
-    .sidebar.collapsed .nav-link,
-    .sidebar.collapsed .d-flex-menu {
-        justify-content: center;
-        padding: 12px 0;
-        width: 100%;
-    }
-    
-    /* Ajustes iconos en colapsado */
-    .sidebar.collapsed .nav-link i, 
-    .sidebar.collapsed .d-flex-menu i { 
-        margin: 0; 
-        font-size: 1.3em; 
-    }
-    
-    /* Logo Especial "G" */
-    .sidebar.collapsed .logo-img { display: none; }
-    .sidebar.collapsed .logo::after {
-        content: "G";
-        font-weight: 800;
-        font-size: 28px;
-        color: white;
-    }
-
-    /* Submenus en colapsado: Ocultarlos forzosamente salvo hover (feature opcional, por ahora ocultos) */
-    .sidebar.collapsed .nav-submenu { display: none !important; }
-    
-</style>
-
-<aside class="sidebar" id="sidebar">
-    <!-- Logo -->
-    <div class="logo">
-      <img src="https://i.postimg.cc/rFxsm3xS/icono-goberna.png" alt="Goberna Logo" class="logo-img">
-      <span class="logo-text">GOBERNA</span>
-    </div>
-
-    <!-- Menú -->
-    <ul class="nav flex-column">
-      
-      <!-- INICIO -->
-      <li class="nav-item active-indicator active-real">
-        <a class="nav-link active" href="/" title="Inicio">
-          <i class="fas fa-home"></i>
-          <span>Inicio (Dashboard)</span>
-        </a>
-      </li>
-
-      <!-- CLIENTES -->
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/clientes/" title="Clientes">
-          <i class="fas fa-users"></i>
-          <span>Clientes</span>
-        </a>
-      </li>
-
-      <!-- PRODUCTOS -->
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/productos/" title="Productos">
-          <i class="fas fa-box"></i>
-          <span>Productos</span>
-        </a>
-      </li>
-
-      <!-- VENTAS -->
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/ventas/" title="Ventas">
-          <i class="fas fa-shopping-cart"></i>
-          <span>Ventas</span>
-        </a>
-      </li>
-
-      <!-- MATRÍCULAS (Dropdown) -->
-      <li class="nav-item matriculas-menu">
-        <div class="d-flex-menu" onclick="toggleSubmenu(this, 'matriculasSub')" title="Matrículas">
-          <div class="menu-label-link">
-            <i class="fas fa-graduation-cap"></i>
-            <span>Matrículas</span>
-          </div>
-          <button class="toggle-submenu"><i class="fas fa-chevron-down"></i></button>
-        </div>
-        <ul class="nav flex-column nav-submenu" id="matriculasSub">
-          <li class="nav-item">
-            <a class="nav-link" href="{{ MAIN_APP_URL }}/matriculas/">
-              <i class="fas fa-list-check me-2"></i> Lista de Matrículas
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ MAIN_APP_URL }}/matriculas/listaPreMatriculas">
-              <i class="fas fa-clipboard-list me-2"></i> PreMatrículas
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ MAIN_APP_URL }}/matriculas/solicitudes/cambio-beneficiario">
-              <i class="fas fa-random me-2"></i> Solicitudes
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <!-- DESPACHOS -->
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/despacho/" title="Despachos">
-          <i class="fas fa-truck"></i>
-          <span>Despachos</span>
-        </a>
-      </li>
-
-      <!-- MOVIMIENTOS (Dropdown) -->
-      <li class="nav-item movimientos-menu">
-        <div class="d-flex-menu" onclick="toggleSubmenu(this, 'movimientosSub')" title="Movimientos">
-          <div class="menu-label-link">
-            <i class="fas fa-exchange-alt"></i>
-            <span>Movimientos</span>
-          </div>
-          <button class="toggle-submenu"><i class="fas fa-chevron-down"></i></button>
-        </div>
-        <ul class="nav flex-column nav-submenu" id="movimientosSub">
-           <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/proveedores">Proveedores</a></li>
-           <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/locales-ubicaciones">Locales</a></li>
-           <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/motivos">Motivos</a></li>
-           <li class="nav-item"><a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/traslados-internos">Traslados</a></li>
-        </ul>
-      </li>
-
-      <!-- TESORERÍA -->
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/treasury/pagos-pendientes/" title="Tesorería">
-          <i class="fas fa-money-check-alt"></i>
-          <span>Tesorería</span>
-        </a>
-      </li>
-
-      <!-- PERFIL -->
-      <li class="nav-item">
-        <a class="nav-link" href="#" style="pointer-events: none; opacity: 0.6;" title="Perfil">
-          <i class="fas fa-user"></i>
-          <span>Perfil</span>
-        </a>
-      </li>
-
-      <!-- NOTIFICACIONES (Visual only) -->
-      <li class="nav-item mt-auto">
-        <a class="nav-link" href="#" title="Notificaciones">
-          <i class="fas fa-bell"></i>
-          <span>Notificaciones</span>
-        </a>
-      </li>
-
-      <!-- SALIR -->
-      <li class="nav-item bottom">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/salir/" title="Salir">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Salir</span>
-        </a>
-      </li>
-    </ul>
-</aside>
-
-<script>
-    // Función global para ser llamada desde home.html
-    window.toggleSidebar = function() {
-        const sidebar = document.getElementById('sidebar');
-        if(!sidebar) return;
-        
-        sidebar.classList.toggle('collapsed');
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('sidebar_collapsed', isCollapsed); // Persistencia
-        
-        // Si colapsamos, cerramos todos los submenus abiertos para limpieza visual
-        if(isCollapsed) {
-            document.querySelectorAll('.nav-submenu.show').forEach(el => el.classList.remove('show'));
-            document.querySelectorAll('.d-flex-menu.expanded').forEach(el => el.classList.remove('expanded'));
-        }
-    };
-    
-    function toggleSubmenu(triggerElement, menuId) {
-        const sidebar = document.getElementById('sidebar');
-        
-        // Si está colapsado, al intentar abrir submenu, expandimos sidebar primero (UX amigable)
-        if (sidebar && sidebar.classList.contains('collapsed')) {
-            window.toggleSidebar(); // Expande
-            // Pequeño delay para dejar que la animación termine antes de abrir el menu
-            setTimeout(() => {
-                const el = document.getElementById(menuId);
-                const parent = triggerElement; 
-                if(el) el.classList.add('show');
-                if(parent) parent.classList.add('expanded');
-            }, 300);
-            return;
-        }
-        
-        // Comportamiento normal (Toggle)
-        const el = document.getElementById(menuId);
-        if(el) {
-            el.classList.toggle('show');
-            triggerElement.classList.toggle('expanded');
-        }
-    }
-    
-    // Restaurar estado al cargar
-    document.addEventListener("DOMContentLoaded", () => {
-        const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
-        const sidebar = document.getElementById('sidebar');
-        if(sidebar && isCollapsed) {
-            sidebar.classList.add('collapsed');
-        }
-    });
-</script>
+.movimientos-menu.show-submenu .toggle-submenu i {
+  transform: rotate(180deg);
+  transition: transform 0.35s ease;
+}
