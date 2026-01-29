@@ -1,0 +1,54 @@
+{% load static %}
+<!-- SIDEBAR ESTÁTICO REDUCIDO PARA VERCEL SATÉLITE -->
+<aside class="sidebar" id="sidebar" style="background-color: #0f172a; color: white; width: 250px; min-height: 100vh; padding: 20px; display: flex; flex-direction: column;">
+    <!-- Logo -->
+    <div class="logo" style="display: flex; align-items: center; gap: 10px; margin-bottom: 30px; padding-left: 10px;">
+      <img src="https://i.postimg.cc/rFxsm3xS/icono-goberna.png" alt="Logo" style="width: 32px; height: 32px;">
+      <span style="font-weight: 800; font-size: 20px; letter-spacing: 1px;">GOBERNA</span>
+    </div>
+
+    <!-- Menú -->
+    <ul class="nav flex-column" style="gap: 5px;">
+      <li class="nav-item">
+        <a class="nav-link active" href="/" style="display: flex; align-items: center; gap: 12px; color: white; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.1);">
+          <i class="fas fa-home" style="width: 20px;"></i>
+          <span>Inicio</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="{{ MAIN_APP_URL }}/clientes/" style="display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); padding: 12px 16px; border-radius: 12px; text-decoration: none;">
+          <i class="fas fa-users" style="width: 20px;"></i>
+          <span>Clientes</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="{{ MAIN_APP_URL }}/productos/" style="display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); padding: 12px 16px; border-radius: 12px; text-decoration: none;">
+          <i class="fas fa-box" style="width: 20px;"></i>
+          <span>Productos</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="{{ MAIN_APP_URL }}/ventas/" style="display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); padding: 12px 16px; border-radius: 12px; text-decoration: none;">
+          <i class="fas fa-shopping-cart" style="width: 20px;"></i>
+          <span>Ventas</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="{{ MAIN_APP_URL }}/movimientos/traslados/" style="display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); padding: 12px 16px; border-radius: 12px; text-decoration: none;">
+            <i class="fas fa-truck-fast" style="width: 20px;"></i>
+            <span>Logística</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Footer -->
+    <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <a href="{{ MAIN_APP_URL }}/salir/" style="display: flex; align-items: center; gap: 10px; color: #f87171; text-decoration: none; padding: 10px;">
+            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+        </a>
+    </div>
+</aside>

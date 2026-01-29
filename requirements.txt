@@ -1,0 +1,7 @@
+Django>=4.2,<5.3
+PyMySQL>=1.1.0
+python-dotenv>=1.0.0
+# Gunicorn es opcional en Vercel, pero bueno para pruebas locales
+gunicorn
+whitenoise # Para servir estáticos si fuera necesario
+openpyxl

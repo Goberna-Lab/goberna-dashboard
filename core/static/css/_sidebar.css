@@ -1,0 +1,52 @@
+.sidebar {
+  width: 280px;
+}
+
+.nav-submenu {
+  display: none;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.35s ease;
+  opacity: 0;
+  padding-left: 0; /* quitar indent extra */
+}
+
+.show-submenu .nav-submenu {
+  display: block;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.nav-submenu .nav-link {
+  padding-left: 1.25rem; /* igual que primer nivel */
+  padding-right: 1.25rem;
+}
+
+.movimientos-menu .d-flex {
+  width: 100%;
+}
+
+.toggle-submenu {
+  color: #fff;
+  padding: 0;
+  margin: 0 0.25rem 0 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.movimientos-menu:hover .toggle-submenu,
+.movimientos-menu:focus-within .toggle-submenu,
+.movimientos-menu.show-submenu .toggle-submenu {
+  opacity: 1;
+}
+
+.movimientos-menu .nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.movimientos-menu.show-submenu .toggle-submenu i {
+  transform: rotate(180deg);
+  transition: transform 0.35s ease;
+}

@@ -1,0 +1,311 @@
+import csv
+import json
+from decimal import Decimal
+from io import StringIO, BytesIO
+import datetime
+
+from django.contrib.auth.decorators import login_required
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField, Value, Case, When
+from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect
+from django.conf import settings
+from django.core.cache import cache
+
+from .models import Venta, Cuota, Moneda, PerfilUsuario
+
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+
+@login_required
+def home_dashboard(request):
+    """Dashboard de ventas por usuario actual con opción de exportar reportes."""
+    is_admin = request.user.groups.filter(id=2).exists()
+    
+    # Base querysets
+    if is_admin:
+        ventas_base = Venta.objects.all()
+        cuotas_base = Cuota.objects.all()
+    else:
+        ventas_base = Venta.objects.filter(usuario=request.user)
+        cuotas_base = Cuota.objects.filter(venta__usuario=request.user)
+
+    # CÁLCULO EN DÓLARES (USD)
+    
+    # Anotar Ventas con monto_usd
+    ventas_qs = ventas_base.annotate(
+        tasa_cambio=Coalesce(
+            'radio_multiplicador_usado', 
+            'moneda__radioMultiplicador', 
+            1,
+            output_field=DecimalField()
+        )
+    ).annotate(
+        tasa_final=Case(
+            When(tasa_cambio=0, then=Value(1)),
+            default=F('tasa_cambio'),
+            output_field=DecimalField()
+        )
+    ).annotate(
+        monto_usd=ExpressionWrapper(
+            F('monto_total') / F('tasa_final'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    )
+
+    # Anotar Cuotas con monto_usd
+    cuotas_qs = cuotas_base.select_related('venta', 'venta__moneda').annotate(
+        tasa_cambio=Coalesce(
+            'venta__radio_multiplicador_usado', 
+            'venta__moneda__radioMultiplicador', 
+            1,
+            output_field=DecimalField()
+        )
+    ).annotate(
+        tasa_final=Case(
+            When(tasa_cambio=0, then=Value(1)),
+            default=F('tasa_cambio'),
+            output_field=DecimalField()
+        )
+    ).annotate(
+        monto_usd=ExpressionWrapper(
+            F('monto_total') / F('tasa_final'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    )
+
+    # Exportaciones
+    reporte = request.GET.get("reporte")
+    fmt = request.GET.get("fmt", "csv").lower()
+    if reporte == "ventas":
+        return _export_ventas(ventas_qs, fmt)
+    if reporte == "cuotas":
+        return _export_cuotas(cuotas_qs, fmt)
+
+    # CACHÉ DE ESTADÍSTICAS
+    cache_key = f"dash_stats_v2_{request.user.id}_{is_admin}"
+    cached_stats = cache.get(cache_key)
+
+    if cached_stats:
+        ventas_resumen = cached_stats["ventas_resumen"]
+        ventas_por_estado = cached_stats["ventas_por_estado"]
+        monthly = cached_stats["monthly"]
+        cuotas_por_estado = cached_stats["cuotas_por_estado"]
+        ventas_chart_labels = cached_stats["ventas_chart_labels"]
+        ventas_chart_data = cached_stats["ventas_chart_data"]
+        ventas_estado_chart_data = cached_stats["ventas_estado_chart_data"]
+        cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
+    else:
+        # CALCULAR
+        try:
+            ventas_resumen = ventas_qs.aggregate(
+                total=Count("id"),
+                monto=Sum(ExpressionWrapper(
+                    F('monto_total') / Case(
+                        When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
+                        When(moneda__radioMultiplicador=0, then=Value(1)),
+                        default=F('moneda__radioMultiplicador'),
+                        output_field=DecimalField()
+                    ),
+                    output_field=DecimalField()
+                ))
+            )
+        except Exception:
+            ventas_resumen = {"total": 0, "monto": 0}
+
+        # Gráficos (Mensual)
+        monthly_qs = ventas_qs.annotate(
+            year=ExtractYear('fecha_venta'),
+            month=ExtractMonth('fecha_venta')
+        ).values('year', 'month').annotate(
+            total_usd=Sum(ExpressionWrapper(
+                F('monto_total') / Case(
+                    When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
+                    When(moneda__radioMultiplicador=0, then=Value(1)),
+                    default=F('moneda__radioMultiplicador'),
+                    output_field=DecimalField()
+                ),
+                output_field=DecimalField()
+            )),
+            count=Count('id')
+        ).order_by('year', 'month')
+
+        monthly = []
+        for m in monthly_qs:
+            try:
+                y = m['year'] or 2024
+                mo = m['month'] or 1
+                date_obj = datetime.date(y, mo, 1)
+                m_iso = date_obj.isoformat()
+            except:
+                m_iso = "Unknown"
+            monthly.append({
+                "month": m_iso,
+                "total": m['total_usd'] or 0,
+                "count": m['count']
+            })
+
+        # Estados
+        ventas_estado_qs = ventas_qs.values('estado').annotate(total=Count('id'))
+        ventas_estado_chart_data = [0,0,0,0]
+        for v in ventas_estado_qs:
+            idx = v['estado'] - 1
+            if 0 <= idx < 4:
+                ventas_estado_chart_data[idx] = v['total']
+        
+        ventas_por_estado = [] 
+
+        cuotas_estado_qs = cuotas_qs.values('estado').annotate(total=Count('id'))
+        cuotas_estado_chart_data = [0,0,0]
+        for c in cuotas_estado_qs:
+            idx = c['estado'] - 1
+            if 0 <= idx < 3:
+                cuotas_estado_chart_data[idx] = c['total']
+        cuotas_por_estado = []
+
+        ventas_chart_labels = [m["month"] for m in monthly]
+        ventas_chart_data = [float(m["total"]) for m in monthly]
+        
+        if not ventas_chart_data and ventas_resumen.get("monto"):
+            ventas_chart_labels = ["Actual"]
+            ventas_chart_data = [float(ventas_resumen.get("monto") or 0)]
+        
+        cache.set(cache_key, {
+            "ventas_resumen": ventas_resumen,
+            "ventas_por_estado": ventas_por_estado,
+            "monthly": monthly,
+            "cuotas_por_estado": cuotas_por_estado,
+            "ventas_chart_labels": ventas_chart_labels,
+            "ventas_chart_data": ventas_chart_data,
+            "ventas_estado_chart_data": ventas_estado_chart_data,
+            "cuotas_estado_chart_data": cuotas_estado_chart_data,
+        }, 300)
+
+    # API Carga Asíncrona
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        list_cache_key = f"dash_list_v2_{request.user.id}_{is_admin}"
+        cached_lists = cache.get(list_cache_key)
+        
+        if cached_lists:
+            return JsonResponse(cached_lists, encoder=DjangoJSONEncoder)
+
+        ventas_detalle = list(
+            ventas_qs.values(
+                "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
+            )
+        )
+        for v in ventas_detalle:
+            v["monto_total"] = v.pop("monto_usd")
+
+        cuotas_detalle = list(
+            cuotas_qs.values(
+                "id", "venta__folio_venta", "monto_usd", "estado", "fecha_vencimiento",
+            )
+        )
+        for c in cuotas_detalle:
+            c["monto_total"] = c.pop("monto_usd")
+        
+        response_data = {
+            "ventas_detalle": ventas_detalle,
+            "cuotas_detalle": cuotas_detalle
+        }
+        cache.set(list_cache_key, response_data, 300)
+        return JsonResponse(response_data, encoder=DjangoJSONEncoder)
+    
+    # Perfil
+    perfil = None
+    try:
+        perfil = PerfilUsuario.objects.get(user=request.user)
+    except PerfilUsuario.DoesNotExist:
+        pass
+
+    context = {
+        "username": request.user.get_full_name() or request.user.username,
+        "perfil": perfil,
+        "ventas_resumen": {
+            "total": ventas_resumen.get("total") or 0,
+            "monto": ventas_resumen.get("monto") or Decimal("0.00"),
+        },
+        "is_admin": is_admin,
+        "ventas_por_estado": list(ventas_por_estado),
+        "monthly": list(monthly),
+        "cuotas_por_estado": list(cuotas_por_estado),
+        "ventas_detalle_json": "[]", 
+        "cuotas_detalle_json": "[]",
+        "chart_ventas_labels": json.dumps(ventas_chart_labels, cls=DjangoJSONEncoder),
+        "chart_ventas_data": json.dumps(ventas_chart_data, cls=DjangoJSONEncoder),
+        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_cuotas_estado": json.dumps(cuotas_estado_chart_data, cls=DjangoJSONEncoder),
+        # Variables extra para el template satélite
+        "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
+    }
+    return render(request, "home.html", context)
+
+
+def _export_ventas(queryset, fmt: str = "csv"):
+    # (Misma implementación de exportación)
+    def _naive(dt):
+        if not dt: return ""
+        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
+        return dt
+
+    if fmt in ("xls", "xlsx") and openpyxl:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Ventas"
+        ws.append(["Folio", "Monto (USD)", "Estado", "Fecha"])
+        for v in queryset:
+            ws.append([
+                v.folio_venta, float(v.monto_usd or 0), v.estado,
+                _naive(v.fecha_venta) if hasattr(v, "fecha_venta") else "",
+            ])
+        buffer = BytesIO()
+        wb.save(buffer)
+        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = "attachment; filename=ventas.xlsx"
+        return resp
+        
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Folio", "Monto (USD)", "Estado", "Fecha"])
+    for v in queryset:
+        writer.writerow([v.folio_venta, v.monto_usd, v.estado, v.fecha_venta])
+    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = "attachment; filename=ventas.csv"
+    return resp
+
+
+def _export_cuotas(queryset, fmt: str = "csv"):
+    def _naive(dt):
+        if not dt: return ""
+        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
+        return dt
+
+    if fmt in ("xls", "xlsx") and openpyxl:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Cuotas"
+        ws.append(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
+        for c in queryset:
+            # c.venta ya se trajo con select_related
+            ws.append([
+                c.venta.folio_venta, c.numero_cuota, float(c.monto_usd or 0), c.estado,
+                _naive(c.fecha_vencimiento) if hasattr(c, "fecha_vencimiento") else "",
+            ])
+        buffer = BytesIO()
+        wb.save(buffer)
+        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = "attachment; filename=cuotas.xlsx"
+        return resp
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
+    for c in queryset:
+        writer.writerow([c.venta.folio_venta, c.numero_cuota, c.monto_usd, c.estado, c.fecha_vencimiento])
+    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = "attachment; filename=cuotas.csv"
+    return resp
