@@ -14,6 +14,11 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*'] # Vercel usa dominios dinámicos, restringir en prod si se desea
 
+# SESSION SHARING SETTINGS
+SESSION_COOKIE_DOMAIN = ".goberna.pe"
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 INSTALLED_APPS = [
     'django.contrib.admin', # Opcional, quizás para debug
     'django.contrib.auth',
