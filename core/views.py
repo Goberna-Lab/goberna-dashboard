@@ -27,9 +27,6 @@ def home_dashboard(request):
     
     # Base querysets
     if is_admin:
-    
-    # Base querysets
-    if is_admin:
         ventas_base = Venta.objects.all()
         cuotas_base = Cuota.objects.all()
     else:
