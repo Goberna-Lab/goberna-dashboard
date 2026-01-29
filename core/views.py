@@ -20,27 +20,21 @@ try:
 except ImportError:
     openpyxl = None
 
-# @login_required  <-- COMENTADO PARA DEBUG
+@login_required
 def home_dashboard(request):
     """Dashboard de ventas por usuario actual con opción de exportar reportes."""
-    # DEBUG VERCEL: Si no hay login, fingir que somos el usuario ID 1 (Admin/Goberna)
-    # para poder ver el diseño. EN PRODUCCIÓN ESTO DEBE REMOVERSE.
-    if not request.user.is_authenticated:
-        # user = User.objects.get(pk=1) # Si tuvieramos User model
-        fake_user_id = 1 
-        is_admin = True
-    else:
-        fake_user_id = request.user.id
-        is_admin = request.user.groups.filter(id=2).exists()
+    is_admin = request.user.groups.filter(id=2).exists()
+    
+    # Base querysets
+    if is_admin:
     
     # Base querysets
     if is_admin:
         ventas_base = Venta.objects.all()
         cuotas_base = Cuota.objects.all()
     else:
-        # Usamos usuario_id directo para no necesitar instancia User
-        ventas_base = Venta.objects.filter(usuario_id=fake_user_id)
-        cuotas_base = Cuota.objects.filter(venta__usuario_id=fake_user_id)
+        ventas_base = Venta.objects.filter(usuario=request.user)
+        cuotas_base = Cuota.objects.filter(venta__usuario=request.user)
 
     # CÁLCULO EN DÓLARES (USD)
     
@@ -95,9 +89,7 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    # Usamos fake_user_id si no hay sesión real
-    current_uid = request.user.id if request.user.is_authenticated else fake_user_id
-    cache_key = f"dash_stats_v2_{current_uid}_{is_admin}"
+    cache_key = f"dash_stats_v2_{request.user.id}_{is_admin}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -197,7 +189,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v2_{current_uid}_{is_admin}"
+        list_cache_key = f"dash_list_v2_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
