@@ -741,6 +741,9 @@
 
     function updateCharts(ventasFil) {
       if (!ventasFil) ventasFil = [];
+      // Identificadores de ventas filtradas (se reutiliza en varias secciones)
+      const ventaIds = new Set(ventasFil.map(v => v.id));
+
       const estadoCounts = [0,0,0,0];
       ventasFil.forEach(v => {
         const idx = Number(v.estado) - 1;
@@ -765,7 +768,6 @@
 
       // Update Categorias Chart
       if (chartCategoriasInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
         const detallesFil = detallesCategoria.filter(d => ventaIds.has(d.venta_id));
         
         const catMap = new Map();
@@ -787,7 +789,6 @@
 
       // Update Books Chart
       if (chartBooksInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
         const detallesFil = detallesCategoria.filter(d => 
             ventaIds.has(d.venta_id) && 
             (d.producto__codigo_categoria === 1 || d.producto__codigo_categoria === 15)
@@ -814,7 +815,6 @@
 
       // Update Courses Chart
       if (chartCoursesInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
         const detallesFil = detallesCategoria.filter(d => 
             ventaIds.has(d.venta_id) && 
             (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
