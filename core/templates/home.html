@@ -569,6 +569,10 @@
     }
 
     function initCharts() {
+      const legendDots = { 
+        position: 'bottom',
+        labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 14 }
+      };
       const estadoData = {
         labels: Object.keys(estadoLabels).map(k => estadoLabels[k]),
         data: Array.isArray(ventasPorEstado) ? ventasPorEstado : [0,0,0,0]
@@ -579,7 +583,7 @@
           labels: estadoData.labels,
           datasets: [{ data: estadoData.data, backgroundColor: ['#198754','#ffc107','#6c757d','#dc3545'] }]
         },
-        options: { plugins: { legend: { position: 'bottom' } } }
+        options: { plugins: { legend: legendDots } }
       });
 
       const cuotasDataMap = Array.isArray(cuotasPorEstado) ? cuotasPorEstado : [0,0,0];
@@ -589,7 +593,7 @@
           labels: ['Pagadas','Pendientes','Vencidas'],
           datasets: [{ data: cuotasDataMap, backgroundColor: ['#193b59','#ffc107','#dc3545'] }]
         },
-        options: { plugins: { legend: { position: 'bottom' } } }
+        options: { plugins: { legend: legendDots } }
       });
 
       const labelsMes = ventasMensualLabels.length ? ventasMensualLabels : [''];
@@ -610,7 +614,7 @@
             backgroundColor: catColors
           }]
         },
-        options: { plugins: { legend: { position: 'bottom' } } }
+        options: { plugins: { legend: legendDots } }
       });
 
       chartBooksInst = new Chart(document.getElementById('chartBooks'), {
