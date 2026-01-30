@@ -405,6 +405,11 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</div>
+          <canvas id="chartCourses" height="180"></canvas>
+        </div>
+
+        <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableVendors">
@@ -480,6 +485,8 @@
     const catData = {{ chart_cat_data|default:"[]"|safe }};
     const booksLabels = {{ chart_books_labels|default:"[]"|safe }};
     const booksData = {{ chart_books_data|default:"[]"|safe }};
+    const coursesLabels = {{ chart_courses_labels|default:"[]"|safe }};
+    const coursesData = {{ chart_courses_data|default:"[]"|safe }};
     const vendorsData = {{ vendors_data|default:"[]"|safe }};
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
@@ -495,6 +502,7 @@
     let chartCuotasInst = null;
     let chartCategoriasInst = null;
     let chartBooksInst = null;
+    let chartCoursesInst = null;
     let chartVentasMesInst = null;
 
     function buildCuotasFiltradas(ventasFil) {
@@ -557,6 +565,26 @@
             data: booksData, 
             backgroundColor: '#ffc107',
             borderColor: '#ffca2c',
+            borderWidth: 1
+          }]
+        },
+        options: { 
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true } },
+            plugins: { legend: { display: false } } 
+        }
+      });
+
+
+      chartCoursesInst = new Chart(document.getElementById('chartCourses'), {
+        type: 'bar',
+        data: {
+          labels: coursesLabels,
+          datasets: [{ 
+            label: 'Unidades Vendidas',
+            data: coursesData, 
+            backgroundColor: '#0dcaf0',
+            borderColor: '#0aa2c0',
             borderWidth: 1
           }]
         },
@@ -680,6 +708,32 @@
         chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
         chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
         chartBooksInst.update();
+      }
+
+
+
+      // Update Courses Chart
+      if (chartCoursesInst) {
+        const ventaIds = new Set(ventasFil.map(v => v.id));
+        const detallesFil = detallesCategoria.filter(d => 
+            ventaIds.has(d.venta_id) && 
+            (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
+        );
+        
+        const coursesMap = new Map();
+        detallesFil.forEach(d => {
+            const name = d.producto__nombre_producto || 'Desconocido';
+            const qty = parseInt(d.cantidad || 0);
+            coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
+        });
+
+        const sortedCourses = Array.from(coursesMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const courseLabels = sortedCourses.map(x => x[0]);
+        const courseData = sortedCourses.map(x => x[1]);
+
+        chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
+        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
+        chartCoursesInst.update();
       }
 
       // Update Vendors Table
