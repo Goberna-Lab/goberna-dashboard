@@ -13,7 +13,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.core.cache import cache
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
 
 try:
     import openpyxl
@@ -86,7 +86,7 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    cache_key = f"dash_stats_v2_{request.user.id}_{is_admin}"
+    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -98,6 +98,8 @@ def home_dashboard(request):
         ventas_chart_data = cached_stats["ventas_chart_data"]
         ventas_estado_chart_data = cached_stats["ventas_estado_chart_data"]
         cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
+        cat_labels = cached_stats.get("cat_labels", [])
+        cat_data = cached_stats.get("cat_data", [])
     else:
         # CALCULAR
         try:
@@ -166,6 +168,36 @@ def home_dashboard(request):
                 cuotas_estado_chart_data[idx] = c['total']
         cuotas_por_estado = []
 
+        # Categorías
+        detalles_qs = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
+            'venta', 'venta__moneda', 'producto__codigo_categoria'
+        ).annotate(
+            tasa_cambio=Coalesce(
+                'venta__radio_multiplicador_usado', 
+                'venta__moneda__radioMultiplicador', 
+                1,
+                output_field=DecimalField()
+            )
+        ).annotate(
+            tasa_final=Case(
+                When(tasa_cambio=0, then=Value(1)),
+                default=F('tasa_cambio'),
+                output_field=DecimalField()
+            )
+        ).annotate(
+            monto_usd=ExpressionWrapper(
+                F('precio_total') / F('tasa_final'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+        
+        cats = detalles_qs.values('producto__codigo_categoria__nombre_categoria').annotate(
+            total=Sum('monto_usd')
+        ).order_by('-total')
+
+        cat_labels = [c['producto__codigo_categoria__nombre_categoria'] for c in cats]
+        cat_data = [float(c['total']) for c in cats]
+
         ventas_chart_labels = [m["month"] for m in monthly]
         ventas_chart_data = [float(m["total"]) for m in monthly]
         
@@ -182,6 +214,8 @@ def home_dashboard(request):
             "ventas_chart_data": ventas_chart_data,
             "ventas_estado_chart_data": ventas_estado_chart_data,
             "cuotas_estado_chart_data": cuotas_estado_chart_data,
+            "cat_labels": cat_labels,
+            "cat_data": cat_data,
         }, 300)
 
     # API Carga Asíncrona
@@ -208,9 +242,29 @@ def home_dashboard(request):
         for c in cuotas_detalle:
             c["monto_total"] = c.pop("monto_usd")
         
+        # Detalles con categoría para filtrar en JS
+        # (Reutilizamos la query de detalles_qs pero sin agrupar, filtrando por ID venta)
+        # Nota: detalles_qs ya depende de ventas_qs, asi que es consistente.
+        # Pero ventas_qs es QuerySet, asi que podemos reconstruir detalles query rapido:
+        
+        detalles_export = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
+            'venta', 'venta__moneda', 'producto__codigo_categoria'
+        ).annotate(
+            tasa_cambio=Coalesce('venta__radio_multiplicador_usado', 'venta__moneda__radioMultiplicador', 1, output_field=DecimalField())
+        ).annotate(
+            tasa_final=Case(When(tasa_cambio=0, then=Value(1)), default=F('tasa_cambio'), output_field=DecimalField())
+        ).annotate(
+            monto_usd=ExpressionWrapper(F('precio_total') / F('tasa_final'), output_field=DecimalField(max_digits=12, decimal_places=2))
+        ).values(
+            "venta_id", 
+            "producto__codigo_categoria__nombre_categoria", 
+            "monto_usd"
+        )
+
         response_data = {
             "ventas_detalle": ventas_detalle,
-            "cuotas_detalle": cuotas_detalle
+            "cuotas_detalle": cuotas_detalle,
+            "detalles_categoria": list(detalles_export), 
         }
         cache.set(list_cache_key, response_data, 300)
         return JsonResponse(response_data, encoder=DjangoJSONEncoder)
@@ -251,7 +305,10 @@ def home_dashboard(request):
         "chart_ventas_labels": json.dumps(ventas_chart_labels, cls=DjangoJSONEncoder),
         "chart_ventas_data": json.dumps(ventas_chart_data, cls=DjangoJSONEncoder),
         "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
         "chart_cuotas_estado": json.dumps(cuotas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
+        "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
     }
