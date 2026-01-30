@@ -650,9 +650,9 @@
       // ===========================
       // NOTIFICACIONES (OFFCANVAS)
       // ===========================
-      const NOTIF_listUrl = "/notificaciones/api/list/";
-      const NOTIF_readUrl = (id) => `/notificaciones/api/read/${id}/`;
-      const NOTIF_readAllUrl = "/notificaciones/api/read-all/";
+      const NOTIF_listUrl = "{{ MAIN_APP_URL }}/notificaciones/api/list/";
+      const NOTIF_readUrl = (id) => `{{ MAIN_APP_URL }}/notificaciones/api/read/${id}/`;
+      const NOTIF_readAllUrl = "{{ MAIN_APP_URL }}/notificaciones/api/read-all/";
 
       const badge = document.getElementById("notifBadge");
       const listContainer = document.getElementById("notifList");
@@ -821,7 +821,7 @@
 
         const csrftoken = getCookie('csrftoken');
         try {
-          const res = await fetch('/notificaciones/api/clear/', {
+          const res = await fetch('{{ MAIN_APP_URL }}/notificaciones/api/clear/', {
             method: 'POST',
             headers: {
               'X-CSRFToken': csrftoken,
@@ -848,8 +848,8 @@
     const POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutos
 
     // ✅ ENDPOINTS (ajusta solo si tus urls son distintas)
-    const DISPATCH_PENDING_URL = "/notificaciones/api/pending-dispatches/";
-    const PM_PENDING_URL = "/notificaciones/api/pending-prematriculas/";
+    const DISPATCH_PENDING_URL = "{{ MAIN_APP_URL }}/notificaciones/api/pending-dispatches/";
+    const PM_PENDING_URL = "{{ MAIN_APP_URL }}/notificaciones/api/pending-prematriculas/";
 
     // ✅ UI stack para no saturar
     const toastStack = document.getElementById("toastStack");
@@ -962,7 +962,7 @@
     async function markNotificationAsRead(notifId) {
       try {
         const csrftoken = getCookie('csrftoken');
-        await fetch(`/notificaciones/api/read/${notifId}/`, {
+        await fetch(`{{ MAIN_APP_URL }}/notificaciones/api/read/${notifId}/`, {
           method: 'POST',
           headers: {
             'X-CSRFToken': csrftoken,
