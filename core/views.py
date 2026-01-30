@@ -86,7 +86,7 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    cache_key = f"dash_stats_v3_2_{request.user.id}_{is_admin}"
+    cache_key = f"dash_stats_v3_4_{request.user.id}_{is_admin}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -357,7 +357,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona RESPONSE
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v3_1_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v3_4_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
