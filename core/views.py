@@ -86,7 +86,7 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}"
+    cache_key = f"dash_stats_v3_1_{request.user.id}_{is_admin}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -98,9 +98,23 @@ def home_dashboard(request):
         ventas_chart_data = cached_stats["ventas_chart_data"]
         ventas_estado_chart_data = cached_stats["ventas_estado_chart_data"]
         cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
-        cat_labels = cached_stats.get("cat_labels", [])
-        cat_data = cached_stats.get("cat_data", [])
+        cat_labels = cached_stats["cat_labels"]
+        cat_data = cached_stats["cat_data"]
+        # V3 Data (safe get)
+        stats_v3 = {
+            "div_labels": cached_stats.get("div_labels", []),
+            "div_data": cached_stats.get("div_data", []),
+            "neg_labels": cached_stats.get("neg_labels", []),
+            "neg_data": cached_stats.get("neg_data", []),
+            "medio_labels": cached_stats.get("medio_labels", []),
+            "medio_data": cached_stats.get("medio_data", []),
+            "pais_list": cached_stats.get("pais_list", []),
+            "sales_list": cached_stats.get("sales_list", []),
+            "prod_list": cached_stats.get("prod_list", []),
+        }
+
     else:
+        # === CÁLCULOS ===
         # CALCULAR
         try:
             ventas_resumen = ventas_qs.aggregate(
@@ -280,7 +294,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona RESPONSE
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v3_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v3_1_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
