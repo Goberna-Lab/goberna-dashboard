@@ -263,19 +263,14 @@
         <div class="hero-card">
           <div class="hero-left">
             <div class="d-flex align-items-center gap-3 mb-2">
-                <button class="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center" 
-                        onclick="window.toggleSidebar()" 
-                        style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); border:none;">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h2 style="margin:0;">Bienvenido, {{ username }} 👋</h2>
+              <h2 style="margin:0;">Bienvenido, {{ username }} 👋</h2>
             </div>
             <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <div class="btn-group">
               <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-download me-2"></i><i class="fas fa-file-alt me-1"></i> Exportar ventas
+                <i class="fas fa-file-export me-2"></i> Exportar ventas
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="?reporte=ventas&fmt=xlsx"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
@@ -284,13 +279,16 @@
             </div>
             <div class="btn-group">
               <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-download me-2"></i><i class="fas fa-file-alt me-1"></i> Exportar cuotas
+                <i class="fas fa-file-export me-2"></i> Exportar cuotas
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="?reporte=cuotas&fmt=xlsx"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
                 <li><a class="dropdown-item" href="?reporte=cuotas&fmt=csv"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
               </ul>
             </div>
+            <button type="button" class="btn export-btn" onclick="window.print()">
+              <i class="fas fa-file-pdf me-2"></i> Descargar todo (PDF)
+            </button>
           </div>
         </div>
 
