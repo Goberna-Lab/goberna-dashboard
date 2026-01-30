@@ -102,6 +102,7 @@ def home_dashboard(request):
         cat_data = cached_stats.get("cat_data", [])
         books_labels = cached_stats.get("books_labels", [])
         books_data = cached_stats.get("books_data", [])
+        vendors_data = cached_stats.get("vendors_data", [])
     else:
         # CALCULAR
         try:
@@ -210,6 +211,30 @@ def home_dashboard(request):
         
         books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
         books_data = [int(b['total_qty']) for b in top_books_qs]
+        
+        # Ranking Vendedores (Por cantidad de ventas)
+        # Necesitamos usuario__username o usuario__first_name
+        # Como Venta es managed=False y usuario es FK a auth_user (que si existe en default db o misma db),
+        # el join deberia funcionar si estamos en la misma DB. Sino, podria fallar.
+        # Asumimos misma DB o configuracion correcta de router.
+        try:
+            vendors_qs = ventas_qs.values(
+                'usuario__username', 'usuario__first_name', 'usuario__last_name'
+            ).annotate(
+                total_ventas=Count('id'),
+                total_monto=Sum('monto_usd')
+            ).order_by('-total_ventas')[:20]
+            
+            vendors_data = []
+            for v in vendors_qs:
+                name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
+                vendors_data.append({
+                    "name": name,
+                    "count": v['total_ventas'],
+                    "amount": float(v['total_monto'] or 0)
+                })
+        except Exception:
+            vendors_data = []
 
         ventas_chart_labels = [m["month"] for m in monthly]
         ventas_chart_data = [float(m["total"]) for m in monthly]
@@ -231,6 +256,7 @@ def home_dashboard(request):
             "cat_data": cat_data,
             "books_labels": books_labels,
             "books_data": books_data,
+            "vendors_data": vendors_data,
         }, 300)
 
     # API Carga Asíncrona
@@ -241,13 +267,20 @@ def home_dashboard(request):
         if cached_lists:
             return JsonResponse(cached_lists, encoder=DjangoJSONEncoder)
 
+        # Para Vendedores dinámico en JS, necesitamos saber quien vendió cada venta.
+        # Ya tenemos ventas_detalle, pero falta el nombre del vendedor.
+        # Agregamos username a ventas_detalle query arriba? 
+        # Mejor re-hacemos la query de ventas_detalle para incluir usuario info.
+        
         ventas_detalle = list(
             ventas_qs.values(
                 "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
+                "usuario__username", "usuario__first_name", "usuario__last_name"
             )
         )
         for v in ventas_detalle:
             v["monto_total"] = v.pop("monto_usd")
+            v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
 
         cuotas_detalle = list(
             cuotas_qs.values(
@@ -331,6 +364,7 @@ def home_dashboard(request):
         "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
         "chart_books_labels": json.dumps(books_labels, cls=DjangoJSONEncoder),
         "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
+        "vendors_data": json.dumps(vendors_data, cls=DjangoJSONEncoder),
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
     }
