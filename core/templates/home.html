@@ -1,921 +1,454 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Inicio | Goberna</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    body { margin: 0; background: #f3f6fb; color: #0f172a; font-family: "Montserrat", "Inter", sans-serif; overflow-x: hidden; }
+import csv
+import json
+from decimal import Decimal
+from io import StringIO, BytesIO
+import datetime
+
+from django.contrib.auth.decorators import login_required
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField, Value, Case, When
+from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect
+from django.conf import settings
+from django.core.cache import cache
+
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
+
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+
+@login_required
+def home_dashboard(request):
+    """Dashboard de ventas por usuario actual con opción de exportar reportes."""
+    is_admin = request.user.groups.filter(id=2).exists()
     
-    /* Layout adaptación a Sidebar Fijo */
-    .content {
-      margin-left: 80px; /* Ancho colapsado */
-      padding: 24px 24px 40px;
-      box-sizing: border-box;
-      width: calc(100% - 80px); /* Ajuste de ancho */
-      max-width: 100%;
-      transition: margin-left 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.35s ease;
-    }
+    # Base querysets
+    if is_admin:
+        ventas_base = Venta.objects.all()
+        cuotas_base = Cuota.objects.all()
+    else:
+        ventas_base = Venta.objects.filter(usuario=request.user)
+        cuotas_base = Cuota.objects.filter(venta__usuario=request.user)
 
-    /* Opcional: Si el usuario quiere que el contenido se empuje al abrir sidebar (estilo main app css provided) */
-    /* Para detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
-    /* La estructura actual es: inside body -> .page -> include sidebar, div.content */
-    /* Así que .sidebar:hover ~ .content funciona si son hermanos directos. */
-    /* En home.html están dentro de .page. */
+    # CÁLCULO EN DÓLARES (USD)
     
-    .page { display: block; } /* Reset flex */
-    
-    /* Cuando el sidebar (que es fixed) hace hover, empujamos contenido? 
-       El CSS del usuario decía: .sidebar:hover ~ .main-content { margin-left: 240px; }
-       PERO el sidebar está dentro de un 'include', así que técnicamente es hermano de .content en el renderizado final.
-       Vamos a asumir que sí. 
-    */
+    # Anotar Ventas con monto_usd
+    ventas_qs = ventas_base.annotate(
+        tasa_cambio=Coalesce(
+            'radio_multiplicador_usado', 
+            'moneda__radioMultiplicador', 
+            1,
+            output_field=DecimalField()
+        )
+    ).annotate(
+        tasa_final=Case(
+            When(tasa_cambio=0, then=Value(1)),
+            default=F('tasa_cambio'),
+            output_field=DecimalField()
+        )
+    ).annotate(
+        monto_usd=ExpressionWrapper(
+            F('monto_total') / F('tasa_final'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    )
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-      width: 100%;
-    }
-    .hero-card {
-      grid-column: 1 / -1;
-      background: #193b59;
-      color: #fff;
-      border-radius: 18px;
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 14px 30px rgba(25, 59, 89, 0.25);
-    }
-    .hero-left h2 { margin: 0; font-size: 24px; }
-    .hero-left p { margin: 4px 0 0; opacity: 0.92; }
-    .btn-export { display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
-    .stat-card { border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .stat-value { font-size: 24px; font-weight: 800; color: #0f172a; }
-    .stat-label { color: #64748b; font-size: 14px; }
-    .icon-badge {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: #e2ebf3;
-      color: #193b59;
-      box-shadow: inset 0 0 0 1px #cddaea;
-      flex-shrink: 0;
-      font-size: 1.1rem;
-    }
-    .icon-badge.success { background: #eaf7ef; color: #198754; box-shadow: inset 0 0 0 1px #d1f2db; }
-    .icon-badge.warning { background: #fff7e6; color: #f59e0b; box-shadow: inset 0 0 0 1px #fde7c3; }
-    .section-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
-    .chart-card { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
-    .table-card { background: #fff; border-radius: 16px; padding: 0; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); overflow: hidden; }
-    .table-card table { margin: 0; }
-    .filters-card { padding: 18px 20px; }
-    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; align-items: stretch; }
-    .filter-chip {
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 10px 12px;
-      border: 1px solid var(--home-border);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    }
-    .filter-chip i { color: #475569; font-size: 1rem; }
-    .filter-chip .filter-body { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-    .filter-chip .filter-label { font-weight: 700; color: #0f172a; font-size: 13px; margin: 0; }
-    .filter-chip input,
-    .filter-chip select {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0;
-      height: auto;
-      font-size: 0.95rem;
-      color: #0f172a;
-    }
-    .filter-chip input:focus,
-    .filter-chip select:focus { outline: none; box-shadow: none; }
-    .filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
-    .status-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 12px;
-      overflow: visible;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-    }
-    .estado-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--home-border);
-      background: #fff;
-      color: #0f172a;
-      font-weight: 800;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .estado-chip .dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      border: 3px solid #cbd5e1;
-      background: #fff;
-      box-shadow: inset 0 0 0 2px #fff;
-    }
-    .estado-chip.active {
-      border-color: var(--home-primary);
-      box-shadow: 0 12px 26px rgba(25, 59, 89, 0.18);
-    }
-    .chip-all .dot { border-color: #d1d5db; background: #f8fafc; }
-    .chip-pagado .dot { border-color: #198754; background: #e6f4ec; }
-    .chip-pendiente .dot { border-color: #f59e0b; background: #fef3c7; }
-    .chip-no-val .dot { border-color: #6c757d; background: #e2e8f0; }
-    .chip-anulado .dot { border-color: #dc3545; background: #fde2e1; }
-    .filter-search {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .search-box {
-      flex: 1;
-      position: relative;
-    }
-    .search-box input {
-      width: 100%;
-      border: 1px solid var(--home-border);
-      border-radius: 14px;
-      padding: 12px 14px 12px 44px;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-      background: #fff;
-    }
-    .search-box .icon {
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #64748b;
-      font-size: 1rem;
-    }
-    .btn-ghost {
-      border: 1px solid var(--home-border);
-      background: #fff;
-      color: #0f172a;
-    }
-    .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-    .pill-success { background: #e0f2fe; color: #0b3b5c; }
-    .pill-danger { background: #fee2e2; color: #b91c1c; }
-    .btn-primary { background: var(--home-primary) !important; border-color: var(--home-primary) !important; color: #fff; }
-    .btn-primary:hover { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
-    .export-btn {
-      background: #193b59;
-      border-color: #193b59;
-      color: #fff !important;
-      border-radius: 14px;
-      padding: 12px 16px;
-      font-weight: 800;
-      min-width: 190px;
-      box-shadow: 0 12px 24px rgba(25, 59, 89, 0.25);
-      border: 2px solid #fff;
-    }
-    .export-btn:hover { background: #193b59; border-color: #193b59; color: #fff; }
-    .export-btn .fa-download,
-    .export-btn .fa-file-export,
-    .export-btn .fa-file-alt { font-size: 1rem; }
-    .text-primary { color: #193b59 !important; }
-    .btn-filter {
-      background: #193b59;
-      border: none;
-      color: #fff;
-      font-weight: 800;
-      border-radius: 18px;
-      padding: 14px 26px;
-      min-width: 170px;
-      box-shadow: 0 12px 26px rgba(25, 59, 89, 0.2);
-      display: inline-flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      font-size: 17px;
-    }
-    .btn-filter:hover { color: #fff; }
-    .btn-clear {
-      background: #fff;
-      border: 2px solid #6b7280;
-      color: #6b7280;
-      font-weight: 800;
-      border-radius: 18px;
-      padding: 14px 26px;
-      min-width: 170px;
-      display: inline-flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      font-size: 17px;
-      box-shadow: none;
-    }
-    .btn-clear:hover { color: #6b7280; }
-    .summary-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .summary-chip {
-      background: #f8fafc;
-      border: 1px solid var(--home-border);
-      border-radius: 999px;
-      padding: 6px 12px;
-      font-weight: 700;
-      color: #0f172a;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-    }
-    .chart-card .section-title i,
-    .table-card .section-title i,
-    .filters-card .section-title i,
-    .search-box .icon,
-    .filter-chip i {
-      color: #193b59 !important;
-    }
-    @media (max-width: 900px) {
-      .content { padding: 16px 14px 28px; }
-      .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-      .status-pills { flex-wrap: wrap; overflow-x: visible; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    {% include 'menu/sidebard.html' %}
+    # Anotar Cuotas con monto_usd
+    cuotas_qs = cuotas_base.select_related('venta', 'venta__moneda').annotate(
+        tasa_cambio=Coalesce(
+            'venta__radio_multiplicador_usado', 
+            'venta__moneda__radioMultiplicador', 
+            1,
+            output_field=DecimalField()
+        )
+    ).annotate(
+        tasa_final=Case(
+            When(tasa_cambio=0, then=Value(1)),
+            default=F('tasa_cambio'),
+            output_field=DecimalField()
+        )
+    ).annotate(
+        monto_usd=ExpressionWrapper(
+            F('monto_total') / F('tasa_final'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    )
 
-    <div class="content">
-      <div class="grid">
-        <div class="hero-card">
-          <div class="hero-left">
-            <div class="d-flex align-items-center gap-3 mb-2">
-                <button class="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center" 
-                        onclick="window.toggleSidebar()" 
-                        style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); border:none;">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h2 style="margin:0;">Bienvenido, {{ username }} 👋</h2>
-            </div>
-            <p>Resumen de tus ventas y cuotas al día.</p>
-          </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <div class="btn-group">
-              <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-download me-2"></i><i class="fas fa-file-alt me-1"></i> Exportar ventas
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="?reporte=ventas&fmt=xlsx"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item" href="?reporte=ventas&fmt=csv"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
-              </ul>
-            </div>
-            <div class="btn-group">
-              <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-download me-2"></i><i class="fas fa-file-alt me-1"></i> Exportar cuotas
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="?reporte=cuotas&fmt=xlsx"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item" href="?reporte=cuotas&fmt=csv"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
-              </ul>
-            </div>
-          </div>
-        </div>
+    # Exportaciones
+    reporte = request.GET.get("reporte")
+    fmt = request.GET.get("fmt", "csv").lower()
+    if reporte == "ventas":
+        return _export_ventas(ventas_qs, fmt)
+    if reporte == "cuotas":
+        return _export_cuotas(cuotas_qs, fmt)
 
-        <div class="stat-card">
-          <div>
-            <div class="stat-value" id="ventasTotalesTop">{{ ventas_resumen.total }}</div>
-            <div class="stat-label">Ventas totales</div>
-          </div>
-          <span class="icon-badge"><i class="fas fa-receipt"></i></span>
-        </div>
-        <div class="stat-card">
-          <div>
-            <div class="stat-value" id="montoVendidoTop">$ {{ ventas_resumen.monto|floatformat:2 }}</div>
-            <div class="stat-label">Monto vendido</div>
-          </div>
-          <span class="icon-badge success"><i class="fas fa-dollar-sign"></i></span>
-        </div>
-        <div class="stat-card">
-          <div>
-            <div class="stat-value" id="cuotasPendientes">-</div>
-            <div class="stat-label">Cuotas pendientes</div>
-          </div>
-          <span class="icon-badge warning"><i class="fas fa-bell"></i></span>
-        </div>
-        <div class="stat-card">
-          <div>
-            <div class="stat-value" id="montoFiltradoTop">$ 0.00</div>
-            <div class="stat-label">Totales filtrados</div>
-            <div class="stat-label" id="ventasFiltradasTop">0 ventas</div>
-          </div>
-          <span class="icon-badge"><i class="fas fa-calculator"></i></span>
-        </div>
+    # CACHÉ DE ESTADÍSTICAS
+    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}"
+    cached_stats = cache.get(cache_key)
 
-        <div class="chart-card" style="grid-column: 1 / -1; padding: 14px 16px;">
-          <div class="status-pills">
-            <button class="estado-chip chip-all active" data-estado="">
-              <span class="dot"></span> Todos
-            </button>
-            <button class="estado-chip chip-pagado" data-estado="1">
-              <span class="dot"></span> Pagado
-          </button>
-          <button class="estado-chip chip-pendiente" data-estado="2">
-            <span class="dot"></span> Pendiente
-          </button>
-          <button class="estado-chip chip-no-val" data-estado="3">
-            <span class="dot"></span> No validado
-          </button>
-            <button class="estado-chip chip-anulado" data-estado="4">
-              <span class="dot"></span> Anulado
-            </button>
-          </div>
-        </div>
+    if cached_stats:
+        ventas_resumen = cached_stats["ventas_resumen"]
+        ventas_por_estado = cached_stats["ventas_por_estado"]
+        monthly = cached_stats["monthly"]
+        cuotas_por_estado = cached_stats["cuotas_por_estado"]
+        ventas_chart_labels = cached_stats["ventas_chart_labels"]
+        ventas_chart_data = cached_stats["ventas_chart_data"]
+        ventas_estado_chart_data = cached_stats["ventas_estado_chart_data"]
+        cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
+        cat_labels = cached_stats.get("cat_labels", [])
+        cat_data = cached_stats.get("cat_data", [])
+        books_labels = cached_stats.get("books_labels", [])
+        books_data = cached_stats.get("books_data", [])
+        courses_labels = cached_stats.get("courses_labels", [])
+        courses_data = cached_stats.get("courses_data", [])
+        vendors_data = cached_stats.get("vendors_data", [])
+    else:
+        # CALCULAR
+        try:
+            ventas_resumen = ventas_qs.aggregate(
+                total=Count("id"),
+                monto=Sum(ExpressionWrapper(
+                    F('monto_total') / Case(
+                        When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
+                        When(moneda__radioMultiplicador=0, then=Value(1)),
+                        default=F('moneda__radioMultiplicador'),
+                        output_field=DecimalField()
+                    ),
+                    output_field=DecimalField()
+                ))
+            )
+        except Exception:
+            ventas_resumen = {"total": 0, "monto": 0}
 
-        <div class="chart-card filters-card" style="grid-column: 1 / -1;">
-          <div class="section-title d-flex justify-content-between align-items-center mb-2">
-            <span>Filtros</span>
-          </div>
+        # Gráficos (Mensual)
+        monthly_qs = ventas_qs.annotate(
+            year=ExtractYear('fecha_venta'),
+            month=ExtractMonth('fecha_venta')
+        ).values('year', 'month').annotate(
+            total_usd=Sum(ExpressionWrapper(
+                F('monto_total') / Case(
+                    When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
+                    When(moneda__radioMultiplicador=0, then=Value(1)),
+                    default=F('moneda__radioMultiplicador'),
+                    output_field=DecimalField()
+                ),
+                output_field=DecimalField()
+            )),
+            count=Count('id')
+        ).order_by('year', 'month')
 
-          <div class="filter-search">
-            <div class="search-box">
-              <i class="fas fa-search icon"></i>
-              <input type="text" id="filtroBuscar" placeholder="Buscar folio...">
-            </div>
-            <div class="filter-actions">
-              <button id="btnAplicarFiltros" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
-              <button id="btnLimpiarFiltros" class="btn btn-secondary"><i class="fas fa-eraser"></i> Limpiar</button>
-            </div>
-          </div>
+        monthly = []
+        for m in monthly_qs:
+            try:
+                y = m['year'] or 2024
+                mo = m['month'] or 1
+                date_obj = datetime.date(y, mo, 1)
+                m_iso = date_obj.isoformat()
+            except:
+                m_iso = "Unknown"
+            monthly.append({
+                "month": m_iso,
+                "total": m['total_usd'] or 0,
+                "count": m['count']
+            })
 
-          <div class="filters-grid">
-            <div class="filter-chip">
-              <i class="fas fa-layer-group"></i>
-              <div class="filter-body">
-                <select id="filtroEstado">
-                  <option value="">Todos</option>
-                  <option value="1">Pagado</option>
-                  <option value="2">Pendiente</option>
-                  <option value="3">No validado</option>
-                  <option value="4">Anulado</option>
-                </select>
-              </div>
-            </div>
-            <div class="filter-chip">
-              <i class="fas fa-calendar-day"></i>
-              <div class="filter-body">
-                <span class="filter-label">Desde</span>
-                <input type="date" id="filtroDesde">
-              </div>
-            </div>
-            <div class="filter-chip">
-              <i class="fas fa-calendar-check"></i>
-              <div class="filter-body">
-                <span class="filter-label">Hasta</span>
-                <input type="date" id="filtroHasta">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Ventas por mes</div>
-          <canvas id="chartVentasMes" height="180"></canvas>
-        </div>
-        <div class="chart-card">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por estado</div>
-          <canvas id="chartEstado" height="180"></canvas>
-        </div>
-
-        <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Físico/Preventa)</div>
-          <canvas id="chartBooks" height="180"></canvas>
-        </div>
-
-        <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</div>
-          <canvas id="chartCourses" height="180"></canvas>
-        </div>
-
-        <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</div>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="table table-sm table-hover mb-0" id="tableVendors">
-              <thead class="text-secondary small-header">
-                <tr>
-                  <th>Vendedor</th>
-                  <th class="text-end">Ventas</th>
-                  <th class="text-end">Monto (USD)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</div>
-          <canvas id="chartCuotas" height="180"></canvas>
-        </div>
-
-        <div class="chart-card">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por Categoría</div>
-          <canvas id="chartCategorias" height="180"></canvas>
-        </div>
-
-        <div class="table-card" style="grid-column: 1 / -1;">
-          <div class="p-3 d-flex justify-content-between align-items-center">
-            <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
-            <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
-          </div>
-          <div class="px-3 pb-2">
-            <!-- <div class="summary-chips" id="chipsResumen"></div> -->
-            <div class="d-none">
-              <span id="ventasFiltradas">0</span>
-              <span id="montoFiltrado">$ 0.00</span>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Folio</th>
-                  <th>Fecha</th>
-                  <th>Monto</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="tablaVentas"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Variable global para links externos a la app principal
-    // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
-    // Se recomienda setear "MAIN_APP_URL" en el contexto de la vista
-    const MAIN_APP_URL = "{{ MAIN_APP_URL|default:'' }}";
-
-    // Variables de inicialización
-    let ventasDetalle = [];
-    let cuotasDetalle = [];
-    let detallesCategoria = [];
-    
-    // Variables de charts
-    const ventasPorEstado = {{ chart_ventas_estado|default:"[]"|safe }};
-    const cuotasPorEstado = {{ chart_cuotas_estado|default:"[]"|safe }};
-    const catLabels = {{ chart_cat_labels|default:"[]"|safe }};
-    const catData = {{ chart_cat_data|default:"[]"|safe }};
-    const booksLabels = {{ chart_books_labels|default:"[]"|safe }};
-    const booksData = {{ chart_books_data|default:"[]"|safe }};
-    const coursesLabels = {{ chart_courses_labels|default:"[]"|safe }};
-    const coursesData = {{ chart_courses_data|default:"[]"|safe }};
-    const vendorsData = {{ vendors_data|default:"[]"|safe }};
-    const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
-    const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
-
-    const estadoLabels = {1: "Pagado", 2: "Pendiente", 3: "No validado", 4: "Anulado"};
-    const IS_ADMIN = {{ is_admin|yesno:"true,false" }};
-
-    function formatearMonto(v) {
-      return `$ ${parseFloat(v || 0).toFixed(2)}`;
-    }
-
-    let chartEstadoInst = null;
-    let chartCuotasInst = null;
-    let chartCategoriasInst = null;
-    let chartBooksInst = null;
-    let chartCoursesInst = null;
-    let chartVentasMesInst = null;
-
-    function buildCuotasFiltradas(ventasFil) {
-      const setFolios = new Set((ventasFil || []).map(v => String(v.folio_venta || '')));
-      if (!setFolios.size) return [];
-      return (cuotasDetalle || []).filter(c => setFolios.has(String(c.venta__folio_venta || '')));
-    }
-
-    function initCharts() {
-      const estadoData = {
-        labels: Object.keys(estadoLabels).map(k => estadoLabels[k]),
-        data: Array.isArray(ventasPorEstado) ? ventasPorEstado : [0,0,0,0]
-      };
-      chartEstadoInst = new Chart(document.getElementById('chartEstado'), {
-        type: 'doughnut',
-        data: {
-          labels: estadoData.labels,
-          datasets: [{ data: estadoData.data, backgroundColor: ['#198754','#ffc107','#6c757d','#dc3545'] }]
-        },
-        options: { plugins: { legend: { position: 'bottom' } } }
-      });
-
-      const cuotasDataMap = Array.isArray(cuotasPorEstado) ? cuotasPorEstado : [0,0,0];
-      chartCuotasInst = new Chart(document.getElementById('chartCuotas'), {
-        type: 'pie',
-        data: {
-          labels: ['Pagadas','Pendientes','Vencidas'],
-          datasets: [{ data: cuotasDataMap, backgroundColor: ['#193b59','#ffc107','#dc3545'] }]
-        },
-        options: { plugins: { legend: { position: 'bottom' } } }
-      });
-
-      const labelsMes = ventasMensualLabels.length ? ventasMensualLabels : [''];
-      const dataMes = ventasMensualData.length ? ventasMensualData : [0];
-      chartVentasMesInst = new Chart(document.getElementById('chartVentasMes'), {
-        type: 'bar',
-        data: { labels: labelsMes, datasets: [{ label: 'Monto', data: dataMes, backgroundColor: '#193b59' }]},
-        options: { scales: { y: { beginAtZero: true } } }
-      });
-
-      const catColors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'];
-      chartCategoriasInst = new Chart(document.getElementById('chartCategorias'), {
-        type: 'pie',
-        data: {
-          labels: catLabels.length ? catLabels : ['Sin datos'],
-          datasets: [{ 
-            data: catData.length ? catData : [0], 
-            backgroundColor: catColors
-          }]
-        },
-        options: { plugins: { legend: { position: 'bottom' } } }
-      });
-
-      chartBooksInst = new Chart(document.getElementById('chartBooks'), {
-        type: 'bar',
-        data: {
-          labels: booksLabels,
-          datasets: [{ 
-            label: 'Unidades Vendidas',
-            data: booksData, 
-            backgroundColor: '#ffc107',
-            borderColor: '#ffca2c',
-            borderWidth: 1
-          }]
-        },
-        options: { 
-            indexAxis: 'y',
-            scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } } 
-        }
-      });
-
-
-      chartCoursesInst = new Chart(document.getElementById('chartCourses'), {
-        type: 'bar',
-        data: {
-          labels: coursesLabels,
-          datasets: [{ 
-            label: 'Unidades Vendidas',
-            data: coursesData, 
-            backgroundColor: '#0dcaf0',
-            borderColor: '#0aa2c0',
-            borderWidth: 1
-          }]
-        },
-        options: { 
-            indexAxis: 'y',
-            scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } } 
-        }
-      });
-
-      renderVendorTable(vendorsData);
-    } 
-
-    function renderVendorTable(data) {
-        const tbody = document.querySelector('#tableVendors tbody');
-        if(!tbody) return;
-        tbody.innerHTML = '';
+        # Estados
+        ventas_estado_qs = ventas_qs.values('estado').annotate(total=Count('id'))
+        ventas_estado_chart_data = [0,0,0,0]
+        for v in ventas_estado_qs:
+            idx = v['estado'] - 1
+            if 0 <= idx < 4:
+                ventas_estado_chart_data[idx] = v['total']
         
-        if(!data || !data.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
-            return;
-        }
+        ventas_por_estado = [] 
 
-        // Find Max for Heatmap calculation
-        const maxSales = Math.max(...data.map(d => d.count)) || 1;
+        cuotas_estado_qs = cuotas_qs.values('estado').annotate(total=Count('id'))
+        cuotas_estado_chart_data = [0,0,0]
+        for c in cuotas_estado_qs:
+            idx = c['estado'] - 1
+            if 0 <= idx < 3:
+                cuotas_estado_chart_data[idx] = c['total']
+        cuotas_por_estado = []
 
-        data.forEach(d => {
-            const tr = document.createElement('tr');
+        # Categorías
+        detalles_qs = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
+            'venta', 'venta__moneda', 'producto__codigo_categoria'
+        ).annotate(
+            tasa_cambio=Coalesce(
+                'venta__radio_multiplicador_usado', 
+                'venta__moneda__radioMultiplicador', 
+                1,
+                output_field=DecimalField()
+            )
+        ).annotate(
+            tasa_final=Case(
+                When(tasa_cambio=0, then=Value(1)),
+                default=F('tasa_cambio'),
+                output_field=DecimalField()
+            )
+        ).annotate(
+            monto_usd=ExpressionWrapper(
+                F('precio_total') / F('tasa_final'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+        
+        cats = detalles_qs.values('producto__codigo_categoria__nombre_categoria').annotate(
+            total=Sum('monto_usd')
+        ).order_by('-total')
+
+        cat_labels = [c['producto__codigo_categoria__nombre_categoria'] for c in cats]
+        cat_data = [float(c['total']) for c in cats]
+
+        # Top Ranking Libros (1=Libro, 15=Preventa)
+        top_books_qs = DetalleVenta.objects.filter(
+            venta__in=ventas_qs,
+            producto__codigo_categoria__in=[1, 15]
+        ).values('producto__nombre_producto').annotate(
+            total_qty=Sum('cantidad')
+        ).order_by('-total_qty')[:10]
+        
+        books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
+        books_data = [int(b['total_qty']) for b in top_books_qs]
+        
+        # Top Ranking Cursos (5=Online, 6=Virtual)
+        top_courses_qs = DetalleVenta.objects.filter(
+            venta__in=ventas_qs,
+            producto__codigo_categoria__in=[5, 6]
+        ).values('producto__nombre_producto').annotate(
+            total_qty=Sum('cantidad')
+        ).order_by('-total_qty')[:10]
+        
+        courses_labels = [b['producto__nombre_producto'] for b in top_courses_qs]
+        courses_data = [int(b['total_qty']) for b in top_courses_qs]
+        
+        # Ranking Vendedores (Por cantidad de ventas)
+        # Necesitamos usuario__username o usuario__first_name
+        # Como Venta es managed=False y usuario es FK a auth_user (que si existe en default db o misma db),
+        # el join deberia funcionar si estamos en la misma DB. Sino, podria fallar.
+        # Asumimos misma DB o configuracion correcta de router.
+        try:
+            vendors_qs = ventas_qs.values(
+                'usuario__username', 'usuario__first_name', 'usuario__last_name'
+            ).annotate(
+                total_ventas=Count('id'),
+                total_monto=Sum('monto_usd')
+            ).order_by('-total_ventas')[:20]
             
-            // Heatmap logic: 0% = blue/white, 100% = red/orange
-            // We'll use HSL for simpler gradient. 
-            // Low (0) -> 200 (Blue). High (100) -> 0 (Red).
-            const percent = d.count / maxSales;
-            const hue = (1 - percent) * 200; // 200 to 0
-            
-            // Or simpler badges approach as requested "cuadro con temperatura"
-            // Let's color the Count cell background
-            // Use alpha to make it readable
-            const bgColor = `hsla(${hue}, 80%, 60%, 0.3)`;
-            const textColor = `hsla(${hue}, 90%, 30%, 1)`;
+            vendors_data = []
+            for v in vendors_qs:
+                name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
+                vendors_data.append({
+                    "name": name,
+                    "count": v['total_ventas'],
+                    "amount": float(v['total_monto'] or 0)
+                })
+        except Exception:
+            vendors_data = []
 
-            tr.innerHTML = `
-                <td><small class="fw-bold text-dark">${d.name}</small></td>
-                <td class="text-end">
-                    <span class="badge" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${textColor};">
-                        ${d.count} <i class="fas fa-fire-alt small"></i>
-                    </span>
-                </td>
-                <td class="text-end text-muted small">$${d.amount.toFixed(2)}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    function updateCharts(ventasFil) {
-      if (!ventasFil) ventasFil = [];
-      const estadoCounts = [0,0,0,0];
-      ventasFil.forEach(v => {
-        const idx = Number(v.estado) - 1;
-        if (idx >=0 && idx < 4) estadoCounts[idx] += 1;
-      });
-      if (chartEstadoInst) {
-        chartEstadoInst.data.datasets[0].data = estadoCounts;
-        chartEstadoInst.update();
-      }
-
-      const cuotasFil = buildCuotasFiltradas(ventasFil);
-      const cuotasCounts = [0,0,0]; 
-      cuotasFil.forEach(c => {
-        if (c.estado === 1) cuotasCounts[0] += 1;
-        else if (c.estado === 2) cuotasCounts[1] += 1;
-        else if (c.estado === 3) cuotasCounts[2] += 1;
-      });
-      if (chartCuotasInst) {
-        chartCuotasInst.data.datasets[0].data = cuotasCounts;
-        chartCuotasInst.update();
-      }
-
-      // Update Categorias Chart
-      if (chartCategoriasInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
-        const detallesFil = detallesCategoria.filter(d => ventaIds.has(d.venta_id));
+        ventas_chart_labels = [m["month"] for m in monthly]
+        ventas_chart_data = [float(m["total"]) for m in monthly]
         
-        const catMap = new Map();
-        detallesFil.forEach(d => {
-            const cat = d.producto__codigo_categoria__nombre_categoria || 'Otros';
-            const val = parseFloat(d.monto_usd || 0);
-            catMap.set(cat, (catMap.get(cat) || 0) + val);
-        });
+        if not ventas_chart_data and ventas_resumen.get("monto"):
+            ventas_chart_labels = ["Actual"]
+            ventas_chart_data = [float(ventas_resumen.get("monto") or 0)]
         
-        // Convert to arrays and sort by value desc
-        const sortedCats = Array.from(catMap.entries()).sort((a,b) => b[1] - a[1]);
-        const newLabels = sortedCats.map(x => x[0]);
-        const newData = sortedCats.map(x => x[1]);
+        cache.set(cache_key, {
+            "ventas_resumen": ventas_resumen,
+            "ventas_por_estado": ventas_por_estado,
+            "monthly": monthly,
+            "cuotas_por_estado": cuotas_por_estado,
+            "ventas_chart_labels": ventas_chart_labels,
+            "ventas_chart_data": ventas_chart_data,
+            "ventas_estado_chart_data": ventas_estado_chart_data,
+            "cuotas_estado_chart_data": cuotas_estado_chart_data,
+            "cat_labels": cat_labels,
+            "cat_data": cat_data,
+            "books_labels": books_labels,
+            "books_data": books_data,
+            "courses_labels": courses_labels,
+            "courses_data": courses_data,
+            "vendors_data": vendors_data,
+        }, 300)
+
+    # API Carga Asíncrona
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        list_cache_key = f"dash_list_v2_{request.user.id}_{is_admin}"
+        cached_lists = cache.get(list_cache_key)
         
-        chartCategoriasInst.data.labels = newLabels.length ? newLabels : ['Sin datos'];
-        chartCategoriasInst.data.datasets[0].data = newData.length ? newData : [0];
-        chartCategoriasInst.update();
-      }
+        if cached_lists:
+            return JsonResponse(cached_lists, encoder=DjangoJSONEncoder)
 
-      // Update Books Chart
-      if (chartBooksInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
-        const detallesFil = detallesCategoria.filter(d => 
-            ventaIds.has(d.venta_id) && 
-            (d.producto__codigo_categoria === 1 || d.producto__codigo_categoria === 15)
-        );
+        # Para Vendedores dinámico en JS, necesitamos saber quien vendió cada venta.
+        # Ya tenemos ventas_detalle, pero falta el nombre del vendedor.
+        # Agregamos username a ventas_detalle query arriba? 
+        # Mejor re-hacemos la query de ventas_detalle para incluir usuario info.
         
-        const booksMap = new Map();
-        detallesFil.forEach(d => {
-            const name = d.producto__nombre_producto || 'Desconocido';
-            const qty = parseInt(d.cantidad || 0);
-            booksMap.set(name, (booksMap.get(name) || 0) + qty);
-        });
+        ventas_detalle = list(
+            ventas_qs.values(
+                "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
+                "usuario__username", "usuario__first_name", "usuario__last_name"
+            )
+        )
+        for v in ventas_detalle:
+            v["monto_total"] = v.pop("monto_usd")
+            v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
 
-        // Sort by Qty Desc and take top 10
-        const sortedBooks = Array.from(booksMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
-        const bookLabels = sortedBooks.map(x => x[0]);
-        const bookData = sortedBooks.map(x => x[1]);
-
-        chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
-        chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
-        chartBooksInst.update();
-      }
-
-
-
-      // Update Courses Chart
-      if (chartCoursesInst) {
-        const ventaIds = new Set(ventasFil.map(v => v.id));
-        const detallesFil = detallesCategoria.filter(d => 
-            ventaIds.has(d.venta_id) && 
-            (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
-        );
+        cuotas_detalle = list(
+            cuotas_qs.values(
+                "id", "venta__folio_venta", "monto_usd", "estado", "fecha_vencimiento",
+            )
+        )
+        for c in cuotas_detalle:
+            c["monto_total"] = c.pop("monto_usd")
         
-        const coursesMap = new Map();
-        detallesFil.forEach(d => {
-            const name = d.producto__nombre_producto || 'Desconocido';
-            const qty = parseInt(d.cantidad || 0);
-            coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
-        });
+        # Detalles con categoría para filtrar en JS
+        # (Reutilizamos la query de detalles_qs pero sin agrupar, filtrando por ID venta)
+        # Nota: detalles_qs ya depende de ventas_qs, asi que es consistente.
+        # Pero ventas_qs es QuerySet, asi que podemos reconstruir detalles query rapido:
+        
+        detalles_export = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
+            'venta', 'venta__moneda', 'producto__codigo_categoria'
+        ).annotate(
+            tasa_cambio=Coalesce('venta__radio_multiplicador_usado', 'venta__moneda__radioMultiplicador', 1, output_field=DecimalField())
+        ).annotate(
+            tasa_final=Case(When(tasa_cambio=0, then=Value(1)), default=F('tasa_cambio'), output_field=DecimalField())
+        ).annotate(
+            monto_usd=ExpressionWrapper(F('precio_total') / F('tasa_final'), output_field=DecimalField(max_digits=12, decimal_places=2))
+        ).values(
+            "venta_id", 
+            "producto__codigo_categoria__nombre_categoria", 
+            "producto__codigo_categoria__nombre_categoria", 
+            "monto_usd",
+            "producto__codigo_categoria", # Para filtrar ID en JS
+            "producto__nombre_producto",
+            "cantidad"
+        )
 
-        const sortedCourses = Array.from(coursesMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
-        const courseLabels = sortedCourses.map(x => x[0]);
-        const courseData = sortedCourses.map(x => x[1]);
-
-        chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
-        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
-        chartCoursesInst.update();
-      }
-
-      // Update Vendors Table
-      const userMap = new Map();
-      ventasFil.forEach(v => {
-        const vendor = v.vendedor || 'Desconocido';
-        if(!userMap.has(vendor)) {
-            userMap.set(vendor, { count: 0, amount: 0 });
+        response_data = {
+            "ventas_detalle": ventas_detalle,
+            "cuotas_detalle": cuotas_detalle,
+            "detalles_categoria": list(detalles_export), 
         }
-        const entry = userMap.get(vendor);
-        entry.count += 1;
-        entry.amount += parseFloat(v.monto_total || 0);
-      });
-
-      const sortedVendors = Array.from(userMap.entries())
-        .map(([name, val]) => ({ name, ...val }))
-        .sort((a,b) => b.count - a.count)
-        .slice(0, 20); // Top 20
-
-      renderVendorTable(sortedVendors);
-
-      const monthMap = new Map();
-      ventasFil.forEach(v => {
-        const fecha = new Date(v.fecha_venta);
-        if (isNaN(fecha)) return;
-        // ISO string YYYY-MM-01
-        const key = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-01`;
-        monthMap.set(key, (monthMap.get(key) || 0) + parseFloat(v.monto_total || 0));
-      });
-      const labels = Array.from(monthMap.keys()).sort();
-      const data = labels.map(l => monthMap.get(l));
-      if (chartVentasMesInst) {
-        chartVentasMesInst.data.labels = labels.length ? labels : [''];
-        chartVentasMesInst.data.datasets[0].data = data.length ? data : [0];
-        chartVentasMesInst.update();
-      }
-    }
-
-    function aplicarFiltros() {
-      const desde = document.getElementById('filtroDesde').value;
-      const hasta = document.getElementById('filtroHasta').value;
-      const chipActivo = document.querySelector('.estado-chip.active');
-      const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
-      
-      document.getElementById('filtroEstado').value = estado;
-      const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
-      
-      const ventasFil = ventasDetalle.filter(v => {
-        const fecha = new Date(v.fecha_venta);
-        if (desde && fecha < new Date(desde)) return false;
-        if (hasta && fecha > new Date(hasta + 'T23:59:59')) return false;
-        if (estado && String(v.estado) !== estado) return false;
-        const folio = String(v.folio_venta || '').toLowerCase();
-        if (texto && !folio.includes(texto)) return false;
-        return true;
-      });
-      
-      const total = ventasFil.reduce((acc, v) => acc + parseFloat(v.monto_total), 0);
-      document.getElementById('ventasFiltradas').innerText = ventasFil.length;
-      document.getElementById('montoFiltrado').innerText = formatearMonto(total);
-      const topEl = document.getElementById('montoFiltradoTop');
-      if (topEl) topEl.innerText = formatearMonto(total);
-      const topCount = document.getElementById('ventasFiltradasTop');
-      if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
-      
-      renderChipsResumen({ estado, desde, hasta, texto });
-      updateCharts(ventasFil);
-      renderTabla(ventasFil);
-    }
-
-    function initCuotasPendientes() {
-      const pendientes = cuotasDetalle.filter(c => c.estado === 2 || c.estado === 3);
-      const total = pendientes.reduce((acc, c) => acc + parseFloat(c.monto_total), 0);
-      document.getElementById('cuotasPendientes').innerText = `${pendientes.length} / ${formatearMonto(total)}`;
-    }
-
-    function debounce(func, wait) {
-      let timeout;
-      return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-      };
-    }
+        cache.set(list_cache_key, response_data, 300)
+        return JsonResponse(response_data, encoder=DjangoJSONEncoder)
     
-    async function loadData() {
-        try {
-            document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-2 text-muted">Cargando datos...</p></td></tr>';
-            
-            const response = await fetch(window.location.href, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                ventasDetalle = data.ventas_detalle || [];
-                cuotasDetalle = data.cuotas_detalle || [];
-                detallesCategoria = data.detalles_categoria || [];
-                initCuotasPendientes();
-                aplicarFiltros(); 
-            } else {
-                console.error("Error cargando datos", response.status);
-                document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar datos.</td></tr>';
-            }
-        } catch (error) {
-            console.error("Error de red", error);
-            document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error de conexión.</td></tr>';
-        }
+    # Perfil
+    perfil = None
+    try:
+        # PerfilUsuario usa OneToOne con user, pero en managed=False puede fallar si no hay user instance real
+        # Si estamos debugueando, omitimos perfil o lo buscamos manual
+        if request.user.is_authenticated:
+            perfil = PerfilUsuario.objects.get(user=request.user)
+        else:
+            # Fake perfil lookup if needed, or pass None
+            pass
+    except PerfilUsuario.DoesNotExist:
+        pass
+
+    username_str = "Visitante (Debug)"
+    if request.user.is_authenticated:
+        username_str = request.user.get_full_name() or request.user.username
+    else:
+        # Intentar simular nombre si quisieramos, pero 'Visitante' basta
+        pass
+
+    context = {
+        "username": username_str,
+        "perfil": perfil,
+        "ventas_resumen": {
+            "total": ventas_resumen.get("total") or 0,
+            "monto": ventas_resumen.get("monto") or Decimal("0.00"),
+        },
+        "is_admin": is_admin,
+        "ventas_por_estado": list(ventas_por_estado),
+        "monthly": list(monthly),
+        "cuotas_por_estado": list(cuotas_por_estado),
+        "ventas_detalle_json": "[]", 
+        "cuotas_detalle_json": "[]",
+        "chart_ventas_labels": json.dumps(ventas_chart_labels, cls=DjangoJSONEncoder),
+        "chart_ventas_data": json.dumps(ventas_chart_data, cls=DjangoJSONEncoder),
+        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_cuotas_estado": json.dumps(cuotas_estado_chart_data, cls=DjangoJSONEncoder),
+        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
+        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
+        "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
+        "chart_books_labels": json.dumps(books_labels, cls=DjangoJSONEncoder),
+        "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
+        "chart_courses_labels": json.dumps(courses_labels, cls=DjangoJSONEncoder),
+        "chart_courses_data": json.dumps(courses_data, cls=DjangoJSONEncoder),
+        "vendors_data": json.dumps(vendors_data, cls=DjangoJSONEncoder),
+        # Variables extra para el template satélite
+        "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
     }
+    return render(request, "home.html", context)
 
-    document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
-      aplicarFiltros();
-    });
-    
-    document.getElementById('filtroBuscar').addEventListener('keyup', debounce(() => {
-        aplicarFiltros();
-    }, 300));
-    
-    document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
-      document.getElementById('filtroDesde').value = '';
-      document.getElementById('filtroHasta').value = '';
-      document.getElementById('filtroEstado').value = '';
-      document.getElementById('filtroBuscar').value = '';
-      setEstadoChip('');
-      aplicarFiltros();
-    });
 
-    const estadoChips = document.querySelectorAll('.estado-chip');
-    function setEstadoChip(val) {
-      estadoChips.forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.estado || '') === val);
-      });
-      document.getElementById('filtroEstado').value = val;
-    }
-    estadoChips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        setEstadoChip(chip.dataset.estado || '');
-        aplicarFiltros();
-      });
-    });
-    setEstadoChip(document.querySelector('.estado-chip.active')?.dataset.estado || '');
+def _export_ventas(queryset, fmt: str = "csv"):
+    # (Misma implementación de exportación)
+    def _naive(dt):
+        if not dt: return ""
+        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
+        return dt
 
-    function renderChipsResumen(filters) {
-      const cont = document.getElementById('chipsResumen');
-      if (!cont) return;
-      const chips = [];
-      if (filters.estado) chips.push(`<span class="summary-chip"><i class="fas fa-layer-group"></i> Estado: ${estadoLabels[filters.estado] || filters.estado}</span>`);
-      if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
-      if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
-      if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
-      cont.innerHTML = chips.join('') || '<span class="stat-label">Sin filtros aplicados</span>';
-    }
-
-    function renderTabla(ventasFil) {
-      const tbody = document.getElementById('tablaVentas');
-      if (!tbody) return;
-      
-      const visibleItems = ventasFil.slice(0, 50);
-      
-      const filas = visibleItems.map(v => {
-        const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        const estado = estadoLabels[v.estado] || '---';
-        // AQUÍ USAMOS MAIN_APP_URL
-        // Si no hay URL remota, usamos '#' o path relativo
-        const urlVenta = MAIN_APP_URL ? `${MAIN_APP_URL}/ventas/verVenta/${v.id}/` : `/ventas/verVenta/${v.id}/`;
+    if fmt in ("xls", "xlsx") and openpyxl:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Ventas"
+        ws.append(["Folio", "Monto (USD)", "Estado", "Fecha"])
+        for v in queryset:
+            ws.append([
+                v.folio_venta, float(v.monto_usd or 0), v.estado,
+                _naive(v.fecha_venta) if hasattr(v, "fecha_venta") else "",
+            ])
+        buffer = BytesIO()
+        wb.save(buffer)
+        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = "attachment; filename=ventas.xlsx"
+        return resp
         
-        return `
-          <tr>
-            <td><a href="${urlVenta}" target="_blank" class="text-decoration-none fw-semibold">${v.folio_venta}</a></td>
-            <td>${fecha}</td>
-            <td>${formatearMonto(v.monto_total)}</td>
-            <td><span class="pill ${v.estado === 1 ? 'pill-success' : 'pill-danger'}">${estado}</span></td>
-          </tr>
-        `;
-      }).join('') || '<tr><td colspan="4" class="text-muted text-center">Sin ventas registradas</td></tr>';
-      tbody.innerHTML = filas;
-      const scopeLabel = document.getElementById('scopeLabel');
-      if (scopeLabel) {
-        scopeLabel.innerText = IS_ADMIN ? 'Todas las ventas' : 'Solo tus ventas';
-      }
-    }
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Folio", "Monto (USD)", "Estado", "Fecha"])
+    for v in queryset:
+        writer.writerow([v.folio_venta, v.monto_usd, v.estado, v.fecha_venta])
+    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = "attachment; filename=ventas.csv"
+    return resp
 
-    initCharts();
-    loadData();
-  </script>
-</body>
-</html>
+
+def _export_cuotas(queryset, fmt: str = "csv"):
+    def _naive(dt):
+        if not dt: return ""
+        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
+        return dt
+
+    if fmt in ("xls", "xlsx") and openpyxl:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Cuotas"
+        ws.append(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
+        for c in queryset:
+            # c.venta ya se trajo con select_related
+            ws.append([
+                c.venta.folio_venta, c.numero_cuota, float(c.monto_usd or 0), c.estado,
+                _naive(c.fecha_vencimiento) if hasattr(c, "fecha_vencimiento") else "",
+            ])
+        buffer = BytesIO()
+        wb.save(buffer)
+        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = "attachment; filename=cuotas.xlsx"
+        return resp
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
+    for c in queryset:
+        writer.writerow([c.venta.folio_venta, c.numero_cuota, c.monto_usd, c.estado, c.fecha_vencimiento])
+    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = "attachment; filename=cuotas.csv"
+    return resp
