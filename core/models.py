@@ -156,6 +156,19 @@ class Producto(models.Model):
         managed = False
         db_table = 'tb_producto'
 
+class ProductoEscuela(models.Model):
+    id = models.AutoField(primary_key=True)
+    producto = models.OneToOneField(
+        Producto, on_delete=models.DO_NOTHING,
+        db_column='producto_id', related_name='detalle_escuela'
+    )
+    fecha_inicio = models.DateField(null=True, blank=True)
+    # ... otros campos si fueran necesarios para filtrar por fecha curso ...
+    
+    class Meta:
+        managed = False
+        db_table = 'tb_producto_escuela'
+
 class DetalleVenta(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_detalle')
     
