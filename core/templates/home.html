@@ -404,6 +404,11 @@
           <canvas id="chartCuotas" height="180"></canvas>
         </div>
 
+        <div class="chart-card">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por Categoría</div>
+          <canvas id="chartCategorias" height="180"></canvas>
+        </div>
+
         <div class="table-card" style="grid-column: 1 / -1;">
           <div class="p-3 d-flex justify-content-between align-items-center">
             <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
@@ -445,10 +450,13 @@
     // Variables de inicialización
     let ventasDetalle = [];
     let cuotasDetalle = [];
+    let detallesCategoria = [];
     
     // Variables de charts
     const ventasPorEstado = {{ chart_ventas_estado|default:"[]"|safe }};
     const cuotasPorEstado = {{ chart_cuotas_estado|default:"[]"|safe }};
+    const catLabels = {{ chart_cat_labels|default:"[]"|safe }};
+    const catData = {{ chart_cat_data|default:"[]"|safe }};
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
 
@@ -461,6 +469,7 @@
 
     let chartEstadoInst = null;
     let chartCuotasInst = null;
+    let chartCategoriasInst = null;
     let chartVentasMesInst = null;
 
     function buildCuotasFiltradas(ventasFil) {
@@ -500,6 +509,19 @@
         data: { labels: labelsMes, datasets: [{ label: 'Monto', data: dataMes, backgroundColor: '#193b59' }]},
         options: { scales: { y: { beginAtZero: true } } }
       });
+
+      const catColors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'];
+      chartCategoriasInst = new Chart(document.getElementById('chartCategorias'), {
+        type: 'pie',
+        data: {
+          labels: catLabels.length ? catLabels : ['Sin datos'],
+          datasets: [{ 
+            data: catData.length ? catData : [0], 
+            backgroundColor: catColors
+          }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
     }
 
     function updateCharts(ventasFil) {
@@ -524,6 +546,28 @@
       if (chartCuotasInst) {
         chartCuotasInst.data.datasets[0].data = cuotasCounts;
         chartCuotasInst.update();
+      }
+
+      // Update Categorias Chart
+      if (chartCategoriasInst) {
+        const ventaIds = new Set(ventasFil.map(v => v.id));
+        const detallesFil = detallesCategoria.filter(d => ventaIds.has(d.venta_id));
+        
+        const catMap = new Map();
+        detallesFil.forEach(d => {
+            const cat = d.producto__codigo_categoria__nombre_categoria || 'Otros';
+            const val = parseFloat(d.monto_usd || 0);
+            catMap.set(cat, (catMap.get(cat) || 0) + val);
+        });
+        
+        // Convert to arrays and sort by value desc
+        const sortedCats = Array.from(catMap.entries()).sort((a,b) => b[1] - a[1]);
+        const newLabels = sortedCats.map(x => x[0]);
+        const newData = sortedCats.map(x => x[1]);
+        
+        chartCategoriasInst.data.labels = newLabels.length ? newLabels : ['Sin datos'];
+        chartCategoriasInst.data.datasets[0].data = newData.length ? newData : [0];
+        chartCategoriasInst.update();
       }
 
       const monthMap = new Map();
@@ -600,6 +644,7 @@
                 const data = await response.json();
                 ventasDetalle = data.ventas_detalle || [];
                 cuotasDetalle = data.cuotas_detalle || [];
+                detallesCategoria = data.detalles_categoria || [];
                 initCuotasPendientes();
                 aplicarFiltros(); 
             } else {
