@@ -1019,22 +1019,30 @@
             const response = await fetch(window.location.href, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
-            if (response.ok) {
-                const data = await response.json();
-                ventasDetalle = data.ventas_detalle || [];
-                cuotasDetalle = data.cuotas_detalle || [];
-                detallesCategoria = data.detalles_categoria || [];
-          
-                populateVendorFilter(ventasDetalle);
-                initCuotasPendientes();
-                aplicarFiltros(); 
-            } else {
-                console.error("Error cargando datos", response.status);
+            if (!response.ok) {
+                console.error("Error HTTP cargando datos", response.status);
                 document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar datos.</td></tr>';
+                return;
             }
+
+            // Validar que el backend devolvió JSON; si redirige al login o lanza error HTML, avisamos.
+            const contentType = response.headers.get('Content-Type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error('Respuesta no JSON (posible login/HTML): ' + text.slice(0, 200));
+            }
+
+            const data = await response.json();
+            ventasDetalle = data.ventas_detalle || [];
+            cuotasDetalle = data.cuotas_detalle || [];
+            detallesCategoria = data.detalles_categoria || [];
+      
+            populateVendorFilter(ventasDetalle);
+            initCuotasPendientes();
+            aplicarFiltros(); 
         } catch (error) {
-            console.error("Error de red", error);
-            document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error de conexión.</td></tr>';
+            console.error("Error de red/parseo", error);
+            document.getElementById('tablaVentas').innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: ${error.message}</td></tr>`;
         }
     }
 
