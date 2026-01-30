@@ -266,6 +266,48 @@ def home_dashboard(request):
             "prod_list": list(prod_data),
         }
 
+        # === KPIs Reales ===
+        from django.utils import timezone
+        now = timezone.now()
+        today = now.date()
+        start_week = today - datetime.timedelta(days=today.weekday())
+        
+        # 1. Venta del Día
+        venta_dia_qs = ventas_annotated.filter(fecha_venta__date=today)
+        venta_dia_res = venta_dia_qs.aggregate(
+            total=Count('id'), 
+            monto=Sum('monto_usd_v')
+        )
+        stats_v3["kpi_dia_count"] = venta_dia_res['total'] or 0
+        stats_v3["kpi_dia_monto"] = float(venta_dia_res['monto'] or 0)
+
+        # 2. Avance Semanal
+        venta_sem_qs = ventas_annotated.filter(fecha_venta__date__gte=start_week)
+        venta_sem_res = venta_sem_qs.aggregate(
+            total=Count('id'), 
+            monto=Sum('monto_usd_v')
+        )
+        stats_v3["kpi_sem_monto"] = float(venta_sem_res['monto'] or 0)
+        # Comparativa con semana anterior (simple estimación o 0 por ahora)
+        
+        # 3. Monto Pagado (Estado=1)
+        pagado_res = ventas_annotated.filter(estado=1).aggregate(monto=Sum('monto_usd_v'))
+        stats_v3["kpi_pagado"] = float(pagado_res['monto'] or 0)
+
+        # 4. Deuda Total (Cuotas pendientes/vencidas)
+        # Necesitamos convertir cuotas a USD tambien si la venta fue en otra moneda?
+        # Por simplicidad asumiremos la misma logica de 'ventas_annotated' pero sobre cuotas es complejo sin un annotate previo extenso.
+        # Vamos a usar una aproximacion con las cuotas_qs ya anotadas si existen o hacerlo aqui rapido.
+        # Reusamos la logica de 'cuotas_qs' definida arriba en lines 60-78?
+        # cuotas_qs ya tiene 'monto_usd'.
+        deuda_qs = cuotas_qs.filter(estado__in=[2, 3]) # Pendiente(2), Vencida(3)
+        deuda_res = deuda_qs.aggregate(total=Sum('monto_usd'))
+        stats_v3["kpi_deuda"] = float(deuda_res['total'] or 0)
+
+        # 5. Deuda del Día (Vence hoy)
+        deuda_hoy_res = deuda_qs.filter(fecha_vencimiento=today).aggregate(total=Sum('monto_usd'))
+        stats_v3["kpi_deuda_hoy"] = float(deuda_hoy_res['total'] or 0)
+
         ventas_chart_labels = [m["month"] for m in monthly]
         ventas_chart_data = [float(m["total"]) for m in monthly]
         
@@ -396,9 +438,21 @@ def home_dashboard(request):
         "chart_neg_data": json.dumps(cached_stats.get("neg_data", []), cls=DjangoJSONEncoder),
         "chart_medio_labels": json.dumps(cached_stats.get("medio_labels", []), cls=DjangoJSONEncoder),
         "chart_medio_data": json.dumps(cached_stats.get("medio_data", []), cls=DjangoJSONEncoder),
+        "chart_neg_data": json.dumps(cached_stats.get("neg_data", []), cls=DjangoJSONEncoder),
+        "chart_medio_labels": json.dumps(cached_stats.get("medio_labels", []), cls=DjangoJSONEncoder),
+        "chart_medio_data": json.dumps(cached_stats.get("medio_data", []), cls=DjangoJSONEncoder),
         "top_pais_list": cached_stats.get("pais_list", []),
         "top_sales_list": cached_stats.get("sales_list", []),
         "top_prod_list": cached_stats.get("prod_list", []),
+        
+        # KPIs V3
+        "kpi_dia_count": cached_stats.get("kpi_dia_count", 0),
+        "kpi_dia_monto": cached_stats.get("kpi_dia_monto", 0),
+        "kpi_sem_monto": cached_stats.get("kpi_sem_monto", 0),
+        "kpi_pagado": cached_stats.get("kpi_pagado", 0),
+        "kpi_deuda": cached_stats.get("kpi_deuda", 0),
+        "kpi_deuda_hoy": cached_stats.get("kpi_deuda_hoy", 0),
+
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
     }
