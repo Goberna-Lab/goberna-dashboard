@@ -284,7 +284,7 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'clientes' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/clientes/">
+        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/clientes/listaClientes/">
           <i class="fas fa-users"></i>
           <span>Clientes</span>
         </a>
@@ -292,7 +292,7 @@
       {% endif %}
 
       <li class="nav-item {% if 'productos' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'productos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/productos/">
+        <a class="nav-link {% if 'productos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/productos/listaProductos/">
           <i class="fas fa-box"></i>
           <span>Productos</span>
         </a>
@@ -300,7 +300,7 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'ventas' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'ventas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/">
+        <a class="nav-link {% if 'ventas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/listaVentas/">
           <i class="fas fa-shopping-cart"></i>
           <span>Ventas</span>
         </a>
@@ -328,7 +328,7 @@
 
         <ul class="nav flex-column nav-submenu">
           <li class="nav-item {% if 'matriculas/lista_matriculas' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'matriculas/lista_matriculas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/matriculas/">
+            <a class="nav-link {% if 'matriculas/lista_matriculas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/matriculas/lista_matriculas/">
               <i class="fas fa-list-check text-secondary me-2"></i>
               <span>Lista de Matrículas</span>
             </a>
@@ -353,7 +353,7 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'despacho' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'despacho' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/despacho/">
+        <a class="nav-link {% if 'despacho' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/despacho/aplicar/">
           <i class="fas fa-truck"></i>
           <span>Despachos</span>
         </a>
@@ -403,7 +403,7 @@
       {# TESORERÍA - Grupo 5 o Admin #}
       {% if request.user|has_group_id:5 or request.user|has_group_id:2 %}
       <li class="nav-item {% if 'treasury' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/treasury/pagos-pendientes/">
+        <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/treasury/pagos-pendientes/">
           <i class="fas fa-money-check-alt"></i>
           <span>Tesorería</span>
         </a>
@@ -1077,7 +1077,9 @@
     });
   </script>
 
-
+  <!-- Script del sidebar -->
+  <!-- Script del sidebar (Inlined in DOMContentLoaded above) -->
+  <!-- <script src="{% static 'js2/_sidebar.js' %}?v=8"></script> -->
 
   <script>
     // ========================================
