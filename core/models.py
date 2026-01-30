@@ -10,14 +10,6 @@ class PerfilUsuario(models.Model):
         managed = False
         db_table = "tb_perfil_usuario"
 
-class Pais(models.Model):
-    id = models.AutoField(primary_key=True, db_column='id_pais')
-    nombre = models.CharField(max_length=100, db_column='nombre_pais')
-
-    class Meta:
-        managed = False
-        db_table = 'tb_pais'
-
 class Moneda(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_moneda')
     nombre = models.CharField(max_length=100, db_column='nombre_moneda')
@@ -40,14 +32,12 @@ class Venta(models.Model):
     # Relación con User (auth_user existe en la db remota)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING,
-        db_column='codigo_usuario', related_name='ventas_satelite',
-        null=True, blank=True
+        db_column='codigo_usuario', related_name='ventas_satelite'
     )
     
     moneda = models.ForeignKey(
         Moneda, on_delete=models.DO_NOTHING,
-        db_column='codigo_moneda', related_name='ventas',
-        null=True, blank=True
+        db_column='codigo_moneda', related_name='ventas'
     )
 
     folio_venta = models.CharField(max_length=20, db_column='folio_venta', unique=True)
@@ -69,15 +59,6 @@ class Venta(models.Model):
         max_digits=12, decimal_places=6,
         null=True, blank=True, db_column='radio_multiplicador_usado'
     )
-    
-    pais = models.ForeignKey(
-        Pais, on_delete=models.DO_NOTHING,
-        db_column='codigo_pais', related_name='ventas',
-        null=True, blank=True
-    )
-    
-    medio = models.CharField(max_length=25, db_column='medio_venta', null=True, blank=True)
-    origen = models.CharField(max_length=25, db_column='origen_venta', null=True, blank=True)
 
     fecha_venta = models.DateTimeField(db_column='fecha_venta')
 
@@ -116,22 +97,6 @@ class Categoria(models.Model):
         managed = False
         db_table = 'tb_categoria'
 
-class Negocio(models.Model):
-    codigo_negocio = models.AutoField(primary_key=True)
-    nombre_negocio = models.CharField(max_length=100)
-
-    class Meta:
-        managed = False
-        db_table = 'tb_negocio'
-
-class Division(models.Model):
-    codigo_division = models.AutoField(primary_key=True)
-    nombre_division = models.CharField(max_length=100)
-
-    class Meta:
-        managed = False
-        db_table = 'tb_division'
-
 class Producto(models.Model):
     codigo_producto = models.AutoField(primary_key=True)
     sku_producto = models.CharField(max_length=50, unique=True)
@@ -139,52 +104,24 @@ class Producto(models.Model):
     
     codigo_categoria = models.ForeignKey(
         Categoria, on_delete=models.DO_NOTHING,
-        db_column='codigo_categoria', related_name='productos',
-        null=True, blank=True
-    )
-    
-    codigo_negocio = models.ForeignKey(
-        Negocio, on_delete=models.DO_NOTHING,
-        db_column='codigo_negocio', related_name='productos',
-        null=True, blank=True
-    )
-    
-    codigo_division = models.ForeignKey(
-        Division, on_delete=models.DO_NOTHING,
-        db_column='codigo_division', related_name='productos',
-        null=True, blank=True
+        db_column='codigo_categoria', related_name='productos'
     )
 
     class Meta:
         managed = False
         db_table = 'tb_producto'
 
-class ProductoEscuela(models.Model):
-    id = models.AutoField(primary_key=True)
-    producto = models.OneToOneField(
-        Producto, on_delete=models.DO_NOTHING,
-        db_column='producto_id', related_name='detalle_escuela'
-    )
-    fecha_inicio = models.DateField(null=True, blank=True)
-    # ... otros campos si fueran necesarios para filtrar por fecha curso ...
-    
-    class Meta:
-        managed = False
-        db_table = 'tb_producto_escuela'
-
 class DetalleVenta(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_detalle')
     
     venta = models.ForeignKey(
         Venta, on_delete=models.DO_NOTHING,
-        db_column='codigo_venta', related_name='detalles',
-        null=True, blank=True
+        db_column='codigo_venta', related_name='detalles'
     )
     
     producto = models.ForeignKey(
         Producto, on_delete=models.DO_NOTHING,
-        db_column='codigo_producto', related_name='detalles_venta',
-        null=True, blank=True
+        db_column='codigo_producto', related_name='detalles_venta'
     )
     
     cantidad = models.PositiveIntegerField(db_column='cantidad', default=1)
