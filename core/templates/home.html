@@ -415,6 +415,10 @@
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Ventas por mes</div>
           <canvas id="chartVentasMes" height="180"></canvas>
         </div>
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-area text-primary"></i> Serie temporal (ventas por mes)</div>
+          <canvas id="chartVentasSerie" height="180"></canvas>
+        </div>
         <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por estado</div>
           <canvas id="chartEstado" height="180"></canvas>
@@ -559,6 +563,7 @@
     let chartBooksInst = null;
     let chartCoursesInst = null;
     let chartVentasMesInst = null;
+    let chartVentasSerieInst = null;
 
     function buildCuotasFiltradas(ventasFil) {
       const setFolios = new Set((ventasFil || []).map(v => String(v.folio_venta || '')));
@@ -600,6 +605,32 @@
         type: 'bar',
         data: { labels: labelsMes, datasets: [{ label: 'Monto', data: dataMes, backgroundColor: '#193b59' }]},
         options: { scales: { y: { beginAtZero: true } } }
+      });
+
+      chartVentasSerieInst = new Chart(document.getElementById('chartVentasSerie'), {
+        type: 'line',
+        data: {
+          labels: labelsMes,
+          datasets: [{
+            label: 'Monto',
+            data: dataMes,
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13,110,253,0.12)',
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#0d6efd',
+            pointBorderColor: '#fff',
+            borderWidth: 2,
+            tension: 0.25
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          },
+          plugins: { legend: { display: false } }
+        }
       });
 
       const catColors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'];
@@ -914,6 +945,11 @@
         chartVentasMesInst.data.labels = labels.length ? labels : [''];
         chartVentasMesInst.data.datasets[0].data = data.length ? data : [0];
         chartVentasMesInst.update();
+      }
+      if (chartVentasSerieInst) {
+        chartVentasSerieInst.data.labels = labels.length ? labels : [''];
+        chartVentasSerieInst.data.datasets[0].data = data.length ? data : [0];
+        chartVentasSerieInst.update();
       }
     }
 
