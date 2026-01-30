@@ -88,3 +88,45 @@ class Cuota(models.Model):
     class Meta:
         managed = False
         db_table = 'tb_cuotas'
+
+class Categoria(models.Model):
+    codigo_categoria = models.AutoField(primary_key=True)
+    nombre_categoria = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_categoria'
+
+class Producto(models.Model):
+    codigo_producto = models.AutoField(primary_key=True)
+    sku_producto = models.CharField(max_length=50, unique=True)
+    nombre_producto = models.CharField(max_length=200)
+    
+    codigo_categoria = models.ForeignKey(
+        Categoria, on_delete=models.DO_NOTHING,
+        db_column='codigo_categoria', related_name='productos'
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'tb_producto'
+
+class DetalleVenta(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_detalle')
+    
+    venta = models.ForeignKey(
+        Venta, on_delete=models.DO_NOTHING,
+        db_column='codigo_venta', related_name='detalles'
+    )
+    
+    producto = models.ForeignKey(
+        Producto, on_delete=models.DO_NOTHING,
+        db_column='codigo_producto', related_name='detalles_venta'
+    )
+    
+    cantidad = models.PositiveIntegerField(db_column='cantidad', default=1)
+    precio_total = models.DecimalField(max_digits=12, decimal_places=2, db_column='precio_total')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_detalleVenta'
