@@ -100,6 +100,8 @@ def home_dashboard(request):
         cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
         cat_labels = cached_stats.get("cat_labels", [])
         cat_data = cached_stats.get("cat_data", [])
+        books_labels = cached_stats.get("books_labels", [])
+        books_data = cached_stats.get("books_data", [])
     else:
         # CALCULAR
         try:
@@ -198,6 +200,17 @@ def home_dashboard(request):
         cat_labels = [c['producto__codigo_categoria__nombre_categoria'] for c in cats]
         cat_data = [float(c['total']) for c in cats]
 
+        # Top Ranking Libros (1=Libro, 15=Preventa)
+        top_books_qs = DetalleVenta.objects.filter(
+            venta__in=ventas_qs,
+            producto__codigo_categoria__in=[1, 15]
+        ).values('producto__nombre_producto').annotate(
+            total_qty=Sum('cantidad')
+        ).order_by('-total_qty')[:10]
+        
+        books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
+        books_data = [int(b['total_qty']) for b in top_books_qs]
+
         ventas_chart_labels = [m["month"] for m in monthly]
         ventas_chart_data = [float(m["total"]) for m in monthly]
         
@@ -216,6 +229,8 @@ def home_dashboard(request):
             "cuotas_estado_chart_data": cuotas_estado_chart_data,
             "cat_labels": cat_labels,
             "cat_data": cat_data,
+            "books_labels": books_labels,
+            "books_data": books_data,
         }, 300)
 
     # API Carga Asíncrona
@@ -258,7 +273,11 @@ def home_dashboard(request):
         ).values(
             "venta_id", 
             "producto__codigo_categoria__nombre_categoria", 
-            "monto_usd"
+            "producto__codigo_categoria__nombre_categoria", 
+            "monto_usd",
+            "producto__codigo_categoria", # Para filtrar ID en JS
+            "producto__nombre_producto",
+            "cantidad"
         )
 
         response_data = {
@@ -308,7 +327,10 @@ def home_dashboard(request):
         "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
         "chart_cuotas_estado": json.dumps(cuotas_estado_chart_data, cls=DjangoJSONEncoder),
         "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
+        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
         "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
+        "chart_books_labels": json.dumps(books_labels, cls=DjangoJSONEncoder),
+        "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
     }
