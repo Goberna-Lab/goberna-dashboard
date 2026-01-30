@@ -527,11 +527,12 @@
        TOASTS GLOBAL (Despachos + Prematrículas)
        - Más limpio, no satura, apilable, con barra de progreso
     ========================================================= */
-    .toast-stack {
-      position: fixed;
-      top: 22px;
-      right: 22px;
-      z-index: 50000;
+.toast-stack,
+#toastStack.toast-stack {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 50000;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -539,11 +540,12 @@
       pointer-events: none; /* click-through en el stack */
     }
 
-    .gob-toast {
-      pointer-events: auto;
-      background: #ffffff;
-      border: 1px solid rgba(148,163,184,0.28);
-      border-radius: 16px;
+#toastStack .gob-toast,
+.toast-stack .gob-toast {
+  pointer-events: auto;
+  background: #ffffff;
+  border: 1px solid rgba(148,163,184,0.28);
+  border-radius: 16px;
       box-shadow: 0 16px 40px rgba(15,23,42,0.14);
       overflow: hidden;
       transform: translateY(-8px);
@@ -551,98 +553,136 @@
       transition: transform .18s ease, opacity .18s ease;
       font-family: 'Montserrat','Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    .gob-toast.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
+#toastStack .gob-toast.show,
+.toast-stack .gob-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
 
-    .gob-toast .head {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 12px 14px 10px 14px;
-    }
+#toastStack .gob-toast .head,
+.toast-stack .gob-toast .head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px 10px 14px;
+}
 
-    .gob-toast .icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex: 0 0 40px;
-      font-size: 1.05rem;
-    }
-    .gob-toast.toast-warning .icon { background: rgba(245,197,68,0.25); color: #b45309; }
-    .gob-toast.toast-info .icon { background: rgba(59,130,246,0.18); color: #1d4ed8; }
+#toastStack .gob-toast .icon,
+.toast-stack .gob-toast .icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  font-size: 1.05rem;
+}
+#toastStack .gob-toast.toast-warning .icon,
+.toast-stack .gob-toast.toast-warning .icon { background: rgba(245,197,68,0.25); color: #b45309; }
+#toastStack .gob-toast.toast-info .icon,
+.toast-stack .gob-toast.toast-info .icon { background: rgba(59,130,246,0.18); color: #1d4ed8; }
 
-    .gob-toast .content { flex: 1; min-width: 0; }
-    .gob-toast .title,
-    .gob-toast .title-toast {
-      font-weight: 800;
-      font-size: 0.95rem;
-      color: #0f172a;
-      margin: 0 0 4px 0;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
-    }
-    .gob-toast .msg {
-      font-size: 0.85rem;
-      color: #475569;
-      margin: 0;
-      line-height: 1.3;
-      display: -webkit-box;
+#toastStack .gob-toast .content,
+.toast-stack .gob-toast .content { flex: 1; min-width: 0; }
+#toastStack .gob-toast .title,
+#toastStack .gob-toast .title-toast,
+.toast-stack .gob-toast .title,
+.toast-stack .gob-toast .title-toast {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+#toastStack .gob-toast .msg,
+.toast-stack .gob-toast .msg {
+  font-size: 0.85rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.3;
+  display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    .gob-toast .close-btn {
-      border: 0;
-      background: transparent;
-      color: #64748b;
-      padding: 3px 5px;
+#toastStack .gob-toast .close-btn,
+.toast-stack .gob-toast .close-btn {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  padding: 3px 5px;
       border-radius: 8px;
       line-height: 1;
       font-size: 0.85rem;
       margin-left: 4px;
     }
-    .gob-toast .close-btn:hover { background: rgba(148,163,184,0.18); color: #334155; }
+#toastStack .gob-toast .close-btn:hover,
+.toast-stack .gob-toast .close-btn:hover { background: rgba(148,163,184,0.18); color: #334155; }
 
-    .gob-toast .actions {
-      display: flex;
-      gap: 8px;
-      padding: 0 14px 14px 56px;
-      flex-wrap: wrap;
-    }
-    .gob-toast .actions a,
-    .gob-toast .actions button {
-      border-radius: 12px;
-      font-size: 0.8rem;
-      padding: 7px 12px;
-      line-height: 1.1;
-      box-shadow: 0 8px 18px rgba(25,59,89,0.14);
-    }
+#toastStack .gob-toast .actions,
+.toast-stack .gob-toast .actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px 14px 56px;
+  flex-wrap: wrap;
+}
+#toastStack .gob-toast .actions a,
+#toastStack .gob-toast .actions button,
+.toast-stack .gob-toast .actions a,
+.toast-stack .gob-toast .actions button {
+  border-radius: 12px;
+  font-size: 0.8rem;
+  padding: 7px 12px;
+  line-height: 1.1;
+  box-shadow: 0 8px 18px rgba(25,59,89,0.14);
+  border-width: 1px !important;
+}
 
-    .gob-toast .progress {
-      height: 3px;
-      background: rgba(148,163,184,0.2);
-    }
-    .gob-toast .progress > span {
-      display: block;
-      height: 100%;
-      width: 100%;
-      transform-origin: left;
-      transform: scaleX(1);
-      transition: transform linear;
-    }
-    .gob-toast.toast-warning .progress > span { background: rgba(245,197,68,0.9); }
-    .gob-toast.toast-info .progress > span { background: rgba(59,130,246,0.85); }
+#toastStack .gob-toast .actions .btn-warning,
+.toast-stack .gob-toast .actions .btn-warning {
+  background: #f5c544;
+  border-color: #f5c544;
+  color: #4a2f00;
+}
+#toastStack .gob-toast .actions .btn-outline-secondary,
+.toast-stack .gob-toast .actions .btn-outline-secondary {
+  background: #fff;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+#toastStack .gob-toast .actions .btn-primary,
+.toast-stack .gob-toast .actions .btn-primary {
+  background: #193b59;
+  border-color: #193b59;
+  color: #fff;
+}
 
-    @media (max-width: 520px) {
-      .toast-stack { left: 16px; right: 16px; width: auto; }
-      .gob-toast .actions { padding-left: 10px; }
-    }
+#toastStack .gob-toast .progress,
+.toast-stack .gob-toast .progress {
+  height: 3px;
+  background: rgba(148,163,184,0.2);
+}
+#toastStack .gob-toast .progress > span,
+.toast-stack .gob-toast .progress > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform linear;
+}
+#toastStack .gob-toast.toast-warning .progress > span,
+.toast-stack .gob-toast.toast-warning .progress > span { background: rgba(245,197,68,0.9); }
+#toastStack .gob-toast.toast-info .progress > span,
+.toast-stack .gob-toast.toast-info .progress > span { background: rgba(59,130,246,0.85); }
+
+@media (max-width: 520px) {
+  .toast-stack { left: 16px; right: 16px; width: auto; }
+  .toast-stack .gob-toast .actions { padding-left: 10px; }
+}
 
     /* =========================================================
        SIDEBAR UI (mantengo tu estética)
