@@ -104,31 +104,31 @@
         <!-- ROW 1: KPIs -->
         <div class="stat-card">
           <div class="stat-label">Venta del Día</div>
-          <div class="stat-value text-white">416</div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:15%; background:#dc3545;"></div></div>
-          <div style="font-size:11px; margin-top:6px; color:#fff;">15.6% <span class="float-end text-muted">2,666.6</span></div>
+          <div class="stat-value text-white">{{ kpi_dia_monto|floatformat:2 }}</div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%; background:#dc3545;"></div></div>
+          <div style="font-size:11px; margin-top:6px; color:#fff;">{{ kpi_dia_count }} Ventas <span class="float-end text-muted">{{ kpi_dia_monto|floatformat:0 }}</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Avance Semanal</div>
-          <div class="stat-value text-white">14.341,73</div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:91%; background:#dc3545;"></div></div>
-          <div style="font-size:11px; margin-top:6px; color:#ef4444;">91.1% <span class="float-end text-muted">15,740</span></div>
+          <div class="stat-value text-white">{{ kpi_sem_monto|floatformat:2 }}</div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%; background:#dc3545;"></div></div>
+          <div style="font-size:11px; margin-top:6px; color:#ef4444;">Semana Actual <span class="float-end text-muted">{{ kpi_sem_monto|floatformat:0 }}</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Monto Pagado</div>
-          <div class="stat-value text-white" id="montoPagadoVal">{{ ventas_resumen.monto|floatformat:2 }}</div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:72%; background:#dc3545;"></div></div>
-          <div style="font-size:11px; margin-top:6px; color:#ef4444;">72.4% <span class="float-end text-muted">80.000</span></div>
+          <div class="stat-value text-white" id="montoPagadoVal">{{ kpi_pagado|floatformat:2 }}</div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%; background:#dc3545;"></div></div>
+          <div style="font-size:11px; margin-top:6px; color:#ef4444;">Total Pagado <span class="float-end text-muted">{{ kpi_pagado|floatformat:0 }}</span></div>
         </div>
         <!-- Card Dual (Deuda / Deuda Dia) -->
         <div style="display:flex; flex-direction:column; gap:10px;">
             <div class="stat-card" style="background:#dc3545; border:none; min-height:auto; padding:12px;">
-                <div class="stat-label text-white" style="opacity:0.9;">Deuda</div>
-                <div class="stat-value text-white" style="font-size:22px;">3.598,6</div>
+                <div class="stat-label text-white" style="opacity:0.9;">Deuda Total</div>
+                <div class="stat-value text-white" style="font-size:22px;">{{ kpi_deuda|floatformat:1 }}</div>
             </div>
             <div class="stat-card" style="background:#fbbf24; border:none; min-height:auto; padding:12px; color:#000;">
                 <div class="stat-label" style="color:#000; opacity:0.8;">Deuda del Día</div>
-                <div class="text-end" style="font-size:28px; font-weight:800; line-height:1;">136</div>
+                <div class="text-end" style="font-size:28px; font-weight:800; line-height:1;">{{ kpi_deuda_hoy|floatformat:0 }}</div>
             </div>
         </div>
 
