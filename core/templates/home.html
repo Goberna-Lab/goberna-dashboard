@@ -166,27 +166,59 @@
             </div>
         </div>
 
-        <!-- ROW 3: Pais | Medio -->
-        
-        <!-- Pais Map/List -->
-        <div class="table-card" style="grid-column: span 2;">
-            <div class="table-header d-flex justify-content-between">
-                <span>País</span>
-                <span>Total USD</span>
-            </div>
-            <div class="table-body">
-                <table id="tablaPaises">
-                    <tbody></tbody>
-                </table>
-            </div>
+        <!-- ROW 3: Country & Media/Origin Table (Updated to Table as requested) -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <div class="stat-header">
+            <span class="stat-label">País</span>
+            <span class="text-white fw-bold" style="font-size:12px;">Total USD</span>
+          </div>
+          <div class="table-responsive" style="max-height:220px; overflow-y:auto; margin-top:10px;">
+            <table class="table table-dark table-sm mb-0" id="tablaPaises">
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- Medio Bar Chart -->
-        <div class="chart-card" style="grid-column: span 2;">
-            <div class="chart-title">Medio / Origen</div>
-            <div style="flex:1; position:relative;"><canvas id="chartMedio"></canvas></div>
+        <div class="stat-card" style="grid-column: span 2;">
+          <div class="stat-header">
+            <span class="stat-label">Medio / Origen</span>
+            <span class="text-white fw-bold" style="font-size:12px;">Detalle</span>
+          </div>
+          <div class="table-responsive" style="max-height:220px; overflow-y:auto; margin-top:10px;">
+              <table class="table table-dark table-sm mb-0" id="tablaMedioOrigen">
+                  <thead>
+                      <tr style="color:#94a3b8; font-size:11px;">
+                          <th>Medio / Origen</th>
+                          <th class="text-end">Cant.</th>
+                          <th class="text-end">Total USD</th>
+                      </tr>
+                  </thead>
+                  <tbody></tbody>
+              </table>
+          </div>
         </div>
-        
+      </div>
+      
+      <!-- ROW 4: School Sales (New Request) -->
+      <div class="grid" style="margin-top:20px;">
+          <div class="stat-card" style="grid-column: span 4;">
+              <div class="stat-header">
+                  <span class="stat-label">Ventas de Escuela (Por Curso)</span>
+                  <span class="text-white fw-bold" style="font-size:12px;">Detalle Académico</span>
+              </div>
+              <div class="table-responsive" style="max-height:250px; overflow-y:auto; margin-top:10px;">
+                  <table class="table table-dark table-sm mb-0" id="tablaEscuela">
+                      <thead>
+                          <tr style="color:#94a3b8; font-size:11px;">
+                              <th>Curso / Producto</th>
+                              <th class="text-end">Inscritos</th>
+                              <th class="text-end">Total USD</th>
+                          </tr>
+                      </thead>
+                      <tbody></tbody>
+                  </table>
+              </div>
+          </div>
       </div>
     </div>
   </div>
@@ -212,6 +244,8 @@
     const initPaises = {{ top_pais_list|default:"[]"|safe }}; // List of dicts
     const initSales = {{ top_sales_list|default:"[]"|safe }}; // List of dicts
     const initProd = {{ top_prod_list|default:"[]"|safe }}; // List of dicts
+    const initEscuela = {{ escuela_list|default:"[]"|safe }}; // List of dicts
+    const initMedio = {{ medio_origen_list|default:"[]"|safe }}; // List of dicts
 
     const estadoLabels = {1: "Pagado", 2: "Pendiente", 3: "No validado", 4: "Anulado"};
     const IS_ADMIN = {{ is_admin|yesno:"true,false" }};
@@ -223,74 +257,60 @@
     // Chart Instances
     let chartDivisionInst = null;
     let chartNegocioInst = null;
-    let chartMedioInst = null;
+    // let chartMedioInst = null; // Removed
 
     // Colores para Donas (Azules)
     const blueColors = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#2563eb', '#1d4ed8', '#1e40af'];
 
     function initCharts() {
       // 1. Division (Donut)
-      chartDivisionInst = new Chart(document.getElementById('chartDivision'), {
-        type: 'doughnut',
-        data: {
-          labels: initDivLabels.length ? initDivLabels : ['Sin datos'],
-          datasets: [{ 
-            data: initDivData.length ? initDivData : [0], 
-            backgroundColor: blueColors,
-            borderWidth: 0
-          }]
-        },
-        options: { 
-            cutout: '65%',
-            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: {size:10} } } } 
-        }
-      });
+      const ctxDiv = document.getElementById('chartDivision');
+      if (ctxDiv) {
+          chartDivisionInst = new Chart(ctxDiv, {
+            type: 'doughnut',
+            data: {
+              labels: initDivLabels.length ? initDivLabels : ['Sin datos'],
+              datasets: [{ 
+                data: initDivData.length ? initDivData : [0], 
+                backgroundColor: blueColors,
+                borderWidth: 0
+              }]
+            },
+            options: { 
+                cutout: '65%',
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: {size:10} } } } 
+            }
+          });
+      }
 
       // 2. Negocio (Donut)
-      chartNegocioInst = new Chart(document.getElementById('chartNegocio'), {
-        type: 'doughnut',
-        data: {
-          labels: initNegLabels.length ? initNegLabels : ['Sin datos'],
-          datasets: [{ 
-            data: initNegData.length ? initNegData : [0], 
-            backgroundColor: blueColors,
-            borderWidth: 0
-          }]
-        },
-        options: { 
-            cutout: '65%',
-            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: {size:10} } } } 
-        }
-      });
-
-      // 3. Medio (Bar Horizontal)
-      chartMedioInst = new Chart(document.getElementById('chartMedio'), {
-        type: 'bar',
-        data: {
-          labels: initMedioLabels.length ? initMedioLabels : ['Sin datos'],
-          datasets: [{ 
-            label: 'Total USD',
-            data: initMedioData.length ? initMedioData : [0], 
-            backgroundColor: '#3b82f6',
-            borderRadius: 4
-          }]
-        },
-        options: {
-          indexAxis: 'y', // Horizontal
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-            y: { grid: { display: false }, ticks: { color: '#e2e8f0', font:{weight:'bold'} } }
-          }
-        }
-      });
+      const ctxNeg = document.getElementById('chartNegocio');
+      if (ctxNeg) {
+          chartNegocioInst = new Chart(ctxNeg, {
+            type: 'doughnut',
+            data: {
+              labels: initNegLabels.length ? initNegLabels : ['Sin datos'],
+              datasets: [{ 
+                data: initNegData.length ? initNegData : [0], 
+                backgroundColor: blueColors.slice().reverse(),
+                borderWidth: 0
+              }]
+            },
+            options: {
+                cutout: '65%',
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: {size:10} } } }
+            }
+          });
+      }
+      
+      // Removed Medio Chart Init
       
       // Init Tables
       renderTablaVendedores(initSales);
       renderTablaProductos(initProd);
       renderTablaPaises(initPaises);
+      renderTablaMedioOrigen(initMedio);
+      renderTablaEscuela(initEscuela);
     }
 
     // --- RENDER TABLES ---
@@ -368,6 +388,44 @@
         }).join('');
     }
 
+    function renderTablaMedioOrigen(list) {
+        const tbody = document.querySelector('#tablaMedioOrigen tbody');
+        if(!tbody) return;
+        if(!list || !list.length) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>'; return; }
+
+        tbody.innerHTML = list.map((item, idx) => `
+            <tr>
+                <td>
+                    <div class="d-flex flex-column">
+                        <span class="text-white" style="font-size:12px;">${item.medio || 'Desconocido'}</span>
+                        <span style="color:#64748b; font-size:10px;">${item.origen || '-'}</span>
+                    </div>
+                </td>
+                <td class="text-end text-white">${item.count}</td>
+                <td class="text-end text-white">${formatearMonto(item.total)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderTablaEscuela(list) {
+        const tbody = document.querySelector('#tablaEscuela tbody');
+        if(!tbody) return;
+        if(!list || !list.length) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No hay ventas de cursos</td></tr>'; return; }
+
+        tbody.innerHTML = list.map((item, idx) => `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="color:#64748b; font-size:11px;">${idx+1}.</span>
+                        <span class="text-white" style="font-size:12px;">${item.producto__nombre_producto}</span>
+                    </div>
+                </td>
+                <td class="text-end text-white">${item.count}</td>
+                <td class="text-end text-white">${formatearMonto(item.total)}</td>
+            </tr>
+        `).join('');
+    }
+
     // --- UPDATE LOGIC ---
     function updateCharts(ventasFil) {
       if (!ventasFil) ventasFil = [];
@@ -436,16 +494,37 @@
       const paisList = Array.from(paisMap.values()).sort((a,b) => b.total - a.total);
       renderTablaPaises(paisList);
 
-      // Medio
+      // Medio & Origen (Table)
       const medioMap = new Map();
       ventasFil.forEach(v => {
-          const k = v.medio || 'Desconocido';
-          medioMap.set(k, (medioMap.get(k)||0) + parseFloat(v.monto_usd||0));
+          const k = `${v.medio||'Desconocido'}|${v.origen||''}`;
+          if(!medioMap.has(k)) medioMap.set(k, {total:0, count:0, medio: v.medio, origen: v.origen});
+          const entry = medioMap.get(k);
+          entry.total += parseFloat(v.monto_usd || 0);
+          entry.count += 1;
       });
-      const medioAgg = Array.from(medioMap.entries()).sort((a,b) => b[1] - a[1]);
-      chartMedioInst.data.labels = medioAgg.map(x=>x[0]);
-      chartMedioInst.data.datasets[0].data = medioAgg.map(x=>x[1]);
-      chartMedioInst.update();
+      const medioList = Array.from(medioMap.values()).sort((a,b) => b.total - a.total);
+      // chartMedioInst is removed/unused now
+      renderTablaMedioOrigen(medioList);
+
+      // 3. Escuela (From detallesFil where Negocio=2)
+      // We need to filter only school products. Assuming we check Negocio name or use the helper in views
+      // But in JS we only have 'detallesCategoria'. Let's filter by Negocio Name containing "Escuela" or ID if available.
+      // We mapped codigo_negocio__nombre_negocio in views. Let's use that.
+      const escuelaFil = detallesFil.filter(d => (d.producto__codigo_negocio__nombre_negocio||'').toLowerCase().includes('escuela'));
+      const escuelaAgg = agg(escuelaFil, d => d.producto__nombre_producto, d => ({val: parseFloat(d.monto_usd||0), qty: d.cantidad||0}));
+      
+      const escuelaMap = new Map();
+      escuelaFil.forEach(d => {
+          const k = d.producto__nombre_producto;
+          if(!escuelaMap.has(k)) escuelaMap.set(k, {total:0, count:0, producto__nombre_producto: k});
+          const entry = escuelaMap.get(k);
+          entry.total += parseFloat(d.monto_usd||0);
+          entry.count += (d.cantidad||1);
+      });
+      const escuelaList = Array.from(escuelaMap.values()).sort((a,b) => b.total - a.total);
+      
+      renderTablaEscuela(escuelaList);
     }
 
     function aplicarFiltros() {
