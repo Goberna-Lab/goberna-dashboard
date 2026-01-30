@@ -40,12 +40,14 @@ class Venta(models.Model):
     # Relación con User (auth_user existe en la db remota)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING,
-        db_column='codigo_usuario', related_name='ventas_satelite'
+        db_column='codigo_usuario', related_name='ventas_satelite',
+        null=True, blank=True
     )
     
     moneda = models.ForeignKey(
         Moneda, on_delete=models.DO_NOTHING,
-        db_column='codigo_moneda', related_name='ventas'
+        db_column='codigo_moneda', related_name='ventas',
+        null=True, blank=True
     )
 
     folio_venta = models.CharField(max_length=20, db_column='folio_venta', unique=True)
@@ -137,7 +139,8 @@ class Producto(models.Model):
     
     codigo_categoria = models.ForeignKey(
         Categoria, on_delete=models.DO_NOTHING,
-        db_column='codigo_categoria', related_name='productos'
+        db_column='codigo_categoria', related_name='productos',
+        null=True, blank=True
     )
     
     codigo_negocio = models.ForeignKey(
@@ -174,12 +177,14 @@ class DetalleVenta(models.Model):
     
     venta = models.ForeignKey(
         Venta, on_delete=models.DO_NOTHING,
-        db_column='codigo_venta', related_name='detalles'
+        db_column='codigo_venta', related_name='detalles',
+        null=True, blank=True
     )
     
     producto = models.ForeignKey(
         Producto, on_delete=models.DO_NOTHING,
-        db_column='codigo_producto', related_name='detalles_venta'
+        db_column='codigo_producto', related_name='detalles_venta',
+        null=True, blank=True
     )
     
     cantidad = models.PositiveIntegerField(db_column='cantidad', default=1)
