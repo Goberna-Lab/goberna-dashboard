@@ -466,7 +466,7 @@
     </div>
 
     <div class="p-2 border-top bg-white text-center">
-      <a href="{{ MAIN_APP_URL }}/notificaciones/" class="btn btn-sm btn-outline-primary w-100">
+      <a href="{{ MAIN_APP_URL }}/notificaciones/historial/" class="btn btn-sm btn-outline-primary w-100">
         <i class="fas fa-history me-1"></i> Ver historial completo
       </a>
     </div>
@@ -973,7 +973,8 @@
       const fetchNotifications = async () => {
         try {
           const res = await fetch(NOTIF_listUrl, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'include'
           });
           if (!res.ok) return;
           const data = await res.json();
@@ -1013,7 +1014,8 @@
         try {
           await fetch(NOTIF_readUrl(id), {
             method: 'POST',
-            mode: 'same-origin',
+            mode: 'cors',
+            credentials: 'include',
             headers: {
               'X-CSRFToken': csrftoken,
               'Content-Type': 'application/json'
@@ -1033,7 +1035,8 @@
         try {
           await fetch(NOTIF_readAllUrl, {
             method: 'POST',
-            mode: 'same-origin',
+            mode: 'cors',
+            credentials: 'include',
             headers: {
               'X-CSRFToken': csrftoken,
               'Content-Type': 'application/json'
@@ -1065,6 +1068,7 @@
         try {
           const res = await fetch('{{ MAIN_APP_URL }}/notificaciones/api/clear/', {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'X-CSRFToken': csrftoken,
               'Content-Type': 'application/json'
@@ -1076,7 +1080,6 @@
       });
     });
   </script>
-
 
 
   <script>
@@ -1205,6 +1208,7 @@
         const csrftoken = getCookie('csrftoken');
         await fetch(`{{ MAIN_APP_URL }}/notificaciones/api/read/${notifId}/`, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json'
@@ -1221,7 +1225,7 @@
     // -------------------------------
     async function checkPendingDispatches() {
       try {
-        const response = await fetch(DISPATCH_PENDING_URL);
+        const response = await fetch(DISPATCH_PENDING_URL, { credentials: 'include' });
         if (!response.ok) return;
         const data = await response.json();
 
@@ -1246,7 +1250,7 @@
     // -------------------------------
     async function checkPendingPreMatriculas() {
       try {
-        const response = await fetch(PM_PENDING_URL);
+        const response = await fetch(PM_PENDING_URL, { credentials: 'include' });
         if (!response.ok) return;
         const data = await response.json();
 
