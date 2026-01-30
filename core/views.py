@@ -102,6 +102,8 @@ def home_dashboard(request):
         cat_data = cached_stats.get("cat_data", [])
         books_labels = cached_stats.get("books_labels", [])
         books_data = cached_stats.get("books_data", [])
+        courses_labels = cached_stats.get("courses_labels", [])
+        courses_data = cached_stats.get("courses_data", [])
         vendors_data = cached_stats.get("vendors_data", [])
     else:
         # CALCULAR
@@ -212,6 +214,17 @@ def home_dashboard(request):
         books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
         books_data = [int(b['total_qty']) for b in top_books_qs]
         
+        # Top Ranking Cursos (5=Online, 6=Virtual)
+        top_courses_qs = DetalleVenta.objects.filter(
+            venta__in=ventas_qs,
+            producto__codigo_categoria__in=[5, 6]
+        ).values('producto__nombre_producto').annotate(
+            total_qty=Sum('cantidad')
+        ).order_by('-total_qty')[:10]
+        
+        courses_labels = [b['producto__nombre_producto'] for b in top_courses_qs]
+        courses_data = [int(b['total_qty']) for b in top_courses_qs]
+        
         # Ranking Vendedores (Por cantidad de ventas)
         # Necesitamos usuario__username o usuario__first_name
         # Como Venta es managed=False y usuario es FK a auth_user (que si existe en default db o misma db),
@@ -256,6 +269,8 @@ def home_dashboard(request):
             "cat_data": cat_data,
             "books_labels": books_labels,
             "books_data": books_data,
+            "courses_labels": courses_labels,
+            "courses_data": courses_data,
             "vendors_data": vendors_data,
         }, 300)
 
@@ -364,6 +379,8 @@ def home_dashboard(request):
         "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
         "chart_books_labels": json.dumps(books_labels, cls=DjangoJSONEncoder),
         "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
+        "chart_courses_labels": json.dumps(courses_labels, cls=DjangoJSONEncoder),
+        "chart_courses_data": json.dumps(courses_data, cls=DjangoJSONEncoder),
         "vendors_data": json.dumps(vendors_data, cls=DjangoJSONEncoder),
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
