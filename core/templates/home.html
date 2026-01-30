@@ -399,6 +399,11 @@
           <canvas id="chartEstado" height="180"></canvas>
         </div>
 
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Físico/Preventa)</div>
+          <canvas id="chartBooks" height="180"></canvas>
+        </div>
+
         <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</div>
           <canvas id="chartCuotas" height="180"></canvas>
@@ -457,6 +462,8 @@
     const cuotasPorEstado = {{ chart_cuotas_estado|default:"[]"|safe }};
     const catLabels = {{ chart_cat_labels|default:"[]"|safe }};
     const catData = {{ chart_cat_data|default:"[]"|safe }};
+    const booksLabels = {{ chart_books_labels|default:"[]"|safe }};
+    const booksData = {{ chart_books_data|default:"[]"|safe }};
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
 
@@ -470,6 +477,7 @@
     let chartEstadoInst = null;
     let chartCuotasInst = null;
     let chartCategoriasInst = null;
+    let chartBooksInst = null;
     let chartVentasMesInst = null;
 
     function buildCuotasFiltradas(ventasFil) {
@@ -522,6 +530,25 @@
         },
         options: { plugins: { legend: { position: 'bottom' } } }
       });
+
+      chartBooksInst = new Chart(document.getElementById('chartBooks'), {
+        type: 'bar',
+        data: {
+          labels: booksLabels,
+          datasets: [{ 
+            label: 'Unidades Vendidas',
+            data: booksData, 
+            backgroundColor: '#ffc107',
+            borderColor: '#ffca2c',
+            borderWidth: 1
+          }]
+        },
+        options: { 
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true } },
+            plugins: { legend: { display: false } } 
+        }
+      });
     }
 
     function updateCharts(ventasFil) {
@@ -568,6 +595,31 @@
         chartCategoriasInst.data.labels = newLabels.length ? newLabels : ['Sin datos'];
         chartCategoriasInst.data.datasets[0].data = newData.length ? newData : [0];
         chartCategoriasInst.update();
+      }
+
+      // Update Books Chart
+      if (chartBooksInst) {
+        const ventaIds = new Set(ventasFil.map(v => v.id));
+        const detallesFil = detallesCategoria.filter(d => 
+            ventaIds.has(d.venta_id) && 
+            (d.producto__codigo_categoria === 1 || d.producto__codigo_categoria === 15)
+        );
+        
+        const booksMap = new Map();
+        detallesFil.forEach(d => {
+            const name = d.producto__nombre_producto || 'Desconocido';
+            const qty = parseInt(d.cantidad || 0);
+            booksMap.set(name, (booksMap.get(name) || 0) + qty);
+        });
+
+        // Sort by Qty Desc and take top 10
+        const sortedBooks = Array.from(booksMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const bookLabels = sortedBooks.map(x => x[0]);
+        const bookData = sortedBooks.map(x => x[1]);
+
+        chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
+        chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
+        chartBooksInst.update();
       }
 
       const monthMap = new Map();
