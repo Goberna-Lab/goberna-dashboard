@@ -404,6 +404,22 @@
           <canvas id="chartBooks" height="180"></canvas>
         </div>
 
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</div>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0" id="tableVendors">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Vendedor</th>
+                  <th class="text-end">Ventas</th>
+                  <th class="text-end">Monto (USD)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</div>
           <canvas id="chartCuotas" height="180"></canvas>
@@ -464,6 +480,7 @@
     const catData = {{ chart_cat_data|default:"[]"|safe }};
     const booksLabels = {{ chart_books_labels|default:"[]"|safe }};
     const booksData = {{ chart_books_data|default:"[]"|safe }};
+    const vendorsData = {{ vendors_data|default:"[]"|safe }};
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
 
@@ -549,6 +566,49 @@
             plugins: { legend: { display: false } } 
         }
       });
+
+      renderVendorTable(vendorsData);
+    } 
+
+    function renderVendorTable(data) {
+        const tbody = document.querySelector('#tableVendors tbody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        
+        if(!data || !data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            return;
+        }
+
+        // Find Max for Heatmap calculation
+        const maxSales = Math.max(...data.map(d => d.count)) || 1;
+
+        data.forEach(d => {
+            const tr = document.createElement('tr');
+            
+            // Heatmap logic: 0% = blue/white, 100% = red/orange
+            // We'll use HSL for simpler gradient. 
+            // Low (0) -> 200 (Blue). High (100) -> 0 (Red).
+            const percent = d.count / maxSales;
+            const hue = (1 - percent) * 200; // 200 to 0
+            
+            // Or simpler badges approach as requested "cuadro con temperatura"
+            // Let's color the Count cell background
+            // Use alpha to make it readable
+            const bgColor = `hsla(${hue}, 80%, 60%, 0.3)`;
+            const textColor = `hsla(${hue}, 90%, 30%, 1)`;
+
+            tr.innerHTML = `
+                <td><small class="fw-bold text-dark">${d.name}</small></td>
+                <td class="text-end">
+                    <span class="badge" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${textColor};">
+                        ${d.count} <i class="fas fa-fire-alt small"></i>
+                    </span>
+                </td>
+                <td class="text-end text-muted small">$${d.amount.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
     function updateCharts(ventasFil) {
@@ -621,6 +681,25 @@
         chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
         chartBooksInst.update();
       }
+
+      // Update Vendors Table
+      const userMap = new Map();
+      ventasFil.forEach(v => {
+        const vendor = v.vendedor || 'Desconocido';
+        if(!userMap.has(vendor)) {
+            userMap.set(vendor, { count: 0, amount: 0 });
+        }
+        const entry = userMap.get(vendor);
+        entry.count += 1;
+        entry.amount += parseFloat(v.monto_total || 0);
+      });
+
+      const sortedVendors = Array.from(userMap.entries())
+        .map(([name, val]) => ({ name, ...val }))
+        .sort((a,b) => b.count - a.count)
+        .slice(0, 20); // Top 20
+
+      renderVendorTable(sortedVendors);
 
       const monthMap = new Map();
       ventasFil.forEach(v => {
