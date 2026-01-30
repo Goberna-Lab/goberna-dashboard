@@ -583,8 +583,8 @@
 #toastStack .gob-toast.toast-info .icon,
 .toast-stack .gob-toast.toast-info .icon { background: rgba(59,130,246,0.18); color: #1d4ed8; }
 
-#toastStack .gob-toast .content,
-.toast-stack .gob-toast .content { flex: 1; min-width: 0; }
+#toastStack .gob-toast .content-toast,
+.toast-stack .gob-toast .content-toast { flex: 1; min-width: 0; }
 #toastStack .gob-toast .title,
 #toastStack .gob-toast .title-toast,
 .toast-stack .gob-toast .title,
@@ -1178,7 +1178,7 @@
       toast.innerHTML = `
         <div class="head">
           <div class="icon">${iconHtml}</div>
-          <div class="content">
+          <div class="content-toast">
             <div class="title-toast">${safeTitle}</div>
             <p class="msg">${safeMsg}</p>
           </div>
