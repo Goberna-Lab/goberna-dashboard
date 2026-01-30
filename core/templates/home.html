@@ -361,15 +361,25 @@
           </div>
 
           <div class="filters-grid">
+
             <div class="filter-chip">
               <i class="fas fa-layer-group"></i>
               <div class="filter-body">
                 <select id="filtroEstado">
-                  <option value="">Todos</option>
+                  <option value="">Todos los estados</option>
                   <option value="1">Pagado</option>
                   <option value="2">Pendiente</option>
                   <option value="3">No validado</option>
                   <option value="4">Anulado</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="filter-chip">
+              <i class="fas fa-user-tag"></i>
+              <div class="filter-body">
+                <select id="filtroVendedor">
+                  <option value="">Todos los vendedores</option>
                 </select>
               </div>
             </div>
@@ -779,6 +789,8 @@
       const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
       
       document.getElementById('filtroEstado').value = estado;
+      document.getElementById('filtroEstado').value = estado;
+      const vendedor = document.getElementById('filtroVendedor').value;
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       
       const ventasFil = ventasDetalle.filter(v => {
@@ -786,6 +798,7 @@
         if (desde && fecha < new Date(desde)) return false;
         if (hasta && fecha > new Date(hasta + 'T23:59:59')) return false;
         if (estado && String(v.estado) !== estado) return false;
+        if (vendedor && String(v.usuario__username) !== vendedor) return false;
         const folio = String(v.folio_venta || '').toLowerCase();
         if (texto && !folio.includes(texto)) return false;
         return true;
@@ -818,6 +831,37 @@
       };
     }
     
+    function populateVendorFilter(data) {
+        const select = document.getElementById('filtroVendedor');
+        if (!select) return;
+        
+        // Keep "All" option
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Todos los vendedores</option>';
+        
+        const vendors = new Map();
+        data.forEach(v => {
+            const username = v.usuario__username;
+            const name = v.vendedor || username;
+            if(username) vendors.set(username, name);
+        });
+        
+        // Sort by name
+        const sorted = Array.from(vendors.entries()).sort((a,b) => a[1].localeCompare(b[1]));
+        
+        sorted.forEach(([user, name]) => {
+            const opt = document.createElement('option');
+            opt.value = user;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
+        
+        // Restore selection if possible, else default
+        if (vendors.has(currentVal)) {
+            select.value = currentVal;
+        }
+    }
+
     async function loadData() {
         try {
             document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-2 text-muted">Cargando datos...</p></td></tr>';
@@ -830,6 +874,8 @@
                 ventasDetalle = data.ventas_detalle || [];
                 cuotasDetalle = data.cuotas_detalle || [];
                 detallesCategoria = data.detalles_categoria || [];
+          
+                populateVendorFilter(ventasDetalle);
                 initCuotasPendientes();
                 aplicarFiltros(); 
             } else {
@@ -852,6 +898,10 @@
     
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
       document.getElementById('filtroDesde').value = '';
+      document.getElementById('filtroHasta').value = '';
+      document.getElementById('filtroEstado').value = '';
+      document.getElementById('filtroVendedor').value = '';
+      document.getElementById('filtroBuscar').value = '';
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
