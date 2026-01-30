@@ -259,23 +259,8 @@
     {% include 'menu/sidebard.html' %}
 
     <div class="content">
-      <div class="row g-3">
-        <!-- Goal Widget -->
-        <div class="col-12 mb-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0 text-primary"><i class="fas fa-bullseye me-2"></i>Meta Mensual (Administración)</h6>
-                        <span class="text-muted small" id="goalAmount">Progreso: $0 / $80,000</span>
-                    </div>
-                    <div class="progress" style="height: 20px;">
-                        <div id="goalProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%">0%</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="chart-card">
+      <div class="grid">
+        <div class="hero-card">
           <div class="hero-left">
             <div class="d-flex align-items-center gap-3 mb-2">
                 <button class="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center" 
@@ -453,12 +438,7 @@
         <div class="table-card" style="grid-column: 1 / -1;">
           <div class="p-3 d-flex justify-content-between align-items-center">
             <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
-            <div>
-                <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#modalFiltrosVendedor">
-                    <i class="fas fa-user-tag"></i> Filtrar Vendedor
-                </button>
-                <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
-            </div>
+            <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
           </div>
           <div class="px-3 pb-2">
             <!-- <div class="summary-chips" id="chipsResumen"></div> -->
@@ -487,29 +467,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Modal Filtro Vendedor -->
-  <div class="modal fade" id="modalFiltrosVendedor" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Filtrar por Vendedor</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-            <label class="form-label">Seleccione Vendedor:</label>
-            <select class="form-select" id="filtroVendedorSelect">
-                <option value="">-- Todos --</option>
-            </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          <button type="button" class="btn btn-primary" onclick="aplicarFiltroVendedor()">Aplicar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
     // Variable global para links externos a la app principal
     // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
@@ -622,9 +579,6 @@
       chartCoursesInst = new Chart(document.getElementById('chartCourses'), {
         type: 'bar',
         data: {
-      chartCoursesInst = new Chart(document.getElementById('chartCourses'), {
-        type: 'bar',
-        data: {
           labels: coursesLabels,
           datasets: [{ 
             label: 'Unidades Vendidas',
@@ -633,13 +587,6 @@
             borderColor: '#0aa2c0',
             borderWidth: 1
           }]
-        },
-        options: { 
-            indexAxis: 'y',
-            scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } } 
-        }
-      });
         },
         options: { 
             indexAxis: 'y',
@@ -656,20 +603,6 @@
         if(!tbody) return;
         tbody.innerHTML = '';
         
-        // Populate Select Filter only once if empty
-        const select = document.getElementById('filtroVendedorSelect');
-        if(select && select.options.length <= 1 && data.length > 0) {
-            // We use the full unique list from 'ventasDetalle' ideally, but 'data' (top 20) is a start.
-            // Better: Extract unique names from 'ventasDetalle' global.
-             const uniqueVendors = new Set(ventasDetalle.map(v => v.vendedor).filter(Boolean));
-             uniqueVendors.forEach(v => {
-                 const opt = document.createElement('option');
-                 opt.value = v;
-                 opt.innerText = v;
-                 select.appendChild(opt);
-             });
-        }
-
         if(!data || !data.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
             return;
@@ -853,11 +786,6 @@
         if (desde && fecha < new Date(desde)) return false;
         if (hasta && fecha > new Date(hasta + 'T23:59:59')) return false;
         if (estado && String(v.estado) !== estado) return false;
-        
-        // Vendedor Filter
-        const vendedor = (document.getElementById('filtroVendedorSelect').value || '').toLowerCase();
-        if (vendedor && (v.vendedor || '').toLowerCase() !== vendedor) return false;
-
         const folio = String(v.folio_venta || '').toLowerCase();
         if (texto && !folio.includes(texto)) return false;
         return true;
@@ -869,54 +797,6 @@
       const topEl = document.getElementById('montoFiltradoTop');
       if (topEl) topEl.innerText = formatearMonto(total);
       const topCount = document.getElementById('ventasFiltradasTop');
-      if (topCount) topCount.innerText = ventasFil.length;
-      
-      updateCharts(ventasFil);
-      updateGoal(ventasFil);
-    } 
-
-    function aplicarFiltroVendedor() {
-        // Just trigger standard filter, logic extracts value from select
-        aplicarFiltros();
-        // Hide modal
-        const modalEl = document.getElementById('modalFiltrosVendedor');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if(modal) modal.hide();
-    }
-
-    function updateGoal(ventasFil) {
-        // Goal: Calculated based on CURRENT MONTH of the filtered data? 
-        // Or simply sum of displayed data if filter includes current month?
-        // User said "Monthly Goal". Usually means specific to current calendar month.
-        // Let's filter 'ventasFil' to only include records from Current Month
-        
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        
-        const currentMonthSales = ventasFil.filter(v => {
-            const d = new Date(v.fecha_venta);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        });
-        
-        const totalMonth = currentMonthSales.reduce((acc, v) => acc + parseFloat(v.monto_total || 0), 0);
-        const goal = 80000;
-        const percent = Math.min((totalMonth / goal) * 100, 100);
-        
-        const bar = document.getElementById('goalProgress');
-        const label = document.getElementById('goalAmount');
-        
-        if(bar) {
-            bar.style.width = `${percent}%`;
-            bar.innerText = `${percent.toFixed(1)}%`;
-            bar.classList.toggle('bg-success', percent >= 100);
-            bar.classList.toggle('bg-warning', percent < 50);
-            bar.classList.toggle('bg-info', percent >= 50 && percent < 100);
-        }
-        if(label) {
-            label.innerText = `Actual: $${totalMonth.toLocaleString('en-US', {minimumFractionDigits: 2})} / Meta: $${goal.toLocaleString()}`;
-        }
-    }
       if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
       
       renderChipsResumen({ estado, desde, hasta, texto });
