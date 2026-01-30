@@ -836,7 +836,12 @@
   </script>
 
   <!-- Script del sidebar -->
-  <script src="{% static 'js2/_sidebar.js' %}?v=8"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+  console.log("✅ Sidebar cargado correctamente (versión fija sin toggle).");
+});
+
+  </script>
 
   <script>
     // ========================================
