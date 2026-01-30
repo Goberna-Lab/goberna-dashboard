@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <!-- Estilos Sidebar -->
-
+  <link rel="stylesheet" href="{% static 'css/_sidebar.css' %}?v=12">
 </head>
 
 <body>
@@ -42,7 +42,7 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'clientes' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/clientes/">
+        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="app.{{ MAIN_APP_URL }}/clientes/">
           <i class="fas fa-users"></i>
           <span>Clientes</span>
         </a>
@@ -836,12 +836,7 @@
   </script>
 
   <!-- Script del sidebar -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ Sidebar cargado correctamente (versión fija sin toggle).");
-});
-
-  </script>
+  <script src="{% static 'js2/_sidebar.js' %}?v=8"></script>
 
   <script>
     // ========================================
