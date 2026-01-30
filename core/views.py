@@ -13,7 +13,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.core.cache import cache
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, Division, Negocio, Pais
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, Division, Negocio, Pais, ProductoEscuela
 
 try:
     import openpyxl
@@ -86,7 +86,7 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    cache_key = f"dash_stats_v3_1_{request.user.id}_{is_admin}"
+    cache_key = f"dash_stats_v3_2_{request.user.id}_{is_admin}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -111,6 +111,8 @@ def home_dashboard(request):
             "pais_list": cached_stats.get("pais_list", []),
             "sales_list": cached_stats.get("sales_list", []),
             "prod_list": cached_stats.get("prod_list", []),
+            "escuela_list": cached_stats.get("escuela_list", []),
+            "medio_origen_list": cached_stats.get("medio_origen_list", []),
         }
 
     else:
@@ -224,7 +226,7 @@ def home_dashboard(request):
             total=Sum('monto_usd')
         ).order_by('-total')
         
-        # 3. Ventas por Medio
+        # 3. Ventas por Medio y Origen (Tabla)
         ventas_annotated = ventas_qs.annotate(
             tasa_cambio=Coalesce('radio_multiplicador_usado', 'moneda__radioMultiplicador', 1, output_field=DecimalField())
         ).annotate(
@@ -233,6 +235,14 @@ def home_dashboard(request):
             monto_usd_v=ExpressionWrapper(F('monto_total') / F('tasa_final'), output_field=DecimalField(max_digits=12, decimal_places=2))
         )
 
+        # Agrupación por Medio y Origen para la tabla solicitada
+        medio_origen_data = ventas_annotated.values('medio', 'origen').annotate(
+            total=Sum('monto_usd_v'),
+            count=Count('id')
+        ).order_by('-total')
+
+        # Mantener medio_data solo para el gráfico si se desea, o usar la tabla.
+        # El user pidió "tabla donde se vea... medio y origen".
         medio_data = ventas_annotated.values('medio').annotate(total=Sum('monto_usd_v')).order_by('-total')
         
         # 4. Ventas por Pais
@@ -253,6 +263,15 @@ def home_dashboard(request):
             count=Sum('cantidad')
         ).order_by('-total')[:10]
 
+        # 7. Ventas de Escuela (por Curso)
+        # Filtramos por Division/Negocio de Escuela (ej. Negocio=2) o si tienen detalle_escuela
+        # User request: "tabla con las ventas de escuela con el nombre la cantidad y el monto por curso"
+        escuela_qs = detalles_qs.filter(producto__codigo_negocio__codigo_negocio=2)
+        escuela_data = escuela_qs.values('producto__nombre_producto').annotate(
+            total=Sum('monto_usd'),
+            count=Sum('cantidad')
+        ).order_by('-total')
+
         # Serialización
         stats_v3 = {
             "div_labels": [d['producto__codigo_division__nombre_division'] or 'Sin División' for d in div_data],
@@ -264,6 +283,8 @@ def home_dashboard(request):
             "pais_list": list(pais_data),
             "sales_list": list(sales_data),
             "prod_list": list(prod_data),
+            "escuela_list": list(escuela_data),
+            "medio_origen_list": list(medio_origen_data),
         }
 
         # === KPIs Reales ===
@@ -442,8 +463,11 @@ def home_dashboard(request):
         "chart_medio_labels": json.dumps(cached_stats.get("medio_labels", []), cls=DjangoJSONEncoder),
         "chart_medio_data": json.dumps(cached_stats.get("medio_data", []), cls=DjangoJSONEncoder),
         "top_pais_list": cached_stats.get("pais_list", []),
+        "top_pais_list": cached_stats.get("pais_list", []),
         "top_sales_list": cached_stats.get("sales_list", []),
         "top_prod_list": cached_stats.get("prod_list", []),
+        "escuela_list": cached_stats.get("escuela_list", []),
+        "medio_origen_list": cached_stats.get("medio_origen_list", []),
         
         # KPIs V3
         "kpi_dia_count": cached_stats.get("kpi_dia_count", 0),
