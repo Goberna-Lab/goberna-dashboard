@@ -10,6 +10,14 @@ class PerfilUsuario(models.Model):
         managed = False
         db_table = "tb_perfil_usuario"
 
+class Pais(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id_pais')
+    nombre = models.CharField(max_length=100, db_column='nombre_pais')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_pais'
+
 class Moneda(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_moneda')
     nombre = models.CharField(max_length=100, db_column='nombre_moneda')
@@ -59,6 +67,15 @@ class Venta(models.Model):
         max_digits=12, decimal_places=6,
         null=True, blank=True, db_column='radio_multiplicador_usado'
     )
+    
+    pais = models.ForeignKey(
+        Pais, on_delete=models.DO_NOTHING,
+        db_column='codigo_pais', related_name='ventas',
+        null=True, blank=True
+    )
+    
+    medio = models.CharField(max_length=25, db_column='medio_venta', null=True, blank=True)
+    origen = models.CharField(max_length=25, db_column='origen_venta', null=True, blank=True)
 
     fecha_venta = models.DateTimeField(db_column='fecha_venta')
 
@@ -97,6 +114,22 @@ class Categoria(models.Model):
         managed = False
         db_table = 'tb_categoria'
 
+class Negocio(models.Model):
+    codigo_negocio = models.AutoField(primary_key=True)
+    nombre_negocio = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_negocio'
+
+class Division(models.Model):
+    codigo_division = models.AutoField(primary_key=True)
+    nombre_division = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_division'
+
 class Producto(models.Model):
     codigo_producto = models.AutoField(primary_key=True)
     sku_producto = models.CharField(max_length=50, unique=True)
@@ -105,6 +138,18 @@ class Producto(models.Model):
     codigo_categoria = models.ForeignKey(
         Categoria, on_delete=models.DO_NOTHING,
         db_column='codigo_categoria', related_name='productos'
+    )
+    
+    codigo_negocio = models.ForeignKey(
+        Negocio, on_delete=models.DO_NOTHING,
+        db_column='codigo_negocio', related_name='productos',
+        null=True, blank=True
+    )
+    
+    codigo_division = models.ForeignKey(
+        Division, on_delete=models.DO_NOTHING,
+        db_column='codigo_division', related_name='productos',
+        null=True, blank=True
     )
 
     class Meta:
