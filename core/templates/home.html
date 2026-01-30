@@ -448,6 +448,22 @@
           </div>
         </div>
 
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</div>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0" id="tableSchool">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">Ganancia (USD)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</div>
           <canvas id="chartCuotas" height="180"></canvas>
@@ -662,6 +678,28 @@
             `;
             tbody.appendChild(tr);
         });
+        });
+    }
+
+    function renderSchoolTable(data) {
+        const tbody = document.querySelector('#tableSchool tbody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        
+        if(!data || !data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            return;
+        }
+
+        data.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small class="fw-bold text-dark">${d.name}</small></td>
+                <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
+                <td class="text-end text-success fw-bold small">$${d.amount.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
     function updateCharts(ventasFil) {
@@ -758,8 +796,30 @@
 
         chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
         chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
+        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
         chartCoursesInst.update();
       }
+
+      // Update School Table (Categories 5 & 6)
+      const schoolDetails = detallesCategoria.filter(d => 
+          ventaIds.has(d.venta_id) && 
+          (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
+      );
+      
+      const schoolMap = new Map();
+      schoolDetails.forEach(d => {
+          const name = d.producto__nombre_producto || 'Desconocido';
+          if(!schoolMap.has(name)) schoolMap.set(name, { qty: 0, amount: 0 });
+          const entry = schoolMap.get(name);
+          entry.qty += parseInt(d.cantidad || 0);
+          entry.amount += parseFloat(d.monto_usd || 0);
+      });
+      
+      const schoolList = Array.from(schoolMap.entries())
+          .map(([name, val]) => ({ name, ...val }))
+          .sort((a,b) => b.amount - a.amount); // Sort by Revenue
+          
+      renderSchoolTable(schoolList);
 
       // Update Vendors Table
       const userMap = new Map();
