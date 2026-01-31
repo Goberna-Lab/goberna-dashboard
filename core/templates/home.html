@@ -92,6 +92,7 @@
       font-size: 12px;
       background: #fff;
     }
+    .chart-mode-select select + select { margin-left: 6px; }
     .table-card { background: #fff; border-radius: 16px; padding: 0; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); overflow: hidden; }
     .table-card table { margin: 0; }
     .filters-card { padding: 18px 20px; }
@@ -518,6 +519,12 @@
                 <option value="monto" selected>Monto</option>
                 <option value="cantidad">Ventas</option>
               </select>
+              <span>Agrupar:</span>
+              <select id="chartInterval">
+                <option value="mes" selected>Mensual</option>
+                <option value="semana">Semanal</option>
+                <option value="dia">Diario</option>
+              </select>
             </div>
           </div>
           <canvas id="chartVentasSerie" height="70"></canvas>
@@ -596,6 +603,26 @@
     let chartVentasMesInst = null;
     let chartVentasSerieInst = null;
     let chartMode = 'monto'; // 'monto' | 'cantidad'
+    let chartInterval = 'mes'; // 'mes' | 'semana' | 'dia'
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+    function getWeekKey(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7; // 1..7, Monday=1
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum); // to Thursday
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${pad2(weekNo)}`;
+    }
+
+    function getBucketKey(date, interval) {
+      const y = date.getFullYear();
+      const m = pad2(date.getMonth() + 1);
+      const d = pad2(date.getDate());
+      if (interval === 'dia') return `${y}-${m}-${d}`;
+      if (interval === 'semana') return getWeekKey(date);
+      return `${y}-${m}`;
+    }
 
     function buildCuotasFiltradas(ventasFil) {
       const setFolios = new Set((ventasFil || []).map(v => String(v.folio_venta || '')));
@@ -963,19 +990,18 @@
 
       renderVendorTable(sortedVendors);
 
-      const monthMap = new Map();     // suma de montos
-      const monthCountMap = new Map(); // cantidad de ventas
+      const bucketAmount = new Map();     // suma de montos
+      const bucketCount = new Map(); // cantidad de ventas
       ventasFil.forEach(v => {
         const fecha = new Date(v.fecha_venta);
         if (isNaN(fecha)) return;
-        // ISO string YYYY-MM-01
-        const key = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-01`;
-        monthMap.set(key, (monthMap.get(key) || 0) + parseFloat(v.monto_total || 0));
-        monthCountMap.set(key, (monthCountMap.get(key) || 0) + 1);
+        const key = getBucketKey(fecha, chartInterval);
+        bucketAmount.set(key, (bucketAmount.get(key) || 0) + parseFloat(v.monto_total || 0));
+        bucketCount.set(key, (bucketCount.get(key) || 0) + 1);
       });
-      const labels = Array.from(monthMap.keys()).sort();
-      const dataMonto = labels.map(l => monthMap.get(l));
-      const dataCount = labels.map(l => monthCountMap.get(l) || 0);
+      const labels = Array.from(bucketAmount.keys()).sort();
+      const dataMonto = labels.map(l => bucketAmount.get(l));
+      const dataCount = labels.map(l => bucketCount.get(l) || 0);
       const useMonto = chartMode === 'monto';
       const data = useMonto ? dataMonto : dataCount;
       const labelData = useMonto ? 'Monto' : 'Ventas';
@@ -1131,6 +1157,12 @@
     const chartModeSelect = document.getElementById('chartMode');
     chartModeSelect?.addEventListener('change', () => {
       chartMode = chartModeSelect.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+    const chartIntervalSelect = document.getElementById('chartInterval');
+    chartIntervalSelect?.addEventListener('change', () => {
+      const val = chartIntervalSelect.value;
+      chartInterval = (val === 'semana' || val === 'dia') ? val : 'mes';
       aplicarFiltros();
     });
     
