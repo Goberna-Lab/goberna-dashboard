@@ -217,7 +217,8 @@
     .pill-danger { background: #fee2e2; color: #b91c1c; }
     .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
     .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
-    /* Botón descarga fancy */
+    /* Botón 
+    ga fancy */
     .button {
       border-radius: 20px;
       position: relative;
@@ -377,7 +378,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button" type="button" onclick="preparePrintAndDownload()">
-              <span class="button__text">Download PDF</span>
+              <span class="button__text">Exportar</span>
               <span class="button__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
@@ -1384,10 +1385,16 @@
           if (!img) continue;
           if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
           pdf.setFont(undefined, 'bold');
-          pdf.text(block.title, marginX, y); y += 6;
+          pdf.text(block.title, marginX, y); y += 5;
           const props = pdf.getImageProperties(img);
-          const imgW = 120; // ancho fijo más compacto
-          const imgH = imgW * (props.height / props.width);
+          let imgW = 110; // más compacto
+          let imgH = imgW * (props.height / props.width);
+          // Limitar altura para que no se "estiren"
+          const maxH = 55;
+          if (imgH > maxH) {
+            imgH = maxH;
+            imgW = imgH * (props.width / props.height);
+          }
           const imgX = centerX - imgW/2;
           try {
             pdf.addImage(img, 'PNG', imgX, y, imgW, imgH);
@@ -1395,7 +1402,7 @@
             console.warn('No se pudo incrustar el gráfico', block.title, imgErr);
             continue;
           }
-          y += imgH + 4;
+          y += imgH + 3;
           pdf.setFont(undefined, 'normal');
           pdf.setFontSize(9);
           pdf.text(block.summary || '', marginX, y);
