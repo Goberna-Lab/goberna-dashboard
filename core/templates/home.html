@@ -267,6 +267,48 @@
     .filter-chip i {
       color: #193b59 !important;
     }
+    .print-header {
+      display: none;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .print-header h1 {
+      margin: 0 0 6px 0;
+      font-size: 20px;
+      color: #0f172a;
+    }
+    .print-header p {
+      margin: 2px 0;
+      color: #475569;
+      font-size: 13px;
+    }
+    @media print {
+      .sidebar,
+      .btn,
+      .filter-actions,
+      .status-pills,
+      .hero-card .btn-group,
+      .hero-card button,
+      .hero-card .btn,
+      .chart-mode-select,
+      .filters-card,
+      .export-btn,
+      .btn-group,
+      .filter-chip,
+      .search-box,
+      .filter-search { display: none !important; }
+      .print-header { display: block !important; }
+      .content {
+        margin: 0 !important;
+        width: 100% !important;
+        padding: 16px !important;
+      }
+      .grid { gap: 12px !important; }
+      .chart-card { box-shadow: none !important; }
+    }
     @media (max-width: 900px) {
       .content { padding: 16px 14px 28px; }
       .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -279,6 +321,12 @@
     {% include 'menu/sidebard.html' %}
 
     <div class="content">
+      <div id="printHeader" class="print-header">
+        <h1 id="printTitle">Dashboard</h1>
+        <p id="printDesc">Resumen de ventas y cuotas.</p>
+        <p id="printUser">Generado por: {{ username }}</p>
+        <p id="printDate"></p>
+      </div>
       <div class="grid">
         <div class="hero-card">
           <div class="hero-left">
@@ -306,7 +354,7 @@
                 <li><a class="dropdown-item" href="?reporte=cuotas&fmt=csv"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
               </ul>
             </div>
-            <button type="button" class="btn export-btn" onclick="window.print()">
+            <button type="button" class="btn export-btn" onclick="preparePrintAndDownload()">
               <i class="fas fa-file-pdf me-2"></i> Descargar todo (PDF)
             </button>
           </div>
@@ -1069,6 +1117,7 @@
       renderChipsResumen({ estado, desde, hasta, texto });
       updateCharts(ventasFil);
       renderTabla(ventasFil);
+      updatePrintHeader();
     }
 
     function initCuotasPendientes() {
@@ -1114,6 +1163,30 @@
         if (vendors.has(currentVal)) {
             select.value = currentVal;
         }
+    }
+
+    function updatePrintHeader() {
+      const titleEl = document.getElementById('printTitle');
+      const descEl = document.getElementById('printDesc');
+      const userEl = document.getElementById('printUser');
+      const dateEl = document.getElementById('printDate');
+      const vendorSelect = document.getElementById('filtroVendedor');
+      const vendorVal = vendorSelect?.value || '';
+      const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : '';
+
+      const baseTitle = vendorText ? `Dashboard de ${vendorText}` : 'Dashboard de ventas';
+      if (titleEl) titleEl.textContent = baseTitle;
+      if (descEl) descEl.textContent = vendorText ? `Filtros activos: Vendedor ${vendorText}` : 'Resumen general de ventas y cuotas.';
+      if (userEl) userEl.textContent = `Generado por: {{ username }}`;
+      if (dateEl) {
+        const now = new Date();
+        dateEl.textContent = `Fecha de emisión: ${now.toLocaleString('es-PE')}`;
+      }
+    }
+
+    function preparePrintAndDownload() {
+      updatePrintHeader();
+      window.print();
     }
 
     async function loadData() {
@@ -1240,6 +1313,8 @@
 
     initCharts();
     loadData();
+    // Mantener encabezado de impresión actualizado al cargar
+    updatePrintHeader();
   </script>
 </body>
 </html>
