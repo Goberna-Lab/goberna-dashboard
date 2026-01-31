@@ -618,7 +618,9 @@
     // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
     // Se recomienda setear "MAIN_APP_URL" en el contexto de la vista
     const MAIN_APP_URL = "{{ MAIN_APP_URL|default:'' }}";
-    const LOGO_URL = "{% static 'img/logo-goberna.png' %}";
+    // Intentamos logo local; si no existe, usamos el de postimg proporcionado.
+    const LOGO_URL_PRIMARY = "{% static 'img/logo-goberna.png' %}";
+    const LOGO_URL_FALLBACK = "https://i.postimg.cc/rFxsm3xS/icono-goberna.png";
 
     // Variables de inicialización
     let ventasDetalle = [];
@@ -1195,6 +1197,9 @@
     async function loadImageData(url) {
       try {
         const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const ctype = resp.headers.get('Content-Type') || '';
+        if (ctype && !ctype.startsWith('image')) return null;
         const blob = await resp.blob();
         return await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -1203,9 +1208,17 @@
           reader.readAsDataURL(blob);
         });
       } catch (e) {
-        console.warn('No se pudo cargar el logo', e);
+        console.warn('No se pudo cargar la imagen', e);
         return null;
       }
+    }
+
+    async function loadFirstAvailable(urls) {
+      for (const u of urls) {
+        const data = await loadImageData(u);
+        if (data) return { data, used: u };
+      }
+      return { data: null, used: null };
     }
 
     function chartSummary(chart) {
@@ -1222,14 +1235,18 @@
     async function preparePrintAndDownload() {
       try {
         updatePrintHeader();
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        const jsPDFLib = window.jspdf?.jsPDF;
+        if (!jsPDFLib) {
+          alert('No pudimos cargar la librería de PDF. Revisa tu conexión o el bloqueo de scripts externos.');
+          return;
+        }
+        const pdf = new jsPDFLib('p', 'mm', 'a4');
         const marginX = 14;
         let y = 18;
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
 
-        const logoData = await loadImageData(LOGO_URL);
+        const { data: logoData } = await loadFirstAvailable([LOGO_URL_PRIMARY, LOGO_URL_FALLBACK]);
         const logoW = 24, logoH = 8;
 
         const addFooter = (pageNum) => {
@@ -1309,31 +1326,44 @@
         }
 
         // Sección de gráficos
-        const chartBlocks = [
-          { title:'Ventas por mes', img: document.getElementById('chartVentasMes')?.toDataURL('image/png'), summary: chartSummary(chartVentasMesInst) },
-          { title:'Serie temporal', img: document.getElementById('chartVentasSerie')?.toDataURL('image/png'), summary: chartSummary(chartVentasSerieInst) },
-          { title:'Ventas por estado', img: document.getElementById('chartEstado')?.toDataURL('image/png'), summary: chartSummary(chartEstadoInst) },
-          { title:'Cuotas por estado', img: document.getElementById('chartCuotas')?.toDataURL('image/png'), summary: chartSummary(chartCuotasInst) },
-          { title:'Ventas por categoría', img: document.getElementById('chartCategorias')?.toDataURL('image/png'), summary: chartSummary(chartCategoriasInst) },
-          { title:'Libros más vendidos', img: document.getElementById('chartBooks')?.toDataURL('image/png'), summary: chartSummary(chartBooksInst) },
-          { title:'Cursos más vendidos', img: document.getElementById('chartCourses')?.toDataURL('image/png'), summary: chartSummary(chartCoursesInst) },
-        ];
+      const chartBlocks = [
+        { title:'Ventas por mes',     inst: chartVentasMesInst,    summary: chartSummary(chartVentasMesInst) },
+        { title:'Serie temporal',     inst: chartVentasSerieInst,  summary: chartSummary(chartVentasSerieInst) },
+        { title:'Ventas por estado',  inst: chartEstadoInst,       summary: chartSummary(chartEstadoInst) },
+        { title:'Cuotas por estado',  inst: chartCuotasInst,       summary: chartSummary(chartCuotasInst) },
+        { title:'Ventas por categoría', inst: chartCategoriasInst, summary: chartSummary(chartCategoriasInst) },
+        { title:'Libros más vendidos',  inst: chartBooksInst,      summary: chartSummary(chartBooksInst) },
+        { title:'Cursos más vendidos',  inst: chartCoursesInst,    summary: chartSummary(chartCoursesInst) },
+      ];
 
-        chartBlocks.forEach(block => {
-          if (!block.img) return;
+        for (const block of chartBlocks) {
+          if (!block.inst || !block.inst.toBase64Image) continue;
+          let img;
+          try {
+            img = block.inst.toBase64Image(); // Chart.js helper (base64 PNG)
+          } catch (e) {
+            console.warn('No se pudo exportar gráfico', block.title, e);
+            continue;
+          }
+          if (!img) continue;
           if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
           pdf.setFont(undefined, 'bold');
           pdf.text(block.title, marginX, y); y += 6;
           const imgW = pageWidth - marginX*2;
           const imgH = 60;
-          pdf.addImage(block.img, 'PNG', marginX, y, imgW, imgH);
+          try {
+            pdf.addImage(img, 'PNG', marginX, y, imgW, imgH);
+          } catch (imgErr) {
+            console.warn('No se pudo incrustar el gráfico', block.title, imgErr);
+            continue;
+          }
           y += imgH + 4;
           pdf.setFont(undefined, 'normal');
           pdf.setFontSize(9);
           pdf.text(block.summary || '', marginX, y);
           pdf.setFontSize(11);
           y += 8;
-        });
+        }
 
         addFooter(pdf.internal.getNumberOfPages());
         pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
