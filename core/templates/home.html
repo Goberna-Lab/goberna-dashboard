@@ -217,21 +217,43 @@
     .pill-danger { background: #fee2e2; color: #b91c1c; }
     .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
     .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
-    .export-btn {
-      background: #193b59;
-      border-color: #193b59;
-      color: #fff !important;
-      border-radius: 14px;
-      padding: 12px 16px;
-      font-weight: 800;
-      min-width: 190px;
-      box-shadow: 0 12px 24px rgba(25, 59, 89, 0.25);
-      border: 2px solid #fff;
+    /* Botón descarga fancy */
+    .button {
+      border-radius: 20px;
+      position: relative;
+      width: 150px;
+      height: 42px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border: 1px solid #f3f6fb;
+      background-color: #f3f6fb;
+      overflow: hidden;
+      padding: 0;
     }
-    .export-btn:hover { background: #193b59; border-color: #193b59; color: #fff; }
-    .export-btn .fa-download,
-    .export-btn .fa-file-export,
-    .export-btn .fa-file-alt { font-size: 1rem; }
+    .button, .button__icon, .button__text { transition: all 0.3s; }
+    .button .button__text {
+      transform: translateX(22px);
+      color: #193b59;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .button .button__icon {
+      position: absolute;
+      transform: translateX(109px);
+      height: 100%;
+      width: 39px;
+      background-color: #193b59;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .button .svg { width: 20px; fill: #fff; }
+    .button:hover { background: #193b59; }
+    .button:hover .button__text { color: transparent; }
+    .button:hover .button__icon { width: 148px; transform: translateX(0); }
+    .button:active .button__icon { background-color: #122b40; }
+    .button:active { border: 1px solid #122b40; }
     .text-primary { color: #193b59 !important; }
     .btn-filter {
       background: #193b59;
@@ -354,8 +376,15 @@
             <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <button type="button" class="btn export-btn" onclick="preparePrintAndDownload()">
-              <i class="fas fa-file-pdf me-2"></i> Descargar todo (PDF)
+            <button class="button" type="button" onclick="preparePrintAndDownload()">
+              <span class="button__text">Download PDF</span>
+              <span class="button__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
+                  <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                  <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                  <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
