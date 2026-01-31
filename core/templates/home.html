@@ -93,6 +93,24 @@
       background: #fff;
     }
     .chart-mode-select select + select { margin-left: 6px; }
+    .exporting-pdf .sidebar,
+    .exporting-pdf .btn,
+    .exporting-pdf .filter-actions,
+    .exporting-pdf .status-pills,
+    .exporting-pdf .hero-card .btn-group,
+    .exporting-pdf .hero-card button,
+    .exporting-pdf .chart-mode-select,
+    .exporting-pdf .filters-card,
+    .exporting-pdf .btn-group,
+    .exporting-pdf .filter-chip,
+    .exporting-pdf .search-box,
+    .exporting-pdf .filter-search { display: none !important; }
+    .exporting-pdf .print-header { display: block !important; }
+    .exporting-pdf .content {
+      margin: 0 !important;
+      width: 100% !important;
+      padding: 16px !important;
+    }
     .table-card { background: #fff; border-radius: 16px; padding: 0; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); overflow: hidden; }
     .table-card table { margin: 0; }
     .filters-card { padding: 18px 20px; }
@@ -612,6 +630,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
     // Variable global para links externos a la app principal
     // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
@@ -1184,9 +1204,46 @@
       }
     }
 
-    function preparePrintAndDownload() {
+    async function preparePrintAndDownload() {
       updatePrintHeader();
-      window.print();
+      document.body.classList.add('exporting-pdf');
+      try {
+        const pdfArea = document.querySelector('.content');
+        const canvas = await html2canvas(pdfArea, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgWidth = pageWidth;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const vendorSelect = document.getElementById('filtroVendedor');
+        const vendorVal = vendorSelect?.value || '';
+        const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : '';
+        const fileTitle = vendorText ? `dashboard-${vendorVal || 'ventas'}.pdf` : 'dashboard-ventas.pdf';
+
+        pdf.save(fileTitle);
+      } catch (err) {
+        console.error('Error generando PDF', err);
+      } finally {
+        document.body.classList.remove('exporting-pdf');
+      }
     }
 
     async function loadData() {
