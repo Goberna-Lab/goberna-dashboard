@@ -612,13 +612,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
     // Variable global para links externos a la app principal
     // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
     // Se recomienda setear "MAIN_APP_URL" en el contexto de la vista
     const MAIN_APP_URL = "{{ MAIN_APP_URL|default:'' }}";
+    const LOGO_URL = "{% static 'img/logo-goberna.png' %}";
 
     // Variables de inicialización
     let ventasDetalle = [];
@@ -1192,12 +1192,53 @@
       }
     }
 
-    function preparePrintAndDownload() {
+    async function loadImageData(url) {
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('No se pudo cargar el logo', e);
+        return null;
+      }
+    }
+
+    function chartSummary(chart) {
+      if (!chart) return '';
+      const data = chart.data.datasets?.[0]?.data || [];
+      const total = data.reduce((a,b)=>a + parseFloat(b || 0),0);
+      if (chart.config.type === 'doughnut' || chart.config.type === 'pie') {
+        const labels = chart.data.labels || [];
+        return labels.map((l,i)=>`${l}: ${data[i] ?? 0}`).join(' | ');
+      }
+      return `Total: ${formatearMonto(total)} (${data.length} puntos)`;
+    }
+
+    async function preparePrintAndDownload() {
       updatePrintHeader();
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
       const marginX = 14;
       let y = 18;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const logoData = await loadImageData(LOGO_URL);
+      const logoW = 24, logoH = 8;
+
+      const addFooter = (pageNum) => {
+        const footerY = pageHeight - 12;
+        if (logoData) pdf.addImage(logoData, 'PNG', marginX, footerY-6, logoW, logoH);
+        pdf.setFontSize(8);
+        pdf.setFont(undefined, 'normal');
+        pdf.text('Aviso de privacidad: uso interno. Generado por Goberna System.', marginX + 30, footerY);
+        pdf.text(`Página ${pageNum}`, pageWidth - 28, footerY, {align:'left'});
+      };
 
       // Datos base
       const vendorSelect = document.getElementById('filtroVendedor');
@@ -1215,10 +1256,13 @@
       const totalVentas = ventasData.length;
       const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
 
-      // Encabezado
+      // Encabezado con logo
+      if (logoData) {
+        pdf.addImage(logoData, 'PNG', marginX, y-6, logoW, logoH);
+      }
       pdf.setFontSize(16);
       pdf.setFont(undefined, 'bold');
-      pdf.text(`Dashboard de ${vendorText}`, marginX, y);
+      pdf.text(`Dashboard de ${vendorText}`, marginX + (logoData ? logoW + 4 : 0), y);
       y += 7;
       pdf.setFontSize(11);
       pdf.setFont(undefined, 'normal');
@@ -1234,7 +1278,7 @@
       pdf.text(`Ventas: ${totalVentas}`, marginX, y); y += 5;
       pdf.text(`Monto total: ${formatearMonto(totalMonto)}`, marginX, y); y += 6;
 
-      // Tabla de ventas (primeras 40)
+      // Tabla de ventas (primeras 25)
       const headers = ['Folio', 'Fecha', 'Monto', 'Estado'];
       pdf.setFont(undefined, 'bold');
       pdf.text(headers[0], marginX, y);
@@ -1244,10 +1288,10 @@
       y += 4;
       pdf.setFont(undefined, 'normal');
 
-      const maxRows = 40;
+      const maxRows = 25;
       const rows = ventasData.slice(0, maxRows);
       rows.forEach((v, idx) => {
-        if (y > 280) { pdf.addPage(); y = 18; }
+        if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
         const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE') : '';
         const estado = estadoLabels[v.estado] || '---';
         pdf.text(String(v.folio_venta || ''), marginX, y);
@@ -1258,10 +1302,39 @@
       });
 
       if (ventasData.length > maxRows) {
-        if (y > 280) { pdf.addPage(); y = 18; }
+        if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
         pdf.text(`... ${ventasData.length - maxRows} registros adicionales no listados`, marginX, y);
+        y += 8;
       }
 
+      // Sección de gráficos
+      const chartBlocks = [
+        { title:'Ventas por mes', img: document.getElementById('chartVentasMes')?.toDataURL('image/png'), summary: chartSummary(chartVentasMesInst) },
+        { title:'Serie temporal', img: document.getElementById('chartVentasSerie')?.toDataURL('image/png'), summary: chartSummary(chartVentasSerieInst) },
+        { title:'Ventas por estado', img: document.getElementById('chartEstado')?.toDataURL('image/png'), summary: chartSummary(chartEstadoInst) },
+        { title:'Cuotas por estado', img: document.getElementById('chartCuotas')?.toDataURL('image/png'), summary: chartSummary(chartCuotasInst) },
+        { title:'Ventas por categoría', img: document.getElementById('chartCategorias')?.toDataURL('image/png'), summary: chartSummary(chartCategoriasInst) },
+        { title:'Libros más vendidos', img: document.getElementById('chartBooks')?.toDataURL('image/png'), summary: chartSummary(chartBooksInst) },
+        { title:'Cursos más vendidos', img: document.getElementById('chartCourses')?.toDataURL('image/png'), summary: chartSummary(chartCoursesInst) },
+      ];
+
+      chartBlocks.forEach(block => {
+        if (!block.img) return;
+        if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+        pdf.setFont(undefined, 'bold');
+        pdf.text(block.title, marginX, y); y += 6;
+        const imgW = pageWidth - marginX*2;
+        const imgH = 60;
+        pdf.addImage(block.img, 'PNG', marginX, y, imgW, imgH);
+        y += imgH + 4;
+        pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(9);
+        pdf.text(block.summary || '', marginX, y);
+        pdf.setFontSize(11);
+        y += 8;
+      });
+
+      addFooter(pdf.internal.getNumberOfPages());
       pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
     }
 
