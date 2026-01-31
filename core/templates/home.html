@@ -1192,46 +1192,77 @@
       }
     }
 
-    async function preparePrintAndDownload() {
+    function preparePrintAndDownload() {
       updatePrintHeader();
-      document.body.classList.add('exporting-pdf');
-      try {
-        const pdfArea = document.querySelector('.content');
-        const canvas = await html2canvas(pdfArea, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const marginX = 14;
+      let y = 18;
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pageWidth;
-        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+      // Datos base
+      const vendorSelect = document.getElementById('filtroVendedor');
+      const vendorVal = vendorSelect?.value || '';
+      const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : 'General';
+      const estadoVal = document.getElementById('filtroEstado').value;
+      const estadoTxt = estadoVal ? (estadoLabels[estadoVal] || estadoVal) : 'Todos';
+      const desde = document.getElementById('filtroDesde').value || '---';
+      const hasta = document.getElementById('filtroHasta').value || '---';
+      const searchTxt = document.getElementById('filtroBuscar').value || '';
+      const userName = "{{ username }}";
+      const now = new Date().toLocaleString('es-PE');
 
-        let heightLeft = imgHeight;
-        let position = 0;
+      const ventasData = ventasFiltradasCache.length ? ventasFiltradasCache : ventasDetalle;
+      const totalVentas = ventasData.length;
+      const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
 
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Encabezado
+      pdf.setFontSize(16);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(`Dashboard de ${vendorText}`, marginX, y);
+      y += 7;
+      pdf.setFontSize(11);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`Generado por: ${userName}`, marginX, y); y += 5;
+      pdf.text(`Fecha de emisión: ${now}`, marginX, y); y += 6;
+      pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, marginX, y);
+      y += 8;
 
-        while (heightLeft > 0) {
-          position -= pageHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-        }
+      // Resumen
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Resumen', marginX, y); y += 6;
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`Ventas: ${totalVentas}`, marginX, y); y += 5;
+      pdf.text(`Monto total: ${formatearMonto(totalMonto)}`, marginX, y); y += 6;
 
-        const vendorSelect = document.getElementById('filtroVendedor');
-        const vendorVal = vendorSelect?.value || '';
-        const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : '';
-        const fileTitle = vendorText ? `dashboard-${vendorVal || 'ventas'}.pdf` : 'dashboard-ventas.pdf';
+      // Tabla de ventas (primeras 40)
+      const headers = ['Folio', 'Fecha', 'Monto', 'Estado'];
+      pdf.setFont(undefined, 'bold');
+      pdf.text(headers[0], marginX, y);
+      pdf.text(headers[1], marginX + 40, y);
+      pdf.text(headers[2], marginX + 95, y);
+      pdf.text(headers[3], marginX + 140, y);
+      y += 4;
+      pdf.setFont(undefined, 'normal');
 
-        pdf.save(fileTitle);
-      } catch (err) {
-        console.error('Error generando PDF', err);
-      } finally {
-        document.body.classList.remove('exporting-pdf');
+      const maxRows = 40;
+      const rows = ventasData.slice(0, maxRows);
+      rows.forEach((v, idx) => {
+        if (y > 280) { pdf.addPage(); y = 18; }
+        const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE') : '';
+        const estado = estadoLabels[v.estado] || '---';
+        pdf.text(String(v.folio_venta || ''), marginX, y);
+        pdf.text(fecha, marginX + 40, y);
+        pdf.text(formatearMonto(v.monto_total || 0), marginX + 95, y);
+        pdf.text(estado, marginX + 140, y);
+        y += 5;
+      });
+
+      if (ventasData.length > maxRows) {
+        if (y > 280) { pdf.addPage(); y = 18; }
+        pdf.text(`... ${ventasData.length - maxRows} registros adicionales no listados`, marginX, y);
       }
+
+      pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
     }
 
     async function loadData() {
