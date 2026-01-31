@@ -1205,7 +1205,9 @@
     }
 
     function exportData(tipo, fmt) {
-      const base = window.location.pathname;
+      const origin = window.location.origin;
+      const path = window.location.pathname || '/';
+      const base = (MAIN_APP_URL ? MAIN_APP_URL : `${origin}${path}`).replace(/\/$/, '');
       const url = `${base}?reporte=${encodeURIComponent(tipo)}&fmt=${encodeURIComponent(fmt)}`;
       window.location.href = url;
     }
