@@ -354,24 +354,6 @@
             <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <div class="btn-group">
-              <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-file-export me-2"></i> Exportar ventas
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item export-link" data-tipo="ventas" data-fmt="xlsx" href="#"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item export-link" data-tipo="ventas" data-fmt="csv" href="#"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
-              </ul>
-            </div>
-            <div class="btn-group">
-              <button type="button" class="btn export-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-file-export me-2"></i> Exportar cuotas
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item export-link" data-tipo="cuotas" data-fmt="xlsx" href="#"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item export-link" data-tipo="cuotas" data-fmt="csv" href="#"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
-              </ul>
-            </div>
             <button type="button" class="btn export-btn" onclick="preparePrintAndDownload()">
               <i class="fas fa-file-pdf me-2"></i> Descargar todo (PDF)
             </button>
@@ -672,7 +654,7 @@
     let chartVentasSerieInst = null;
     let chartMode = 'monto'; // 'monto' | 'cantidad'
     let chartInterval = 'mes'; // 'mes' | 'semana' | 'dia'
-    // caches de datos filtrados para exportación local
+    // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
 
@@ -1210,14 +1192,6 @@
       }
     }
 
-    function exportData(tipo, fmt) {
-      // Usa el endpoint del backend del dashboard: mismo path con parámetros ?reporte=...&fmt=...
-      // Si MAIN_APP_URL está definido (apuntando al main), lo usamos; si no, usamos la URL actual.
-      const base = (MAIN_APP_URL || `${window.location.origin}${window.location.pathname}`).replace(/\/$/, '');
-      const url = `${base}?reporte=${encodeURIComponent(tipo)}&fmt=${encodeURIComponent(fmt)}`;
-      window.location.assign(url);
-    }
-
     async function preparePrintAndDownload() {
       updatePrintHeader();
       document.body.classList.add('exporting-pdf');
@@ -1296,16 +1270,6 @@
 
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       aplicarFiltros();
-    });
-
-    // Delegamos los clics de exportación para que siempre se capten (incluso si Bootstrap no abre el dropdown).
-    document.addEventListener('click', (e) => {
-      const link = e.target.closest('.export-link');
-      if (!link) return;
-      e.preventDefault();
-      const tipo = link.dataset.tipo;
-      const fmt = link.dataset.fmt || 'csv';
-      exportData(tipo, fmt);
     });
 
     const chartModeSelect = document.getElementById('chartMode');
