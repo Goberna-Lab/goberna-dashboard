@@ -359,8 +359,8 @@
                 <i class="fas fa-file-export me-2"></i> Exportar ventas
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportData('ventas','xlsx')"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportData('ventas','csv')"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
+                <li><a class="dropdown-item export-link" data-tipo="ventas" data-fmt="xlsx" href="#"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
+                <li><a class="dropdown-item export-link" data-tipo="ventas" data-fmt="csv" href="#"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
               </ul>
             </div>
             <div class="btn-group">
@@ -368,8 +368,8 @@
                 <i class="fas fa-file-export me-2"></i> Exportar cuotas
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportData('cuotas','xlsx')"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportData('cuotas','csv')"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
+                <li><a class="dropdown-item export-link" data-tipo="cuotas" data-fmt="xlsx" href="#"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
+                <li><a class="dropdown-item export-link" data-tipo="cuotas" data-fmt="csv" href="#"><i class="fas fa-file-csv me-2"></i>CSV (.csv)</a></li>
               </ul>
             </div>
             <button type="button" class="btn export-btn" onclick="preparePrintAndDownload()">
@@ -1296,6 +1296,16 @@
 
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       aplicarFiltros();
+    });
+
+    // Links de exportación: aseguran captura del click aunque el dropdown falle
+    document.querySelectorAll('.export-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tipo = link.dataset.tipo;
+        const fmt = link.dataset.fmt || 'csv';
+        exportData(tipo, fmt);
+      });
     });
 
     const chartModeSelect = document.getElementById('chartMode');
