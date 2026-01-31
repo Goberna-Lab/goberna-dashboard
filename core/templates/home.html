@@ -425,6 +425,7 @@
     body.fullscreen-dash .table thead th,
     body.fullscreen-dash .table-light,
     body.fullscreen-dash .table-striped>tbody>tr:nth-of-type(odd),
+    body.fullscreen-dash .table-striped>tbody>tr:nth-of-type(even),
     body.fullscreen-dash .table-hover>tbody>tr:hover {
       background: #0f172a !important;
       color: #e5e7eb !important;
@@ -432,7 +433,8 @@
     }
     body.fullscreen-dash .table tbody tr { border-color: #1f2937; background:#0f172a; }
     body.fullscreen-dash .table tbody tr:hover { background:#111827; }
-    body.fullscreen-dash .table tbody td { color: #e5e7eb; }
+    body.fullscreen-dash .table tbody td,
+    body.fullscreen-dash .table thead th { color: #e5e7eb; background: transparent !important; }
     @media print {
       .sidebar,
       .btn,
