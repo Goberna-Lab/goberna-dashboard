@@ -217,8 +217,48 @@
     .pill-danger { background: #fee2e2; color: #b91c1c; }
     .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
     .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
-    /* Botón descarga icon-only */
-    .button {
+    /* Botón export (texto + icon slide) */
+    .button-export {
+      border-radius: 20px;
+      position: relative;
+      width: 170px;
+      height: 42px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #f3f6fb;
+      background-color: #f3f6fb;
+      overflow: hidden;
+      padding: 0;
+      transition: all 0.3s;
+    }
+    .button-export__text,
+    .button-export__icon { transition: all 0.3s; }
+    .button-export__text {
+      transform: translateX(22px);
+      color: #193b59;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .button-export__icon {
+      position: absolute;
+      transform: translateX(122px);
+      height: 100%;
+      width: 46px;
+      background-color: #193b59;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .button-export .svg { width: 20px; fill: #fff; }
+    .button-export:hover { background: #193b59; }
+    .button-export:hover .button-export__text { color: transparent; }
+    .button-export:hover .button-export__icon { width: 168px; transform: translateX(0); }
+    .button-export:active .button-export__icon { background-color: #122b40; }
+    .button-export:active { border: 1px solid #122b40; }
+
+    /* Botón fullscreen icon-only */
+    .fs-button {
       border-radius: 12px;
       width: 44px;
       height: 44px;
@@ -231,10 +271,10 @@
       transition: all 0.2s ease;
       padding: 0;
     }
-    .button .svg { width: 20px; fill: #193b59; transition: all 0.2s ease; }
-    .button:hover { background: #193b59; border-color: #193b59; box-shadow: 0 8px 18px rgba(25,59,89,0.25); }
-    .button:hover .svg { fill: #ffffff; }
-    .button:active { transform: translateY(1px); }
+    .fs-button i { color: #193b59; transition: all 0.2s ease; }
+    .fs-button:hover { background: #193b59; border-color: #193b59; box-shadow: 0 8px 18px rgba(25,59,89,0.25); }
+    .fs-button:hover i { color: #ffffff; }
+    .fs-button:active { transform: translateY(1px); }
     .text-primary { color: #193b59 !important; }
     .btn-filter {
       background: #193b59;
@@ -335,9 +375,19 @@
     body.fullscreen-dash .section-title,
     body.fullscreen-dash .stat-value,
     body.fullscreen-dash .stat-label { color: #e5e7eb; }
-    body.fullscreen-dash .button { border-color: #1f2937; }
-    body.fullscreen-dash .button .svg { fill: #e5e7eb; }
-    body.fullscreen-dash .button:hover .svg { fill: #ffffff; }
+    body.fullscreen-dash .button-export { border-color: #1f2937; background:#0f172a; }
+    body.fullscreen-dash .button-export__text { color:#e5e7eb; }
+    body.fullscreen-dash .button-export__icon { background:#2563eb; }
+    body.fullscreen-dash .button-export .svg { fill: #e5e7eb; }
+    body.fullscreen-dash .button-export:hover .svg { fill: #ffffff; }
+    body.fullscreen-dash .fs-button { border-color:#1f2937; background:#111827; }
+    body.fullscreen-dash .fs-button i { color:#e5e7eb; }
+    body.fullscreen-dash .chart-card .section-title i,
+    body.fullscreen-dash .table-card .section-title i,
+    body.fullscreen-dash .filters-card .section-title i,
+    body.fullscreen-dash .search-box .icon,
+    body.fullscreen-dash .filter-chip i,
+    body.fullscreen-dash i { color: #e5e7eb !important; }
     body.fullscreen-dash .status-pills .estado-chip { background:#0f172a; color:#e5e7eb; border-color:#1f2937; }
     body.fullscreen-dash input,
     body.fullscreen-dash select,
@@ -352,7 +402,9 @@
     }
     body.fullscreen-dash .search-box .icon { color: #94a3b8 !important; }
     body.fullscreen-dash .filter-chip .filter-label,
-    body.fullscreen-dash .filter-chip i { color: #e5e7eb !important; }
+    body.fullscreen-dash .filter-chip i,
+    body.fullscreen-dash .section-title i,
+    body.fullscreen-dash i { color: #e5e7eb !important; }
     body.fullscreen-dash .btn-primary {
       background: #2563eb !important;
       border-color: #2563eb !important;
@@ -370,12 +422,16 @@
     }
     body.fullscreen-dash .table,
     body.fullscreen-dash .table thead,
-    body.fullscreen-dash .table thead th {
+    body.fullscreen-dash .table thead th,
+    body.fullscreen-dash .table-light,
+    body.fullscreen-dash .table-striped>tbody>tr:nth-of-type(odd),
+    body.fullscreen-dash .table-hover>tbody>tr:hover {
       background: #0f172a !important;
-      color: #e5e7eb;
+      color: #e5e7eb !important;
       border-color: #1f2937;
     }
-    body.fullscreen-dash .table tbody tr { border-color: #1f2937; }
+    body.fullscreen-dash .table tbody tr { border-color: #1f2937; background:#0f172a; }
+    body.fullscreen-dash .table tbody tr:hover { background:#111827; }
     body.fullscreen-dash .table tbody td { color: #e5e7eb; }
     @media print {
       .sidebar,
@@ -428,15 +484,18 @@
             <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="button" type="button" onclick="preparePrintAndDownload()" title="Exportar">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
-                <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-              </svg>
+            <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
+              <span class="button-export__text">Descargar PDF</span>
+              <span class="button-export__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
+                  <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                  <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                  <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                </svg>
+              </span>
             </button>
-            <button class="btn btn-dark" id="btnFullscreen" type="button">
-              <i class="fas fa-expand me-1"></i> Pantalla completa
+            <button class="fs-button" id="btnFullscreen" type="button" title="Pantalla completa">
+              <i class="fas fa-expand"></i>
             </button>
           </div>
         </div>
@@ -1469,6 +1528,33 @@
       }
     }
 
+    // Cambiar tema de charts para fullscreen claro/oscuro
+    function setChartsTheme(isDark) {
+      const charts = [chartEstadoInst, chartCuotasInst, chartCategoriasInst, chartBooksInst, chartCoursesInst, chartVentasMesInst, chartVentasSerieInst];
+      charts.forEach(ch => {
+        if (!ch) return;
+        const opts = ch.options || {};
+        const textColor = isDark ? '#e5e7eb' : '#0f172a';
+        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+        if (opts.scales) {
+          Object.values(opts.scales).forEach(scale => {
+            if (!scale) return;
+            scale.ticks = scale.ticks || {};
+            scale.ticks.color = textColor;
+            scale.grid = scale.grid || {};
+            scale.grid.color = gridColor;
+          });
+        }
+        opts.plugins = opts.plugins || {};
+        opts.plugins.legend = opts.plugins.legend || {};
+        opts.plugins.legend.labels = opts.plugins.legend.labels || {};
+        opts.plugins.legend.labels.color = textColor;
+        opts.plugins.title = opts.plugins.title || {};
+        if (opts.plugins.title) opts.plugins.title.color = textColor;
+        ch.update();
+      });
+    }
+
     // -------- Fullscreen toggle (solo dashboard) --------
     function enterFullscreen() {
       const el = document.documentElement;
@@ -1484,15 +1570,20 @@
     async function toggleFullscreen() {
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         document.body.classList.add('fullscreen-dash');
+        setChartsTheme(true);
         try { await enterFullscreen(); }
         catch (e) { console.warn('No se pudo entrar a pantalla completa', e); }
       } else {
         document.body.classList.remove('fullscreen-dash');
+        setChartsTheme(false);
         await exitFullscreen();
       }
     }
     document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) document.body.classList.remove('fullscreen-dash');
+      if (!document.fullscreenElement) {
+        document.body.classList.remove('fullscreen-dash');
+        setChartsTheme(false);
+      }
     });
 
     async function loadData() {
