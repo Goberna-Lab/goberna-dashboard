@@ -73,6 +73,8 @@
     .icon-badge.warning { background: #fff7e6; color: #f59e0b; box-shadow: inset 0 0 0 1px #fde7c3; }
     .section-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
     .chart-card { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
+    .compact-chart { padding: 12px 14px; }
+    .compact-chart .section-title { margin-bottom: 6px; }
     .table-card { background: #fff; border-radius: 16px; padding: 0; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); overflow: hidden; }
     .table-card table { margin: 0; }
     .filters-card { padding: 18px 20px; }
@@ -411,9 +413,9 @@
           </div>
         </div>
 
-        <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-card compact-chart" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Ventas por mes</div>
-          <canvas id="chartVentasMes" height="160"></canvas>
+          <canvas id="chartVentasMes" height="140"></canvas>
         </div>
 
         <div class="chart-card">
@@ -490,9 +492,9 @@
         </div>
 
         <!-- Serie temporal full width, justo antes de Últimas ventas -->
-        <div class="chart-card" style="grid-column: 1 / -1;">
+        <div class="chart-card compact-chart" style="grid-column: 1 / -1;">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-area text-primary"></i> Serie temporal (ventas por mes)</div>
-          <canvas id="chartVentasSerie" height="160"></canvas>
+          <canvas id="chartVentasSerie" height="140"></canvas>
         </div>
 
         <div class="table-card" style="grid-column: 1 / -1;">
