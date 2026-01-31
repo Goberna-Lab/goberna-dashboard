@@ -1220,122 +1220,127 @@
     }
 
     async function preparePrintAndDownload() {
-      updatePrintHeader();
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const marginX = 14;
-      let y = 18;
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      try {
+        updatePrintHeader();
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const marginX = 14;
+        let y = 18;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
 
-      const logoData = await loadImageData(LOGO_URL);
-      const logoW = 24, logoH = 8;
+        const logoData = await loadImageData(LOGO_URL);
+        const logoW = 24, logoH = 8;
 
-      const addFooter = (pageNum) => {
-        const footerY = pageHeight - 12;
-        if (logoData) pdf.addImage(logoData, 'PNG', marginX, footerY-6, logoW, logoH);
-        pdf.setFontSize(8);
-        pdf.setFont(undefined, 'normal');
-        pdf.text('Aviso de privacidad: uso interno. Generado por Goberna System.', marginX + 30, footerY);
-        pdf.text(`Página ${pageNum}`, pageWidth - 28, footerY, {align:'left'});
-      };
+        const addFooter = (pageNum) => {
+          const footerY = pageHeight - 12;
+          if (logoData) pdf.addImage(logoData, 'PNG', marginX, footerY-6, logoW, logoH);
+          pdf.setFontSize(8);
+          pdf.setFont(undefined, 'normal');
+          pdf.text('Aviso de privacidad: uso interno. Generado por Goberna System.', marginX + 30, footerY);
+          pdf.text(`Página ${pageNum}`, pageWidth - 28, footerY, {align:'left'});
+        };
 
-      // Datos base
-      const vendorSelect = document.getElementById('filtroVendedor');
-      const vendorVal = vendorSelect?.value || '';
-      const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : 'General';
-      const estadoVal = document.getElementById('filtroEstado').value;
-      const estadoTxt = estadoVal ? (estadoLabels[estadoVal] || estadoVal) : 'Todos';
-      const desde = document.getElementById('filtroDesde').value || '---';
-      const hasta = document.getElementById('filtroHasta').value || '---';
-      const searchTxt = document.getElementById('filtroBuscar').value || '';
-      const userName = "{{ username }}";
-      const now = new Date().toLocaleString('es-PE');
+        // Datos base
+        const vendorSelect = document.getElementById('filtroVendedor');
+        const vendorVal = vendorSelect?.value || '';
+        const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : 'General';
+        const estadoVal = document.getElementById('filtroEstado').value;
+        const estadoTxt = estadoVal ? (estadoLabels[estadoVal] || estadoVal) : 'Todos';
+        const desde = document.getElementById('filtroDesde').value || '---';
+        const hasta = document.getElementById('filtroHasta').value || '---';
+        const searchTxt = document.getElementById('filtroBuscar').value || '';
+        const userName = "{{ username }}";
+        const now = new Date().toLocaleString('es-PE');
 
-      const ventasData = ventasFiltradasCache.length ? ventasFiltradasCache : ventasDetalle;
-      const totalVentas = ventasData.length;
-      const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
+        const ventasData = ventasFiltradasCache.length ? ventasFiltradasCache : ventasDetalle;
+        const totalVentas = ventasData.length;
+        const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
 
-      // Encabezado con logo
-      if (logoData) {
-        pdf.addImage(logoData, 'PNG', marginX, y-6, logoW, logoH);
-      }
-      pdf.setFontSize(16);
-      pdf.setFont(undefined, 'bold');
-      pdf.text(`Dashboard de ${vendorText}`, marginX + (logoData ? logoW + 4 : 0), y);
-      y += 7;
-      pdf.setFontSize(11);
-      pdf.setFont(undefined, 'normal');
-      pdf.text(`Generado por: ${userName}`, marginX, y); y += 5;
-      pdf.text(`Fecha de emisión: ${now}`, marginX, y); y += 6;
-      pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, marginX, y);
-      y += 8;
-
-      // Resumen
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Resumen', marginX, y); y += 6;
-      pdf.setFont(undefined, 'normal');
-      pdf.text(`Ventas: ${totalVentas}`, marginX, y); y += 5;
-      pdf.text(`Monto total: ${formatearMonto(totalMonto)}`, marginX, y); y += 6;
-
-      // Tabla de ventas (primeras 25)
-      const headers = ['Folio', 'Fecha', 'Monto', 'Estado'];
-      pdf.setFont(undefined, 'bold');
-      pdf.text(headers[0], marginX, y);
-      pdf.text(headers[1], marginX + 40, y);
-      pdf.text(headers[2], marginX + 95, y);
-      pdf.text(headers[3], marginX + 140, y);
-      y += 4;
-      pdf.setFont(undefined, 'normal');
-
-      const maxRows = 25;
-      const rows = ventasData.slice(0, maxRows);
-      rows.forEach((v, idx) => {
-        if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
-        const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE') : '';
-        const estado = estadoLabels[v.estado] || '---';
-        pdf.text(String(v.folio_venta || ''), marginX, y);
-        pdf.text(fecha, marginX + 40, y);
-        pdf.text(formatearMonto(v.monto_total || 0), marginX + 95, y);
-        pdf.text(estado, marginX + 140, y);
-        y += 5;
-      });
-
-      if (ventasData.length > maxRows) {
-        if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
-        pdf.text(`... ${ventasData.length - maxRows} registros adicionales no listados`, marginX, y);
-        y += 8;
-      }
-
-      // Sección de gráficos
-      const chartBlocks = [
-        { title:'Ventas por mes', img: document.getElementById('chartVentasMes')?.toDataURL('image/png'), summary: chartSummary(chartVentasMesInst) },
-        { title:'Serie temporal', img: document.getElementById('chartVentasSerie')?.toDataURL('image/png'), summary: chartSummary(chartVentasSerieInst) },
-        { title:'Ventas por estado', img: document.getElementById('chartEstado')?.toDataURL('image/png'), summary: chartSummary(chartEstadoInst) },
-        { title:'Cuotas por estado', img: document.getElementById('chartCuotas')?.toDataURL('image/png'), summary: chartSummary(chartCuotasInst) },
-        { title:'Ventas por categoría', img: document.getElementById('chartCategorias')?.toDataURL('image/png'), summary: chartSummary(chartCategoriasInst) },
-        { title:'Libros más vendidos', img: document.getElementById('chartBooks')?.toDataURL('image/png'), summary: chartSummary(chartBooksInst) },
-        { title:'Cursos más vendidos', img: document.getElementById('chartCourses')?.toDataURL('image/png'), summary: chartSummary(chartCoursesInst) },
-      ];
-
-      chartBlocks.forEach(block => {
-        if (!block.img) return;
-        if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+        // Encabezado con logo
+        if (logoData) {
+          pdf.addImage(logoData, 'PNG', marginX, y-6, logoW, logoH);
+        }
+        pdf.setFontSize(16);
         pdf.setFont(undefined, 'bold');
-        pdf.text(block.title, marginX, y); y += 6;
-        const imgW = pageWidth - marginX*2;
-        const imgH = 60;
-        pdf.addImage(block.img, 'PNG', marginX, y, imgW, imgH);
-        y += imgH + 4;
-        pdf.setFont(undefined, 'normal');
-        pdf.setFontSize(9);
-        pdf.text(block.summary || '', marginX, y);
+        pdf.text(`Dashboard de ${vendorText}`, marginX + (logoData ? logoW + 4 : 0), y);
+        y += 7;
         pdf.setFontSize(11);
+        pdf.setFont(undefined, 'normal');
+        pdf.text(`Generado por: ${userName}`, marginX, y); y += 5;
+        pdf.text(`Fecha de emisión: ${now}`, marginX, y); y += 6;
+        pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, marginX, y);
         y += 8;
-      });
 
-      addFooter(pdf.internal.getNumberOfPages());
-      pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
+        // Resumen
+        pdf.setFont(undefined, 'bold');
+        pdf.text('Resumen', marginX, y); y += 6;
+        pdf.setFont(undefined, 'normal');
+        pdf.text(`Ventas: ${totalVentas}`, marginX, y); y += 5;
+        pdf.text(`Monto total: ${formatearMonto(totalMonto)}`, marginX, y); y += 6;
+
+        // Tabla de ventas (primeras 25)
+        const headers = ['Folio', 'Fecha', 'Monto', 'Estado'];
+        pdf.setFont(undefined, 'bold');
+        pdf.text(headers[0], marginX, y);
+        pdf.text(headers[1], marginX + 40, y);
+        pdf.text(headers[2], marginX + 95, y);
+        pdf.text(headers[3], marginX + 140, y);
+        y += 4;
+        pdf.setFont(undefined, 'normal');
+
+        const maxRows = 25;
+        const rows = ventasData.slice(0, maxRows);
+        rows.forEach((v, idx) => {
+          if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+          const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE') : '';
+          const estado = estadoLabels[v.estado] || '---';
+          pdf.text(String(v.folio_venta || ''), marginX, y);
+          pdf.text(fecha, marginX + 40, y);
+          pdf.text(formatearMonto(v.monto_total || 0), marginX + 95, y);
+          pdf.text(estado, marginX + 140, y);
+          y += 5;
+        });
+
+        if (ventasData.length > maxRows) {
+          if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+          pdf.text(`... ${ventasData.length - maxRows} registros adicionales no listados`, marginX, y);
+          y += 8;
+        }
+
+        // Sección de gráficos
+        const chartBlocks = [
+          { title:'Ventas por mes', img: document.getElementById('chartVentasMes')?.toDataURL('image/png'), summary: chartSummary(chartVentasMesInst) },
+          { title:'Serie temporal', img: document.getElementById('chartVentasSerie')?.toDataURL('image/png'), summary: chartSummary(chartVentasSerieInst) },
+          { title:'Ventas por estado', img: document.getElementById('chartEstado')?.toDataURL('image/png'), summary: chartSummary(chartEstadoInst) },
+          { title:'Cuotas por estado', img: document.getElementById('chartCuotas')?.toDataURL('image/png'), summary: chartSummary(chartCuotasInst) },
+          { title:'Ventas por categoría', img: document.getElementById('chartCategorias')?.toDataURL('image/png'), summary: chartSummary(chartCategoriasInst) },
+          { title:'Libros más vendidos', img: document.getElementById('chartBooks')?.toDataURL('image/png'), summary: chartSummary(chartBooksInst) },
+          { title:'Cursos más vendidos', img: document.getElementById('chartCourses')?.toDataURL('image/png'), summary: chartSummary(chartCoursesInst) },
+        ];
+
+        chartBlocks.forEach(block => {
+          if (!block.img) return;
+          if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+          pdf.setFont(undefined, 'bold');
+          pdf.text(block.title, marginX, y); y += 6;
+          const imgW = pageWidth - marginX*2;
+          const imgH = 60;
+          pdf.addImage(block.img, 'PNG', marginX, y, imgW, imgH);
+          y += imgH + 4;
+          pdf.setFont(undefined, 'normal');
+          pdf.setFontSize(9);
+          pdf.text(block.summary || '', marginX, y);
+          pdf.setFontSize(11);
+          y += 8;
+        });
+
+        addFooter(pdf.internal.getNumberOfPages());
+        pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
+      } catch (error) {
+        console.error('Error generando PDF', error);
+        alert('No pudimos generar el PDF. Revisa la consola para más detalles.');
+      }
     }
 
     async function loadData() {
