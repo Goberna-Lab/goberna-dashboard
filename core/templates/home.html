@@ -1248,21 +1248,15 @@
         const centerX = pageWidth / 2;
 
         const { data: logoData } = await loadFirstAvailable([LOGO_URL_PRIMARY, LOGO_URL_FALLBACK]);
-        const logoTargetW = 18; // mm
+        const logoTargetW = 28; // mm un poco más grande para la carátula
 
         const addFooter = (pageNum) => {
           const footerY = pageHeight - 16;
-          let logoH = 0;
-          if (logoData) {
-            const props = pdf.getImageProperties(logoData);
-            logoH = logoTargetW * (props.height / props.width);
-            pdf.addImage(logoData, 'PNG', centerX - logoTargetW/2, footerY, logoTargetW, logoH);
-          }
           pdf.setFontSize(8);
           pdf.setFont(undefined, 'normal');
           const footText = 'Aviso de privacidad: uso interno. Generado por Goberna System.';
-          pdf.text(footText, centerX, footerY + logoH + 5, { align: 'center' });
-          pdf.text(`Página ${pageNum}`, centerX, footerY + logoH + 10, { align: 'center' });
+          pdf.text(footText, centerX, footerY, { align: 'center' });
+          pdf.text(`Página ${pageNum}`, centerX, footerY + 5, { align: 'center' });
         };
 
         // Datos base
@@ -1281,23 +1275,26 @@
         const totalVentas = ventasData.length;
         const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
 
-        // Encabezado con logo centrado
+        // Carátula (solo primera página)
         if (logoData) {
           const props = pdf.getImageProperties(logoData);
           const logoH = logoTargetW * (props.height / props.width);
           pdf.addImage(logoData, 'PNG', centerX - logoTargetW/2, y, logoTargetW, logoH);
-          y += logoH + 4;
+          y += logoH + 6;
         }
-        pdf.setFontSize(16);
+        pdf.setFontSize(18);
         pdf.setFont(undefined, 'bold');
         pdf.text(`Dashboard de ${vendorText}`, centerX, y, { align: 'center' });
-        y += 7;
+        y += 9;
         pdf.setFontSize(11);
         pdf.setFont(undefined, 'normal');
-        pdf.text(`Generado por: ${userName}`, centerX, y, { align: 'center' }); y += 5;
+        pdf.text(`Generado por: ${userName}`, centerX, y, { align: 'center' }); y += 6;
         pdf.text(`Fecha de emisión: ${now}`, centerX, y, { align: 'center' }); y += 6;
         pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, centerX, y, { align: 'center' });
-        y += 10;
+        // Termina carátula en esta página
+        addFooter(pdf.internal.getNumberOfPages());
+        pdf.addPage();
+        y = 18;
 
         // Resumen
         pdf.setFont(undefined, 'bold');
@@ -1360,10 +1357,11 @@
           pdf.setFont(undefined, 'bold');
           pdf.text(block.title, marginX, y); y += 6;
           const props = pdf.getImageProperties(img);
-          const imgW = Math.min(pageWidth - marginX*2, 170);
+          const imgW = 120; // ancho fijo más compacto
           const imgH = imgW * (props.height / props.width);
+          const imgX = centerX - imgW/2;
           try {
-            pdf.addImage(img, 'PNG', marginX, y, imgW, imgH);
+            pdf.addImage(img, 'PNG', imgX, y, imgW, imgH);
           } catch (imgErr) {
             console.warn('No se pudo incrustar el gráfico', block.title, imgErr);
             continue;
