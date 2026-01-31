@@ -435,12 +435,6 @@
     body.fullscreen-dash .table tbody tr:hover { background:#111827; }
     body.fullscreen-dash .table tbody td,
     body.fullscreen-dash .table thead th { color: #e5e7eb; background: transparent !important; }
-    body.fullscreen-dash a { color:#9cc5ff; }
-    body.fullscreen-dash a:hover { color:#c8e0ff; }
-    body.fullscreen-dash .badge { background:#1f2937; color:#e5e7eb; border:1px solid #334155; }
-    body.fullscreen-dash .pill { border:1px solid #1f2937; }
-    body.fullscreen-dash .pill-success { background:#0f766e; color:#e0f2fe; }
-    body.fullscreen-dash .pill-danger { background:#b91c1c; color:#fee2e2; }
     @media print {
       .sidebar,
       .btn,
@@ -948,8 +942,6 @@
       });
 
       renderVendorTable(vendorsData);
-      // aplicar tema inicial según estado fullscreen
-      setChartsTheme(document.body.classList.contains('fullscreen-dash'));
     } 
 
     function renderVendorTable(data) {
@@ -1546,7 +1538,6 @@
         const opts = ch.options || {};
         const textColor = isDark ? '#e5e7eb' : '#0f172a';
         const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-        const borderColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.15)';
         if (opts.scales) {
           Object.values(opts.scales).forEach(scale => {
             if (!scale) return;
@@ -1554,7 +1545,6 @@
             scale.ticks.color = textColor;
             scale.grid = scale.grid || {};
             scale.grid.color = gridColor;
-            if (scale.grid.drawBorder !== false) scale.grid.borderColor = borderColor;
           });
         }
         opts.plugins = opts.plugins || {};
