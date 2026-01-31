@@ -257,24 +257,6 @@
     .button-export:active .button-export__icon { background-color: #122b40; }
     .button-export:active { border: 1px solid #122b40; }
 
-    /* Botón fullscreen icon-only */
-    .fs-button {
-      border-radius: 12px;
-      width: 44px;
-      height: 44px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid #e2e8f0;
-      background-color: #ffffff;
-      transition: all 0.2s ease;
-      padding: 0;
-    }
-    .fs-button i { color: #193b59; transition: all 0.2s ease; }
-    .fs-button:hover { background: #193b59; border-color: #193b59; box-shadow: 0 8px 18px rgba(25,59,89,0.25); }
-    .fs-button:hover i { color: #ffffff; }
-    .fs-button:active { transform: translateY(1px); }
     .text-primary { color: #193b59 !important; }
     .btn-filter {
       background: #193b59;
@@ -380,8 +362,6 @@
     body.fullscreen-dash .button-export__icon { background:#2563eb; }
     body.fullscreen-dash .button-export .svg { fill: #e5e7eb; }
     body.fullscreen-dash .button-export:hover .svg { fill: #ffffff; }
-    body.fullscreen-dash .fs-button { border-color:#ffffff; background:#111827; }
-    body.fullscreen-dash .fs-button i { color:#e5e7eb; }
     body.fullscreen-dash .chart-card .section-title i,
     body.fullscreen-dash .table-card .section-title i,
     body.fullscreen-dash .filters-card .section-title i,
@@ -495,9 +475,6 @@
                   <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
                 </svg>
               </span>
-            </button>
-            <button class="fs-button" id="btnFullscreen" type="button" title="Pantalla completa">
-              <i class="fas fa-expand"></i>
             </button>
           </div>
         </div>
@@ -1557,36 +1534,7 @@
       });
     }
 
-    // -------- Fullscreen toggle (solo dashboard) --------
-    function enterFullscreen() {
-      const el = document.documentElement;
-      if (el.requestFullscreen) return el.requestFullscreen();
-      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
-      return Promise.reject();
-    }
-    function exitFullscreen() {
-      if (document.exitFullscreen) return document.exitFullscreen();
-      if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
-      return Promise.resolve();
-    }
-    async function toggleFullscreen() {
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        document.body.classList.add('fullscreen-dash');
-        setChartsTheme(true);
-        try { await enterFullscreen(); }
-        catch (e) { console.warn('No se pudo entrar a pantalla completa', e); }
-      } else {
-        document.body.classList.remove('fullscreen-dash');
-        setChartsTheme(false);
-        await exitFullscreen();
-      }
-    }
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        document.body.classList.remove('fullscreen-dash');
-        setChartsTheme(false);
-      }
-    });
+    // Fullscreen eliminado
 
     async function loadData() {
         try {
@@ -1625,7 +1573,7 @@
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       aplicarFiltros();
     });
-    document.getElementById('btnFullscreen')?.addEventListener('click', toggleFullscreen);
+    // botón fullscreen eliminado
 
     const chartModeSelect = document.getElementById('chartMode');
     chartModeSelect?.addEventListener('change', () => {
