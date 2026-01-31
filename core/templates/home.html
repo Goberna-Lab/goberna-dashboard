@@ -1245,17 +1245,24 @@
         let y = 18;
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
+        const centerX = pageWidth / 2;
 
         const { data: logoData } = await loadFirstAvailable([LOGO_URL_PRIMARY, LOGO_URL_FALLBACK]);
-        const logoW = 24, logoH = 8;
+        const logoTargetW = 18; // mm
 
         const addFooter = (pageNum) => {
-          const footerY = pageHeight - 12;
-          if (logoData) pdf.addImage(logoData, 'PNG', marginX, footerY-6, logoW, logoH);
+          const footerY = pageHeight - 16;
+          let logoH = 0;
+          if (logoData) {
+            const props = pdf.getImageProperties(logoData);
+            logoH = logoTargetW * (props.height / props.width);
+            pdf.addImage(logoData, 'PNG', centerX - logoTargetW/2, footerY, logoTargetW, logoH);
+          }
           pdf.setFontSize(8);
           pdf.setFont(undefined, 'normal');
-          pdf.text('Aviso de privacidad: uso interno. Generado por Goberna System.', marginX + 30, footerY);
-          pdf.text(`Página ${pageNum}`, pageWidth - 28, footerY, {align:'left'});
+          const footText = 'Aviso de privacidad: uso interno. Generado por Goberna System.';
+          pdf.text(footText, centerX, footerY + logoH + 5, { align: 'center' });
+          pdf.text(`Página ${pageNum}`, centerX, footerY + logoH + 10, { align: 'center' });
         };
 
         // Datos base
@@ -1274,20 +1281,23 @@
         const totalVentas = ventasData.length;
         const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
 
-        // Encabezado con logo
+        // Encabezado con logo centrado
         if (logoData) {
-          pdf.addImage(logoData, 'PNG', marginX, y-6, logoW, logoH);
+          const props = pdf.getImageProperties(logoData);
+          const logoH = logoTargetW * (props.height / props.width);
+          pdf.addImage(logoData, 'PNG', centerX - logoTargetW/2, y, logoTargetW, logoH);
+          y += logoH + 4;
         }
         pdf.setFontSize(16);
         pdf.setFont(undefined, 'bold');
-        pdf.text(`Dashboard de ${vendorText}`, marginX + (logoData ? logoW + 4 : 0), y);
+        pdf.text(`Dashboard de ${vendorText}`, centerX, y, { align: 'center' });
         y += 7;
         pdf.setFontSize(11);
         pdf.setFont(undefined, 'normal');
-        pdf.text(`Generado por: ${userName}`, marginX, y); y += 5;
-        pdf.text(`Fecha de emisión: ${now}`, marginX, y); y += 6;
-        pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, marginX, y);
-        y += 8;
+        pdf.text(`Generado por: ${userName}`, centerX, y, { align: 'center' }); y += 5;
+        pdf.text(`Fecha de emisión: ${now}`, centerX, y, { align: 'center' }); y += 6;
+        pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, centerX, y, { align: 'center' });
+        y += 10;
 
         // Resumen
         pdf.setFont(undefined, 'bold');
@@ -1349,8 +1359,9 @@
           if (y > pageHeight - 80) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
           pdf.setFont(undefined, 'bold');
           pdf.text(block.title, marginX, y); y += 6;
-          const imgW = pageWidth - marginX*2;
-          const imgH = 60;
+          const props = pdf.getImageProperties(img);
+          const imgW = Math.min(pageWidth - marginX*2, 170);
+          const imgH = imgW * (props.height / props.width);
           try {
             pdf.addImage(img, 'PNG', marginX, y, imgW, imgH);
           } catch (imgErr) {
