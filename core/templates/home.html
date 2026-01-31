@@ -326,6 +326,39 @@
       color: #475569;
       font-size: 13px;
     }
+    /* Fullscreen / dark mode */
+    body.fullscreen-dash {
+      background: #0b1220;
+      color: #e5e7eb;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    body.fullscreen-dash .sidebar { display: none !important; }
+    body.fullscreen-dash .content {
+      margin: 0 !important;
+      width: 100% !important;
+      padding: 16px !important;
+      max-width: 100%;
+    }
+    body.fullscreen-dash .hero-card,
+    body.fullscreen-dash .chart-card,
+    body.fullscreen-dash .stat-card,
+    body.fullscreen-dash .table-card,
+    body.fullscreen-dash .filters-card {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e5e7eb;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    }
+    body.fullscreen-dash .section-title,
+    body.fullscreen-dash .stat-value,
+    body.fullscreen-dash .stat-label { color: #e5e7eb; }
+    body.fullscreen-dash .button { border-color: #1f2937; }
+    body.fullscreen-dash .button .button__text { color: #e5e7eb; }
+    body.fullscreen-dash .button:hover .button__text { color: transparent; }
+    body.fullscreen-dash .status-pills .estado-chip { background:#0f172a; color:#e5e7eb; border-color:#1f2937; }
     @media print {
       .sidebar,
       .btn,
@@ -378,7 +411,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button" type="button" onclick="preparePrintAndDownload()">
-              <span class="button__text">Exportar</span>
+              <span class="button__text">Download PDF</span>
               <span class="button__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
@@ -386,6 +419,9 @@
                   <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
                 </svg>
               </span>
+            </button>
+            <button class="btn btn-dark" id="btnFullscreen" type="button">
+              <i class="fas fa-expand me-1"></i> Pantalla completa
             </button>
           </div>
         </div>
@@ -1418,6 +1454,32 @@
       }
     }
 
+    // -------- Fullscreen toggle (solo dashboard) --------
+    function enterFullscreen() {
+      const el = document.documentElement;
+      if (el.requestFullscreen) return el.requestFullscreen();
+      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+      return Promise.reject();
+    }
+    function exitFullscreen() {
+      if (document.exitFullscreen) return document.exitFullscreen();
+      if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+      return Promise.resolve();
+    }
+    async function toggleFullscreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        document.body.classList.add('fullscreen-dash');
+        try { await enterFullscreen(); }
+        catch (e) { console.warn('No se pudo entrar a pantalla completa', e); }
+      } else {
+        document.body.classList.remove('fullscreen-dash');
+        await exitFullscreen();
+      }
+    }
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) document.body.classList.remove('fullscreen-dash');
+    });
+
     async function loadData() {
         try {
             document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-2 text-muted">Cargando datos...</p></td></tr>';
@@ -1455,6 +1517,7 @@
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       aplicarFiltros();
     });
+    document.getElementById('btnFullscreen')?.addEventListener('click', toggleFullscreen);
 
     const chartModeSelect = document.getElementById('chartMode');
     chartModeSelect?.addEventListener('change', () => {
