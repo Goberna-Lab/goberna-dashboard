@@ -206,13 +206,22 @@ def home_dashboard(request):
         cat_labels = [c['producto__codigo_categoria__nombre_categoria'] for c in cats]
         cat_data = [float(c['total']) for c in cats]
 
-        # Top Ranking Libros (1=Libro, 15=Preventa)
-        top_books_qs = DetalleVenta.objects.filter(
-            venta__in=ventas_qs,
-            producto__codigo_categoria__in=[1, 15]
-        ).values('producto__nombre_producto').annotate(
-            total_qty=Sum('cantidad')
-        ).order_by('-total_qty')[:10]
+        # Top Ranking Libros (Físico / Preventa) - considerar IDs y nombre de categoría
+        from django.db.models import Q
+        libros_filter = Q(producto__codigo_categoria__in=[1, 15]) | Q(
+            producto__codigo_categoria__nombre_categoria__icontains="fisico"
+        ) | Q(producto__codigo_categoria__nombre_categoria__icontains="físico") | Q(
+            producto__codigo_categoria__nombre_categoria__icontains="preventa"
+        )
+        top_books_qs = (
+            DetalleVenta.objects.filter(
+                venta__in=ventas_qs,
+            )
+            .filter(libros_filter)
+            .values("producto__nombre_producto")
+            .annotate(total_qty=Sum("cantidad"))
+            .order_by("-total_qty")[:10]
+        )
         
         books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
         books_data = [int(b['total_qty']) for b in top_books_qs]
