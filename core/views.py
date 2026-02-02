@@ -89,7 +89,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}_{params_hash}"
+    # v4: fuerza a recalcular para que el ranking de libros ignore los filtros del dashboard
+    cache_key = f"dash_stats_v4_books_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
