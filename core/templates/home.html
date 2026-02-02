@@ -757,9 +757,14 @@
                 <div class="section-title mb-1">Actividad de vendedores (últimos 12 meses)</div>
                 <div class="heatmap-meta" id="heatmapMeta">Cargando...</div>
               </div>
-              <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
-                <option value="">Todos los vendedores</option>
-              </select>
+              <div class="d-flex gap-2">
+                <select id="heatmapYear" class="form-select form-select-sm heatmap-select">
+                  <option value="">Año actual</option>
+                </select>
+                <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
+                  <option value="">Todos los vendedores</option>
+                </select>
+              </div>
             </div>
             <div class="heatmap-body">
               <div id="heatmapContainer" class="contrib-grid"></div>
@@ -838,7 +843,8 @@
     let selectedMesCursos = '';
     // Mapa venta_id -> fecha (Date) para filtrar por mes
     const ventaFechaMap = new Map();
-    const HEATMAP_DAYS = 365;
+    const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
+    let selectedYear = new Date().getFullYear();
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
@@ -1133,25 +1139,27 @@
     }
 
     function computeHeatmapData(vendorUser) {
+        const year = Number(selectedYear) || new Date().getFullYear();
+        const start = new Date(year, 0, 1);
         const today = new Date();
-        today.setHours(0,0,0,0);
-        const start = new Date(today);
-        start.setDate(start.getDate() - (HEATMAP_DAYS - 1));
+        const end = (today.getFullYear() === year) ? new Date(today.getFullYear(), today.getMonth(), today.getDate()) : new Date(year, 11, 31);
+        end.setHours(0,0,0,0);
 
         const buckets = new Map(); // dateKey -> count
         ventasDetalle.forEach(v => {
-            if (vendorUser && String(v.usuario__username) !== String(vendorUser)) return;
             const dt = new Date(v.fecha_venta);
             if (isNaN(dt)) return;
             dt.setHours(0,0,0,0);
-            if (dt < start || dt > today) return;
+            if (dt.getFullYear() !== year) return;
+            if (vendorUser && String(v.usuario__username) !== String(vendorUser)) return;
+            if (dt < start || dt > end) return;
             const key = dt.toISOString().slice(0,10);
             buckets.set(key, (buckets.get(key) || 0) + 1);
         });
 
         const cells = [];
         let cursor = new Date(start);
-        while (cursor <= today) {
+        while (cursor <= end) {
             const key = cursor.toISOString().slice(0,10);
             const count = buckets.get(key) || 0;
             cells.push({ date: new Date(cursor), count });
@@ -1183,9 +1191,8 @@
             return;
         }
 
-        const maxCount = Math.max(...data.map(d => d.count));
         const total = data.reduce((a,b)=>a + b.count, 0);
-        meta.textContent = `${total} ventas en los últimos 12 meses`;
+        meta.textContent = `${total} ventas en ${selectedYear}`;
 
         // GitHub style: columns = weeks, rows = days (Sun-Sat)
         // We already have data in order; build DOM with columns
@@ -1251,11 +1258,11 @@
         const meta = document.getElementById('vendorLineMeta');
         if (!canvas) return;
         // Axis months (last 12)
+        const year = Number(selectedYear) || new Date().getFullYear();
         const months = [];
         const labels = [];
-        const today = new Date();
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        for (let m = 0; m < 12; m++) {
+            const d = new Date(year, m, 1);
             const key = getMonthKey(d);
             months.push(key);
             labels.push(d.toLocaleDateString('es-PE', { month: 'short', year: '2-digit' }));
@@ -1593,6 +1600,28 @@
         }
 
         populateVendorHeatmap(vendors);
+        populateYearFilter();
+    }
+
+    function populateYearFilter() {
+        const yearSelect = document.getElementById('heatmapYear');
+        if (!yearSelect) return;
+        const years = new Set([new Date().getFullYear(), new Date().getFullYear() - 1]);
+        ventasDetalle.forEach(v => {
+            const fecha = new Date(v.fecha_venta);
+            if (!isNaN(fecha)) years.add(fecha.getFullYear());
+        });
+        const sorted = Array.from(years).sort((a,b)=>b-a);
+        const currentVal = yearSelect.value;
+        yearSelect.innerHTML = '';
+        sorted.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            yearSelect.appendChild(opt);
+        });
+        yearSelect.value = sorted.includes(Number(currentVal)) ? currentVal : sorted[0];
+        selectedYear = Number(yearSelect.value);
     }
 
     function populateVendorHeatmap(vendorMap) {
@@ -1924,6 +1953,12 @@
     const heatmapSelect = document.getElementById('heatmapVendedor');
     heatmapSelect?.addEventListener('change', () => {
       renderHeatmap(heatmapSelect.value);
+    });
+    const heatmapYearSelect = document.getElementById('heatmapYear');
+    heatmapYearSelect?.addEventListener('change', () => {
+      selectedYear = Number(heatmapYearSelect.value) || new Date().getFullYear();
+      renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
+      renderVendorLineChart();
     });
     
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
