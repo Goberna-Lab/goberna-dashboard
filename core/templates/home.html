@@ -329,13 +329,13 @@
       font-size: 13px;
     }
     /* Heatmap estilo GitHub */
-    .heatmap-card { background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; }
-    .heatmap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#e5e7eb; }
+    .heatmap-card { background:transparent; color:#0f172a; border:none; box-shadow:none; padding:0; }
+    .heatmap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#0f172a; }
     .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; }
-    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#1f2937; }
-    .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#cbd5e1; margin-top:8px; }
-    .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#1f2937; }
-    .heatmap-meta { font-size:13px; color:#cbd5e1; }
+    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; }
+    .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:8px; }
+    .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#e5e7eb; }
+    .heatmap-meta { font-size:13px; color:#475569; }
     .heatmap-select { max-width:220px; }
     /* Fullscreen / dark mode */
     body.fullscreen-dash {
@@ -658,29 +658,6 @@
           </div>
         </div>
 
-        <div class="chart-card heatmap-card" style="grid-column: span 2;">
-          <div class="heatmap-header">
-            <div>
-              <div class="section-title mb-0" style="color:#e5e7eb;">Actividad de vendedores (últimos 12 meses)</div>
-              <div class="heatmap-meta" id="heatmapMeta">Cargando...</div>
-            </div>
-            <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
-              <option value="">Todos los vendedores</option>
-            </select>
-          </div>
-          <div id="heatmapContainer" class="contrib-grid"></div>
-          <div class="contrib-legend">
-            <span>Menos</span>
-            <span class="box" style="background:#1f2937;"></span>
-            <span class="box" style="background:#14532d;"></span>
-            <span class="box" style="background:#166534;"></span>
-            <span class="box" style="background:#15803d;"></span>
-            <span class="box" style="background:#22c55e;"></span>
-            <span class="box" style="background:#4ade80;"></span>
-            <span>Más</span>
-          </div>
-        </div>
-
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
@@ -765,6 +742,29 @@
               </thead>
               <tbody id="tablaVentas"></tbody>
             </table>
+          </div>
+        </div>
+
+        <div class="heatmap-card" style="grid-column: 1 / -1;">
+          <div class="heatmap-header">
+            <div>
+              <div class="section-title mb-1">Actividad de vendedores (últimos 12 meses)</div>
+              <div class="heatmap-meta" id="heatmapMeta">Cargando...</div>
+            </div>
+            <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
+              <option value="">Todos los vendedores</option>
+            </select>
+          </div>
+          <div id="heatmapContainer" class="contrib-grid"></div>
+          <div class="contrib-legend">
+            <span>Menos</span>
+            <span class="box" style="background:#e5e7eb;"></span>
+            <span class="box" style="background:#bbf7d0;"></span>
+            <span class="box" style="background:#86efac;"></span>
+            <span class="box" style="background:#4ade80;"></span>
+            <span class="box" style="background:#22c55e;"></span>
+            <span class="box" style="background:#15803d;"></span>
+            <span>Más</span>
           </div>
         </div>
       </div>
@@ -1145,12 +1145,12 @@
     }
 
     function heatColor(count) {
-        if (count === 0) return '#1f2937';
-        if (count === 1) return '#14532d';
-        if (count <= 3) return '#166534';
-        if (count <= 6) return '#15803d';
+        if (count === 0) return '#e5e7eb';
+        if (count === 1) return '#bbf7d0';
+        if (count <= 3) return '#86efac';
+        if (count <= 6) return '#4ade80';
         if (count <= 10) return '#22c55e';
-        return '#4ade80';
+        return '#15803d';
     }
 
     function renderHeatmap(vendorUser) {
