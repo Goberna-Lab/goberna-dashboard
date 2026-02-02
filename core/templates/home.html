@@ -329,14 +329,15 @@
       font-size: 13px;
     }
     /* Heatmap estilo GitHub */
-    .heatmap-card { background:transparent; color:#0f172a; border:none; box-shadow:none; padding:0; }
+    .heatmap-card { position:relative; background:#fff; color:#0f172a; border:1px solid #e2e8f0; box-shadow:0 4px 14px rgba(0,0,0,0.04); padding:16px; border-radius:16px; }
     .heatmap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#0f172a; }
-    .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; }
-    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; }
-    .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:8px; }
+    .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; width:100%; }
+    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; cursor:pointer; }
+    .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:10px; flex-wrap:wrap; }
     .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#e5e7eb; }
     .heatmap-meta { font-size:13px; color:#475569; }
     .heatmap-select { max-width:220px; }
+    .heatmap-tooltip { position:absolute; pointer-events:none; background:#0f172a; color:#f8fafc; padding:6px 8px; border-radius:6px; font-size:12px; box-shadow:0 8px 20px rgba(15,23,42,0.25); z-index:10; display:none; }
     /* Fullscreen / dark mode */
     body.fullscreen-dash {
       background: #0b1220;
@@ -476,7 +477,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
-              <span class="button-export__text">Descargar PDF</span>
+              <span class="button-export__text">Descargar</span>
               <span class="button-export__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
@@ -766,6 +767,7 @@
             <span class="box" style="background:#15803d;"></span>
             <span>Más</span>
           </div>
+          <div id="heatmapTooltip" class="heatmap-tooltip"></div>
         </div>
       </div>
     </div>
@@ -1156,8 +1158,10 @@
     function renderHeatmap(vendorUser) {
         const container = document.getElementById('heatmapContainer');
         const meta = document.getElementById('heatmapMeta');
+        const tooltip = document.getElementById('heatmapTooltip');
         if (!container || !meta) return;
         container.innerHTML = '';
+        if (tooltip) tooltip.style.display = 'none';
 
         const data = computeHeatmapData(vendorUser);
         if (!data.length) {
@@ -1197,8 +1201,29 @@
                 const div = document.createElement('div');
                 div.className = 'contrib-cell';
                 if (cell) {
-                    div.style.background = heatColor(cell.count);
-                    div.title = `${cell.count} venta(s) - ${cell.date.toLocaleDateString('es-PE')}`;
+                    const color = heatColor(cell.count);
+                    div.style.background = color;
+                    const txt = `${cell.count} venta(s)\n${cell.date.toLocaleDateString('es-PE')}`;
+                    div.title = txt;
+                    if (tooltip) {
+                        div.addEventListener('mouseenter', (e) => {
+                            tooltip.style.display = 'block';
+                            tooltip.innerHTML = `<strong>${cell.count} venta(s)</strong><br>${cell.date.toLocaleDateString('es-PE')}`;
+                            const rect = container.getBoundingClientRect();
+                            const x = e.clientX - rect.left + 12;
+                            const y = e.clientY - rect.top + 12;
+                            tooltip.style.left = `${x}px`;
+                            tooltip.style.top = `${y}px`;
+                        });
+                        div.addEventListener('mousemove', (e) => {
+                            const rect = container.getBoundingClientRect();
+                            tooltip.style.left = `${e.clientX - rect.left + 12}px`;
+                            tooltip.style.top = `${e.clientY - rect.top + 12}px`;
+                        });
+                        div.addEventListener('mouseleave', () => {
+                            tooltip.style.display = 'none';
+                        });
+                    }
                 }
                 container.appendChild(div);
             });
