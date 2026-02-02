@@ -1141,8 +1141,7 @@
     function computeHeatmapData(vendorUser) {
         const year = Number(selectedYear) || new Date().getFullYear();
         const start = new Date(year, 0, 1);
-        const today = new Date();
-        const end = (today.getFullYear() === year) ? new Date(today.getFullYear(), today.getMonth(), today.getDate()) : new Date(year, 11, 31);
+        const end = new Date(year, 11, 31);
         end.setHours(0,0,0,0);
 
         const buckets = new Map(); // dateKey -> count
