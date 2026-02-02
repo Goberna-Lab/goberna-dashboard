@@ -10,7 +10,7 @@
     body { margin: 0; background: #f3f6fb; color: #0f172a; font-family: "Montserrat", "Inter", sans-serif; overflow-x: hidden; }
     
     /* Layout adaptación a Sidebar Fijo */
-    .content {
+    .page > .content {
       margin-left: 80px; /* Ancho colapsado */
       padding: 24px 24px 40px;
       box-sizing: border-box;
@@ -106,7 +106,7 @@
     .exporting-pdf .search-box,
     .exporting-pdf .filter-search { display: none !important; }
     .exporting-pdf .print-header { display: block !important; }
-    .exporting-pdf .content {
+    .exporting-pdf .page > .content {
       margin: 0 !important;
       width: 100% !important;
       padding: 16px !important;
@@ -215,8 +215,8 @@
     .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
     .pill-success { background: #e0f2fe; color: #0b3b5c; }
     .pill-danger { background: #fee2e2; color: #b91c1c; }
-    .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
-    .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
+    .content .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
+    .content .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
     /* Botón export (texto + icon slide) */
     .button-export {
       border-radius: 20px;
@@ -257,7 +257,7 @@
     .button-export:active .button-export__icon { background-color: #122b40; }
     .button-export:active { border: 1px solid #122b40; }
 
-    .text-primary { color: #193b59 !important; }
+    .content .text-primary { color: #193b59 !important; }
     .btn-filter {
       background: #193b59;
       border: none;
@@ -338,7 +338,7 @@
       background-size: 40px 40px;
     }
     body.fullscreen-dash .sidebar { display: none !important; }
-    body.fullscreen-dash .content {
+    body.fullscreen-dash .page > .content {
       margin: 0 !important;
       width: 100% !important;
       padding: 16px !important;
@@ -431,7 +431,7 @@
       .search-box,
       .filter-search { display: none !important; }
       .print-header { display: block !important; }
-      .content {
+      .page > .content {
         margin: 0 !important;
         width: 100% !important;
         padding: 16px !important;
@@ -440,7 +440,7 @@
       .chart-card { box-shadow: none !important; }
     }
     @media (max-width: 900px) {
-      .content { padding: 16px 14px 28px; }
+      .page > .content { padding: 16px 14px 28px; }
       .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
       .status-pills { flex-wrap: wrap; overflow-x: visible; }
     }
@@ -467,7 +467,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
-              <span class="button-export__text">Descargar</span>
+              <span class="button-export__text">Descargar PDF</span>
               <span class="button-export__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
