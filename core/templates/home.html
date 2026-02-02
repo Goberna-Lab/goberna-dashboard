@@ -19,6 +19,11 @@
       transition: margin-left 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.35s ease;
     }
 
+    function getMonthKey(date) {
+      if (!(date instanceof Date) || isNaN(date)) return null;
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+    }
+
     /* Opcional: Si el usuario quiere que el contenido se empuje al abrir sidebar (estilo main app css provided) */
     /* Para detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
     /* La estructura actual es: inside body -> .page -> include sidebar, div.content */
@@ -609,12 +614,22 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Físico/Preventa)</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Físico/Preventa)</span>
+            <select id="filtroMesLibros" class="form-select form-select-sm" style="max-width: 200px;">
+              <option value="">Todos los meses</option>
+            </select>
+          </div>
           <canvas id="chartBooks" height="180"></canvas>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</span>
+            <select id="filtroMesCursos" class="form-select form-select-sm" style="max-width: 200px;">
+              <option value="">Todos los meses</option>
+            </select>
+          </div>
           <canvas id="chartCourses" height="180"></canvas>
         </div>
 
@@ -775,6 +790,11 @@
     let chartVentasSerieInst = null;
     let chartMode = 'monto'; // 'monto' | 'cantidad'
     let chartInterval = 'mes'; // 'mes' | 'semana' | 'dia'
+    // Filtros locales de mes para charts específicos
+    let selectedMesLibros = '';
+    let selectedMesCursos = '';
+    // Mapa venta_id -> fecha (Date) para filtrar por mes
+    const ventaFechaMap = new Map();
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
@@ -1005,6 +1025,118 @@
         });
     }
 
+    function passesMonthFilter(ventaId, selectedMonth) {
+        if (!selectedMonth) return true;
+        const fecha = ventaFechaMap.get(ventaId);
+        if (!fecha) return false;
+        return getMonthKey(fecha) === selectedMonth;
+    }
+
+    function updateBooksChart() {
+        if (!chartBooksInst) return;
+        const detallesLibros = detallesCategoria.filter(d => {
+            const catId = d.producto__codigo_categoria;
+            const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
+            if (!esLibro) return false;
+            return passesMonthFilter(d.venta_id, selectedMesLibros);
+        });
+        
+        const booksMap = new Map();
+        detallesLibros.forEach(d => {
+            const name = d.producto__nombre_producto || 'Desconocido';
+            const qty = parseInt(d.cantidad || 0);
+            booksMap.set(name, (booksMap.get(name) || 0) + qty);
+        });
+
+        const sortedBooks = Array.from(booksMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const bookLabels = sortedBooks.map(x => x[0]);
+        const bookData = sortedBooks.map(x => x[1]);
+
+        chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
+        chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
+        chartBooksInst.update();
+    }
+
+    function updateBooksTable() {
+        const bookDetails = detallesCategoria.filter(d => {
+            const catId = d.producto__codigo_categoria;
+            const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
+            if (!esLibro) return false;
+            return passesMonthFilter(d.venta_id, selectedMesLibros);
+        });
+        
+        const booksTableMap = new Map();
+        bookDetails.forEach(d => {
+            const name = d.producto__nombre_producto || 'Desconocido';
+            if(!booksTableMap.has(name)) booksTableMap.set(name, { qty: 0, amount: 0 });
+            const entry = booksTableMap.get(name);
+            entry.qty += parseInt(d.cantidad || 0);
+            entry.amount += parseFloat(d.monto_usd || 0);
+        });
+        
+        const booksTableList = Array.from(booksTableMap.entries())
+            .map(([name, val]) => ({ name, ...val }))
+            .sort((a,b) => b.amount - a.amount);
+        
+        renderBooksTable(booksTableList);
+    }
+
+    function updateCoursesChart(ventaIds) {
+        if (!chartCoursesInst) return;
+        const detallesFil = detallesCategoria.filter(d => 
+            (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6) &&
+            (!ventaIds || ventaIds.has(d.venta_id)) &&
+            passesMonthFilter(d.venta_id, selectedMesCursos)
+        );
+        
+        const coursesMap = new Map();
+        detallesFil.forEach(d => {
+            const name = d.producto__nombre_producto || 'Desconocido';
+            const qty = parseInt(d.cantidad || 0);
+            coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
+        });
+
+        const sortedCourses = Array.from(coursesMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const courseLabels = sortedCourses.map(x => x[0]);
+        const courseData = sortedCourses.map(x => x[1]);
+
+        chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
+        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
+        chartCoursesInst.update();
+    }
+
+    function populateMonthFilters() {
+        const meses = new Set();
+        ventasDetalle.forEach(v => {
+            const fecha = new Date(v.fecha_venta);
+            const key = getMonthKey(fecha);
+            if (key) meses.add(key);
+            if (!isNaN(fecha)) ventaFechaMap.set(v.id, fecha);
+        });
+        const sorted = Array.from(meses).sort().reverse(); // más reciente primero
+        const selects = [
+            { el: document.getElementById('filtroMesLibros'), state: 'libros' },
+            { el: document.getElementById('filtroMesCursos'), state: 'cursos' },
+        ];
+        selects.forEach(sel => {
+            if (!sel.el) return;
+            const current = sel.el.value;
+            sel.el.innerHTML = '<option value=\"\">Todos los meses</option>';
+            sorted.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                const [y, mo] = m.split('-');
+                const dt = new Date(Number(y), Number(mo)-1, 1);
+                const label = dt.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+                opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+                sel.el.appendChild(opt);
+            });
+            sel.el.value = current && sorted.includes(current) ? current : '';
+        });
+    }
+
     function updateCharts(ventasFil) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
@@ -1053,57 +1185,9 @@
         chartCategoriasInst.update();
       }
 
-      // Update Books Chart (SIEMPRE sin aplicar filtros de la vista)
-      if (chartBooksInst) {
-        const detallesLibros = detallesCategoria.filter(d => {
-            const catId = d.producto__codigo_categoria;
-            const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
-            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
-            return esLibro;
-        });
-        
-        const booksMap = new Map();
-        detallesLibros.forEach(d => {
-            const name = d.producto__nombre_producto || 'Desconocido';
-            const qty = parseInt(d.cantidad || 0);
-            booksMap.set(name, (booksMap.get(name) || 0) + qty);
-        });
-
-        // Sort by Qty Desc and take top 10
-        const sortedBooks = Array.from(booksMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
-        const bookLabels = sortedBooks.map(x => x[0]);
-        const bookData = sortedBooks.map(x => x[1]);
-
-        chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
-        chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
-        chartBooksInst.update();
-      }
-
-
-
-      // Update Courses Chart
-      if (chartCoursesInst) {
-        const detallesFil = detallesCategoria.filter(d => 
-            ventaIds.has(d.venta_id) && 
-            (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
-        );
-        
-        const coursesMap = new Map();
-        detallesFil.forEach(d => {
-            const name = d.producto__nombre_producto || 'Desconocido';
-            const qty = parseInt(d.cantidad || 0);
-            coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
-        });
-
-        const sortedCourses = Array.from(coursesMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
-        const courseLabels = sortedCourses.map(x => x[0]);
-        const courseData = sortedCourses.map(x => x[1]);
-
-        chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
-        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
-        chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
-        chartCoursesInst.update();
-      }
+      // Update Books & Courses Charts (mes selectores dedicados)
+      updateBooksChart();
+      updateCoursesChart(ventaIds);
 
       // Update School Table (Categories 5 & 6)
       const schoolDetails = detallesCategoria.filter(d => 
@@ -1126,28 +1210,8 @@
           
       renderSchoolTable(schoolList);
 
-      // Update Books Table (SIN filtros de la vista)
-      const bookDetails = detallesCategoria.filter(d => {
-          const catId = d.producto__codigo_categoria;
-          const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
-          const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
-          return esLibro;
-      });
-      
-      const booksTableMap = new Map();
-      bookDetails.forEach(d => {
-          const name = d.producto__nombre_producto || 'Desconocido';
-          if(!booksTableMap.has(name)) booksTableMap.set(name, { qty: 0, amount: 0 });
-          const entry = booksTableMap.get(name);
-          entry.qty += parseInt(d.cantidad || 0);
-          entry.amount += parseFloat(d.monto_usd || 0);
-      });
-      
-      const booksTableList = Array.from(booksTableMap.entries())
-          .map(([name, val]) => ({ name, ...val }))
-          .sort((a,b) => b.amount - a.amount);
-          
-      renderBooksTable(booksTableList);
+      // Update Books Table con filtro de mes dedicado
+      updateBooksTable();
 
       // Update Vendors Table
       const userMap = new Map();
