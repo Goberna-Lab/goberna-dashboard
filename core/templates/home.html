@@ -328,6 +328,15 @@
       color: #475569;
       font-size: 13px;
     }
+    /* Heatmap estilo GitHub */
+    .heatmap-card { background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; }
+    .heatmap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#e5e7eb; }
+    .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; }
+    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#1f2937; }
+    .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#cbd5e1; margin-top:8px; }
+    .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#1f2937; }
+    .heatmap-meta { font-size:13px; color:#cbd5e1; }
+    .heatmap-select { max-width:220px; }
     /* Fullscreen / dark mode */
     body.fullscreen-dash {
       background: #0b1220;
@@ -467,7 +476,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
-              <span class="button-export__text">Descargar</span>
+              <span class="button-export__text">Descargar PDF</span>
               <span class="button-export__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
@@ -649,6 +658,29 @@
           </div>
         </div>
 
+        <div class="chart-card heatmap-card" style="grid-column: span 2;">
+          <div class="heatmap-header">
+            <div>
+              <div class="section-title mb-0" style="color:#e5e7eb;">Actividad de vendedores (últimos 12 meses)</div>
+              <div class="heatmap-meta" id="heatmapMeta">Cargando...</div>
+            </div>
+            <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
+              <option value="">Todos los vendedores</option>
+            </select>
+          </div>
+          <div id="heatmapContainer" class="contrib-grid"></div>
+          <div class="contrib-legend">
+            <span>Menos</span>
+            <span class="box" style="background:#1f2937;"></span>
+            <span class="box" style="background:#14532d;"></span>
+            <span class="box" style="background:#166534;"></span>
+            <span class="box" style="background:#15803d;"></span>
+            <span class="box" style="background:#22c55e;"></span>
+            <span class="box" style="background:#4ade80;"></span>
+            <span>Más</span>
+          </div>
+        </div>
+
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
@@ -790,6 +822,7 @@
     let selectedMesCursos = '';
     // Mapa venta_id -> fecha (Date) para filtrar por mes
     const ventaFechaMap = new Map();
+    const HEATMAP_DAYS = 365;
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
@@ -1083,6 +1116,95 @@
         renderBooksTable(booksTableList);
     }
 
+    function computeHeatmapData(vendorUser) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const start = new Date(today);
+        start.setDate(start.getDate() - (HEATMAP_DAYS - 1));
+
+        const buckets = new Map(); // dateKey -> count
+        ventasDetalle.forEach(v => {
+            if (vendorUser && String(v.usuario__username) !== String(vendorUser)) return;
+            const dt = new Date(v.fecha_venta);
+            if (isNaN(dt)) return;
+            dt.setHours(0,0,0,0);
+            if (dt < start || dt > today) return;
+            const key = dt.toISOString().slice(0,10);
+            buckets.set(key, (buckets.get(key) || 0) + 1);
+        });
+
+        const cells = [];
+        let cursor = new Date(start);
+        while (cursor <= today) {
+            const key = cursor.toISOString().slice(0,10);
+            const count = buckets.get(key) || 0;
+            cells.push({ date: new Date(cursor), count });
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return cells;
+    }
+
+    function heatColor(count) {
+        if (count === 0) return '#1f2937';
+        if (count === 1) return '#14532d';
+        if (count <= 3) return '#166534';
+        if (count <= 6) return '#15803d';
+        if (count <= 10) return '#22c55e';
+        return '#4ade80';
+    }
+
+    function renderHeatmap(vendorUser) {
+        const container = document.getElementById('heatmapContainer');
+        const meta = document.getElementById('heatmapMeta');
+        if (!container || !meta) return;
+        container.innerHTML = '';
+
+        const data = computeHeatmapData(vendorUser);
+        if (!data.length) {
+            meta.textContent = 'Sin datos';
+            return;
+        }
+
+        const maxCount = Math.max(...data.map(d => d.count));
+        const total = data.reduce((a,b)=>a + b.count, 0);
+        meta.textContent = `${total} ventas en los últimos 12 meses`;
+
+        // GitHub style: columns = weeks, rows = days (Sun-Sat)
+        // We already have data in order; build DOM with columns
+        const weeks = [];
+        let week = [];
+        data.forEach(d => {
+            const day = d.date.getDay(); // 0=Sun
+            if (week.length === 0 && day !== 0) {
+                // pad initial partial week
+                for (let i=0; i<day; i++) week.push(null);
+            }
+            if (week.length === 7) {
+                weeks.push(week);
+                week = [];
+            }
+            week.push(d);
+        });
+        if (week.length) {
+            while (week.length < 7) week.push(null);
+            weeks.push(week);
+        }
+
+        container.style.gridTemplateColumns = `repeat(${weeks.length}, 10px)`;
+
+        weeks.forEach(col => {
+            col.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'contrib-cell';
+                if (cell) {
+                    div.style.background = heatColor(cell.count);
+                    div.title = `${cell.count} venta(s) - ${cell.date.toLocaleDateString('es-PE')}`;
+                }
+                container.appendChild(div);
+            });
+        });
+    }
+
     function updateCoursesChart(ventaIds) {
         if (!chartCoursesInst) return;
         const detallesFil = detallesCategoria.filter(d => 
@@ -1360,6 +1482,23 @@
         if (vendors.has(currentVal)) {
             select.value = currentVal;
         }
+
+        populateVendorHeatmap(vendors);
+    }
+
+    function populateVendorHeatmap(vendorMap) {
+        const select = document.getElementById('heatmapVendedor');
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value=\"\">Todos los vendedores</option>';
+        const entries = Array.from(vendorMap.entries()).sort((a,b)=>a[1].localeCompare(b[1]));
+        entries.forEach(([user, name]) => {
+            const opt = document.createElement('option');
+            opt.value = user;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
+        select.value = current && vendorMap.has(current) ? current : '';
     }
 
     function updatePrintHeader() {
@@ -1632,6 +1771,7 @@
             populateVendorFilter(ventasDetalle);
             populateMonthFilters();
             initCuotasPendientes();
+            renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
             aplicarFiltros(); 
         } catch (error) {
             console.error("Error de red/parseo", error);
@@ -1670,6 +1810,10 @@
     filtroMesCursos?.addEventListener('change', () => {
       selectedMesCursos = filtroMesCursos.value;
       aplicarFiltros();
+    });
+    const heatmapSelect = document.getElementById('heatmapVendedor');
+    heatmapSelect?.addEventListener('change', () => {
+      renderHeatmap(heatmapSelect.value);
     });
     
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
