@@ -19,11 +19,6 @@
       transition: margin-left 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.35s ease;
     }
 
-    function getMonthKey(date) {
-      if (!(date instanceof Date) || isNaN(date)) return null;
-      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
-    }
-
     /* Opcional: Si el usuario quiere que el contenido se empuje al abrir sidebar (estilo main app css provided) */
     /* Para detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
     /* La estructura actual es: inside body -> .page -> include sidebar, div.content */
@@ -816,6 +811,11 @@
       if (interval === 'dia') return `${y}-${m}-${d}`;
       if (interval === 'semana') return getWeekKey(date);
       return `${y}-${m}`;
+    }
+
+    function getMonthKey(date) {
+      if (!(date instanceof Date) || isNaN(date)) return null;
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
     }
 
     function buildCuotasFiltradas(ventasFil) {
@@ -1630,6 +1630,7 @@
             detallesCategoria = data.detalles_categoria || [];
       
             populateVendorFilter(ventasDetalle);
+            populateMonthFilters();
             initCuotasPendientes();
             aplicarFiltros(); 
         } catch (error) {
@@ -1658,6 +1659,18 @@
     document.getElementById('filtroBuscar').addEventListener('keyup', debounce(() => {
         aplicarFiltros();
     }, 300));
+
+    // Selectores de mes para Libros y Cursos
+    const filtroMesLibros = document.getElementById('filtroMesLibros');
+    const filtroMesCursos = document.getElementById('filtroMesCursos');
+    filtroMesLibros?.addEventListener('change', () => {
+      selectedMesLibros = filtroMesLibros.value;
+      aplicarFiltros();
+    });
+    filtroMesCursos?.addEventListener('change', () => {
+      selectedMesCursos = filtroMesCursos.value;
+      aplicarFiltros();
+    });
     
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
       document.getElementById('filtroDesde').value = '';
