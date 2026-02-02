@@ -467,7 +467,7 @@
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
-              <span class="button-export__text">Descargar</span>
+              <span class="button-export__text">Descargar PDF</span>
               <span class="button-export__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="svg" aria-hidden="true">
                   <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
@@ -1053,15 +1053,17 @@
         chartCategoriasInst.update();
       }
 
-      // Update Books Chart
+      // Update Books Chart (SIEMPRE sin aplicar filtros de la vista)
       if (chartBooksInst) {
-        const detallesFil = detallesCategoria.filter(d => 
-            ventaIds.has(d.venta_id) && 
-            (d.producto__codigo_categoria === 1 || d.producto__codigo_categoria === 15)
-        );
+        const detallesLibros = detallesCategoria.filter(d => {
+            const catId = d.producto__codigo_categoria;
+            const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
+            return esLibro;
+        });
         
         const booksMap = new Map();
-        detallesFil.forEach(d => {
+        detallesLibros.forEach(d => {
             const name = d.producto__nombre_producto || 'Desconocido';
             const qty = parseInt(d.cantidad || 0);
             booksMap.set(name, (booksMap.get(name) || 0) + qty);
@@ -1124,11 +1126,13 @@
           
       renderSchoolTable(schoolList);
 
-      // Update Books Table (Categories 1 & 15)
-      const bookDetails = detallesCategoria.filter(d => 
-          ventaIds.has(d.venta_id) && 
-          (d.producto__codigo_categoria === 1 || d.producto__codigo_categoria === 15)
-      );
+      // Update Books Table (SIN filtros de la vista)
+      const bookDetails = detallesCategoria.filter(d => {
+          const catId = d.producto__codigo_categoria;
+          const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+          const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
+          return esLibro;
+      });
       
       const booksTableMap = new Map();
       bookDetails.forEach(d => {
