@@ -12,6 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.core.cache import cache
+import hashlib
 
 from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
 
@@ -86,7 +87,9 @@ def home_dashboard(request):
         return _export_cuotas(cuotas_qs, fmt)
 
     # CACHÉ DE ESTADÍSTICAS
-    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}"
+    params_sorted = sorted(request.GET.items())
+    params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
+    cache_key = f"dash_stats_v3_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
