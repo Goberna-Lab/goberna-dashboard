@@ -214,10 +214,7 @@ def home_dashboard(request):
             producto__codigo_categoria__nombre_categoria__icontains="preventa"
         )
         top_books_qs = (
-            DetalleVenta.objects.filter(
-                venta__in=ventas_qs,
-            )
-            .filter(libros_filter)
+            DetalleVenta.objects.filter(libros_filter)
             .values("producto__nombre_producto")
             .annotate(total_qty=Sum("cantidad"))
             .order_by("-total_qty")[:10]
