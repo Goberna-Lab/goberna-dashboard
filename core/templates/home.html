@@ -1483,25 +1483,37 @@
 
       renderVendorTable(sortedVendors);
 
-      const bucketAmount = new Map();     // suma de montos
-      const bucketCount = new Map(); // cantidad de ventas
+      const bucketAmountMonth = new Map(); // suma de montos (siempre mensual)
+      const bucketCountMonth = new Map();  // cantidad de ventas (siempre mensual)
+      const bucketAmount = new Map();     // suma de montos (según intervalo)
+      const bucketCount = new Map(); // cantidad de ventas (según intervalo)
       ventasFil.forEach(v => {
         const fecha = new Date(v.fecha_venta);
         if (isNaN(fecha)) return;
+        const keyMonth = getBucketKey(fecha, 'mes');
+        bucketAmountMonth.set(keyMonth, (bucketAmountMonth.get(keyMonth) || 0) + parseFloat(v.monto_total || 0));
+        bucketCountMonth.set(keyMonth, (bucketCountMonth.get(keyMonth) || 0) + 1);
         const key = getBucketKey(fecha, chartInterval);
         bucketAmount.set(key, (bucketAmount.get(key) || 0) + parseFloat(v.monto_total || 0));
         bucketCount.set(key, (bucketCount.get(key) || 0) + 1);
       });
+      const useMonto = chartMode === 'monto';
+
+      const labelsMes = Array.from(bucketAmountMonth.keys()).sort();
+      const dataMontoMes = labelsMes.map(l => bucketAmountMonth.get(l));
+      const dataCountMes = labelsMes.map(l => bucketCountMonth.get(l) || 0);
+      const dataMes = useMonto ? dataMontoMes : dataCountMes;
+      const labelDataMes = useMonto ? 'Monto' : 'Ventas';
+
       const labels = Array.from(bucketAmount.keys()).sort();
       const dataMonto = labels.map(l => bucketAmount.get(l));
       const dataCount = labels.map(l => bucketCount.get(l) || 0);
-      const useMonto = chartMode === 'monto';
       const data = useMonto ? dataMonto : dataCount;
       const labelData = useMonto ? 'Monto' : 'Ventas';
       if (chartVentasMesInst) {
-        chartVentasMesInst.data.labels = labels.length ? labels : [''];
-        chartVentasMesInst.data.datasets[0].label = labelData;
-        chartVentasMesInst.data.datasets[0].data = data.length ? data : [0];
+        chartVentasMesInst.data.labels = labelsMes.length ? labelsMes : [''];
+        chartVentasMesInst.data.datasets[0].label = labelDataMes;
+        chartVentasMesInst.data.datasets[0].data = dataMes.length ? dataMes : [0];
         chartVentasMesInst.update();
       }
       if (chartVentasSerieInst) {
