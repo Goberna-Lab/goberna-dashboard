@@ -97,6 +97,14 @@ class Categoria(models.Model):
         managed = False
         db_table = 'tb_categoria'
 
+class Negocio(models.Model):
+    codigo_negocio = models.AutoField(primary_key=True)
+    nombre_negocio = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_negocio'
+
 class Producto(models.Model):
     codigo_producto = models.AutoField(primary_key=True)
     sku_producto = models.CharField(max_length=50, unique=True)
@@ -105,6 +113,10 @@ class Producto(models.Model):
     codigo_categoria = models.ForeignKey(
         Categoria, on_delete=models.DO_NOTHING,
         db_column='codigo_categoria', related_name='productos'
+    )
+    codigo_negocio = models.ForeignKey(
+        Negocio, on_delete=models.DO_NOTHING,
+        db_column='codigo_negocio', related_name='productos'
     )
 
     class Meta:
