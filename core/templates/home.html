@@ -624,7 +624,7 @@
 
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Físico/Preventa)</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
             <select id="filtroMesLibros" class="form-select form-select-sm" style="max-width: 200px;">
               <option value="">Todos los meses</option>
             </select>
@@ -643,7 +643,13 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 1;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por Categoría</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por Categoría</span>
+            <select id="filtroCategoriaMetric" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="monto" selected>Monto</option>
+              <option value="cantidad">Cantidad</option>
+            </select>
+          </div>
           <canvas id="chartCategorias" height="180"></canvas>
         </div>
 
@@ -841,6 +847,7 @@
     // Filtros locales de mes para charts específicos
     let selectedMesLibros = '';
     let selectedMesCursos = '';
+    let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
     // Mapa venta_id -> fecha (Date) para filtrar por mes
     const ventaFechaMap = new Map();
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
@@ -1092,8 +1099,10 @@
         const detallesLibros = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+            const negocio = (d.producto__codigo_negocio__nombre_negocio || '').toLowerCase();
+            const esEditorial = negocio.includes('editorial');
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
-            if (!esLibro) return false;
+            if (!esLibro || !esEditorial) return false;
             return passesMonthFilter(d.venta_id, selectedMesLibros);
         });
         
@@ -1117,8 +1126,10 @@
         const bookDetails = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
+            const negocio = (d.producto__codigo_negocio__nombre_negocio || '').toLowerCase();
+            const esEditorial = negocio.includes('editorial');
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
-            if (!esLibro) return false;
+            if (!esLibro || !esEditorial) return false;
             return passesMonthFilter(d.venta_id, selectedMesLibros);
         });
         
@@ -1406,9 +1417,10 @@
         const detallesFil = detallesCategoria.filter(d => ventaIds.has(d.venta_id));
         
         const catMap = new Map();
+        const useCantidad = selectedCategoriaMetric === 'cantidad';
         detallesFil.forEach(d => {
             const cat = d.producto__codigo_categoria__nombre_categoria || 'Otros';
-            const val = parseFloat(d.monto_usd || 0);
+            const val = useCantidad ? parseFloat(d.cantidad || 0) : parseFloat(d.monto_usd || 0);
             catMap.set(cat, (catMap.get(cat) || 0) + val);
         });
         
@@ -1931,6 +1943,12 @@
     chartIntervalSelect?.addEventListener('change', () => {
       const val = chartIntervalSelect.value;
       chartInterval = (val === 'semana' || val === 'dia') ? val : 'mes';
+      aplicarFiltros();
+    });
+
+    const filtroCategoriaMetric = document.getElementById('filtroCategoriaMetric');
+    filtroCategoriaMetric?.addEventListener('change', () => {
+      selectedCategoriaMetric = filtroCategoriaMetric.value === 'cantidad' ? 'cantidad' : 'monto';
       aplicarFiltros();
     });
     
