@@ -179,7 +179,7 @@ def home_dashboard(request):
 
         # Categorías
         detalles_qs = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
-            'venta', 'venta__moneda', 'producto__codigo_categoria'
+            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio'
         ).annotate(
             tasa_cambio=Coalesce(
                 'venta__radio_multiplicador_usado', 
@@ -215,7 +215,10 @@ def home_dashboard(request):
             producto__codigo_categoria__nombre_categoria__icontains="preventa"
         )
         top_books_qs = (
-            DetalleVenta.objects.filter(libros_filter)
+            DetalleVenta.objects.filter(
+                libros_filter,
+                producto__codigo_negocio__nombre_negocio__icontains="editorial"
+            )
             .values("producto__nombre_producto")
             .annotate(total_qty=Sum("cantidad"))
             .order_by("-total_qty")[:10]
@@ -321,7 +324,7 @@ def home_dashboard(request):
         # Pero ventas_qs es QuerySet, asi que podemos reconstruir detalles query rapido:
         
         detalles_export = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
-            'venta', 'venta__moneda', 'producto__codigo_categoria'
+            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio'
         ).annotate(
             tasa_cambio=Coalesce('venta__radio_multiplicador_usado', 'venta__moneda__radioMultiplicador', 1, output_field=DecimalField())
         ).annotate(
@@ -334,6 +337,8 @@ def home_dashboard(request):
             "producto__codigo_categoria__nombre_categoria", 
             "monto_usd",
             "producto__codigo_categoria", # Para filtrar ID en JS
+            "producto__codigo_negocio",
+            "producto__codigo_negocio__nombre_negocio",
             "producto__nombre_producto",
             "cantidad"
         )
