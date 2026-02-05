@@ -672,7 +672,13 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</span>
+            <select id="filtroOrdenEscuela" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="monto" selected>Monto</option>
+              <option value="cantidad">Cantidad</option>
+            </select>
+          </div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableSchool">
               <thead class="text-secondary small-header">
@@ -688,7 +694,13 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</span>
+            <select id="filtroOrdenLibros" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="monto" selected>Monto</option>
+              <option value="cantidad">Cantidad</option>
+            </select>
+          </div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableBooks">
               <thead class="text-secondary small-header">
@@ -850,6 +862,8 @@
     let selectedMesLibros = '';
     let selectedMesCursos = '';
     let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
+    let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
+    let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
     // Mapa venta_id -> fecha (Date) para filtrar por mes
     const ventaFechaMap = new Map();
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
@@ -1146,7 +1160,10 @@
         
         const booksTableList = Array.from(booksTableMap.entries())
             .map(([name, val]) => ({ name, ...val }))
-            .sort((a,b) => b.amount - a.amount);
+            .sort((a,b) => {
+              if (selectedBooksSort === 'cantidad') return b.qty - a.qty;
+              return b.amount - a.amount;
+            });
         
         renderBooksTable(booksTableList);
     }
@@ -1457,7 +1474,10 @@
       
       const schoolList = Array.from(schoolMap.entries())
           .map(([name, val]) => ({ name, ...val }))
-          .sort((a,b) => b.amount - a.amount); // Sort by Revenue
+          .sort((a,b) => {
+            if (selectedSchoolSort === 'cantidad') return b.qty - a.qty;
+            return b.amount - a.amount;
+          });
           
       renderSchoolTable(schoolList);
 
@@ -1963,6 +1983,18 @@
     const filtroCategoriaMetric = document.getElementById('filtroCategoriaMetric');
     filtroCategoriaMetric?.addEventListener('change', () => {
       selectedCategoriaMetric = filtroCategoriaMetric.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenEscuela = document.getElementById('filtroOrdenEscuela');
+    filtroOrdenEscuela?.addEventListener('change', () => {
+      selectedSchoolSort = filtroOrdenEscuela.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenLibros = document.getElementById('filtroOrdenLibros');
+    filtroOrdenLibros?.addEventListener('change', () => {
+      selectedBooksSort = filtroOrdenLibros.value === 'cantidad' ? 'cantidad' : 'monto';
       aplicarFiltros();
     });
     
