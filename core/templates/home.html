@@ -613,7 +613,13 @@
         </div>
 
         <div class="chart-card compact-chart" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Ventas por mes</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Ventas por mes</span>
+            <select id="filtroVentasMesMetric" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="monto" selected>Monto</option>
+              <option value="cantidad">Cantidad</option>
+            </select>
+          </div>
           <canvas id="chartVentasMes" height="140"></canvas>
         </div>
 
@@ -862,6 +868,7 @@
     let selectedMesLibros = '';
     let selectedMesCursos = '';
     let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
+    let selectedVentasMesMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
     // Mapa venta_id -> fecha (Date) para filtrar por mes
@@ -1518,12 +1525,13 @@
         bucketCount.set(key, (bucketCount.get(key) || 0) + 1);
       });
       const useMonto = chartMode === 'monto';
+      const useMontoMes = selectedVentasMesMetric === 'monto';
 
       const labelsMes = Array.from(bucketAmountMonth.keys()).sort();
       const dataMontoMes = labelsMes.map(l => bucketAmountMonth.get(l));
       const dataCountMes = labelsMes.map(l => bucketCountMonth.get(l) || 0);
-      const dataMes = useMonto ? dataMontoMes : dataCountMes;
-      const labelDataMes = useMonto ? 'Monto' : 'Ventas';
+      const dataMes = useMontoMes ? dataMontoMes : dataCountMes;
+      const labelDataMes = useMontoMes ? 'Monto' : 'Ventas';
 
       const labels = Array.from(bucketAmount.keys()).sort();
       const dataMonto = labels.map(l => bucketAmount.get(l));
@@ -1573,9 +1581,18 @@
       ventasFiltradasCache = ventasFil.slice();
       cuotasFiltradasCache = buildCuotasFiltradas(ventasFil);
       
-      // Update Monthly Goal Progress (Target: 80,000)
+      // Update Monthly Goal Progress (Target: 80,000) - siempre mensual
       const target = 80000;
-      const progress = Math.min((total / target) * 100, 100);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const monthlyTotal = (ventasDetalle || []).reduce((acc, v) => {
+        const dt = new Date(v.fecha_venta);
+        if (isNaN(dt)) return acc;
+        if (dt.getFullYear() !== currentYear || dt.getMonth() !== currentMonth) return acc;
+        return acc + parseFloat(v.monto_total || 0);
+      }, 0);
+      const progress = Math.min((monthlyTotal / target) * 100, 100);
       const progressBar = document.getElementById('metaProgressBar');
       const progressText = document.getElementById('metaProgressText');
       
@@ -1983,6 +2000,12 @@
     const filtroCategoriaMetric = document.getElementById('filtroCategoriaMetric');
     filtroCategoriaMetric?.addEventListener('change', () => {
       selectedCategoriaMetric = filtroCategoriaMetric.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+
+    const filtroVentasMesMetric = document.getElementById('filtroVentasMesMetric');
+    filtroVentasMesMetric?.addEventListener('change', () => {
+      selectedVentasMesMetric = filtroVentasMesMetric.value === 'cantidad' ? 'cantidad' : 'monto';
       aplicarFiltros();
     });
 
