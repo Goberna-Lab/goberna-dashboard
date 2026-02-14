@@ -262,7 +262,7 @@
 </head>
 
 <body>
-  {% with is_admin=request.user|has_group_id:2 is_vendor=request.user|has_group_id:3 %}
+  {% with is_admin=request.user|has_group_id:2 is_assistant_admin=request.user|has_group_id:6 is_vendor=request.user|has_group_id:3 %}
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <!-- Logo -->
@@ -360,7 +360,7 @@
       </li>
       {% endif %}
 
-      {% if not is_vendor or is_admin or request.user|has_group_id:5 %}
+      {% if not is_vendor or is_admin or is_assistant_admin or request.user|has_group_id:5 %}
       <li class="nav-item movimientos-menu {% if 'movimientos' in request.path %}show-submenu active-indicator{% endif %}">
         <div class="d-flex align-items-center justify-content-between">
           <a class="nav-link {% if 'movimientos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/">
@@ -401,7 +401,7 @@
       {% endif %}
 
       {# TESORERÍA - Grupo 5 o Admin #}
-      {% if request.user|has_group_id:5 or request.user|has_group_id:2 %}
+      {% if request.user|has_group_id:5 or is_admin or is_assistant_admin %}
       <li class="nav-item {% if 'treasury' in request.path %}active-indicator{% endif %}">
         <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/treasury/pagos-pendientes/">
           <i class="fas fa-money-check-alt"></i>
