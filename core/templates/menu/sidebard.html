@@ -1,6 +1,7 @@
+{% load static %}
 {% load group_tags %}
 <!DOCTYPE html>
-<!-- v2.1 - Toast fix 2026-01-28 -->
+<!-- v2.2 - Ventas menu fixed (resolver_match) -->
 <html lang="es">
 
 <head>
@@ -14,255 +15,14 @@
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <!-- Estilos Sidebar (Inlined) -->
-  <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap');
-
-/* =====================
-   SIDEBAR BASE
-===================== */
-.sidebar {
-  width: 80px;
-  background: linear-gradient(to bottom, #1f2d3d, #263544);
-  color: white;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 1050;
-  font-family: 'Montserrat', sans-serif;
-  border-right: 1px solid #3a4756;
-  transition: width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-  overflow-x: hidden;
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
-}
-
-/* =====================
-   LOGO
-===================== */
-.sidebar .logo {
-  padding: 20px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid #3a4756;
-  transition: all 0.3s ease;
-  min-height: 77px;
-}
-
-.sidebar .logo-img {
-  height: 36px;
-  object-fit: contain;
-  transition: transform 0.3s ease;
-}
-
-.sidebar .logo-text {
-  display: none;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-left: 10px;
-  letter-spacing: 1px;
-  color: #ffc107;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* =====================
-   NAV LINKS
-===================== */
-.sidebar .nav {
-  padding: 20px 0;
-  flex-grow: 1;
-  width: 100%;
-}
-
-.sidebar .nav-link,
-.d-flex-menu {
-  color: #ced4da;
-  padding: 12px 18px;
-  display: flex;
-  align-items: center;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: all 0.3s ease;
-  position: relative;
-  cursor: pointer;
-}
-
-.sidebar .nav-link i,
-.d-flex-menu i {
-  width: 28px;
-  text-align: center;
-  font-size: 1.1rem;
-  transition: transform 0.25s ease;
-}
-
-.sidebar .nav-link span,
-.d-flex-menu .menu-label-link span {
-  display: none;
-  opacity: 0;
-  margin-left: 8px;
-  transition: opacity 0.3s ease;
-}
-
-.sidebar .nav-link:hover,
-.d-flex-menu:hover {
-  background-color: #3c4b5b;
-  color: #fff;
-  transform: translateX(2px);
-}
-
-.sidebar .nav-link.active {
-  background-color: #2e3a4a;
-  border-left: 4px solid #ffc107;
-  color: #fff;
-  font-weight: bold;
-}
-
-/* =====================
-   EFECTO EXPANDIBLE (HOVER)
-===================== */
-.sidebar:hover {
-  width: 240px;
-}
-
-.sidebar:hover .logo {
-  justify-content: flex-start;
-  padding-left: 20px;
-}
-
-.sidebar:hover .logo-text {
-  display: inline;
-  opacity: 1;
-}
-
-.sidebar:hover .nav-link span,
-.sidebar:hover .d-flex-menu .menu-label-link span {
-  display: inline;
-  opacity: 1;
-}
-
-.sidebar:hover .nav-link i,
-.sidebar:hover .d-flex-menu i {
-  transform: scale(1.08);
-}
-
-/* =====================
-   INDICADOR VISUAL
-===================== */
-.sidebar .nav-link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 0;
-  background: #ffc107;
-  border-radius: 6px 0 0 6px;
-  transition: width 0.25s ease;
-}
-
-.sidebar .nav-link:hover::after,
-.d-flex-menu:hover::after {
-  width: 4px;
-}
-
-/* =====================
-   DROPDOWN / SUBMENUS
-===================== */
-.d-flex-menu {
-  justify-content: space-between;
-  padding-right: 4px !important;
-}
-
-.d-flex-menu .menu-label-link {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: 1;
-  background: transparent !important;
-  color: inherit !important;
-  text-decoration: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-.toggle-submenu {
-  background: transparent !important;
-  border: none !important;
-  color: inherit !important;
-  padding: 8px;
-  display: none;
-  opacity: 0;
-  transition: all 0.3s;
-}
-
-.sidebar:hover .toggle-submenu {
-  display: flex;
-  opacity: 1;
-}
-
-/* Submenu container */
-.nav-submenu {
-  list-style: none;
-  padding-left: 0;
-  margin-top: 2px;
-  display: none;
-  overflow: hidden;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.nav-submenu.show {
-  display: block;
-}
-
-.nav-submenu .nav-link {
-  padding-left: 48px !important;
-  font-size: 0.85em;
-  color: #a0aec0 !important;
-}
-
-.nav-submenu .nav-link:hover {
-  color: #fff !important;
-}
-
-.d-flex-menu.expanded .toggle-submenu {
-  transform: rotate(180deg);
-}
-
-/* =====================
-   RESPONSIVE (MÓVIL)
-===================== */
-@media (max-width: 992px) {
-  .sidebar {
-    width: 70px;
-  }
-
-  .sidebar:hover {
-    width: 240px;
-  }
-}
-
-/* Footer Fixes */
-.mt-auto {
-  margin-top: auto !important;
-}
-
-.bottom {
-  margin-bottom: 20px;
-}
-  </style>
+  <!-- Estilos Sidebar -->
+  <link rel="stylesheet" href="{% static 'css/_sidebar.css' %}?v=12">
 </head>
 
 <body>
-  {% with is_admin=request.user|has_group_id:2 is_vendor=request.user|has_group_id:3 %}
+  {# ✅ FIX: WITH EN UNA SOLA LÍNEA (evita "Invalid block tag 'endwith'") #}
+  {% with is_admin=request.user|has_group_id:2 is_assistant_admin=request.user|has_group_id:6 is_vendor=request.user|has_group_id:3 urlname=request.resolver_match.url_name %}
+
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <!-- Logo -->
@@ -284,7 +44,7 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'clientes' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/clientes/listaClientes/">
+        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{% url 'lista_clientes' %}">
           <i class="fas fa-users"></i>
           <span>Clientes</span>
         </a>
@@ -292,18 +52,54 @@
       {% endif %}
 
       <li class="nav-item {% if 'productos' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'productos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/productos/listaProductos/">
+        <a class="nav-link {% if 'productos' in request.path %}active{% endif %}" href="{% url 'lista_productos' %}">
           <i class="fas fa-box"></i>
           <span>Productos</span>
         </a>
       </li>
 
       {% if not request.user|has_group_id:5 %}
-      <li class="nav-item {% if 'ventas' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'ventas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/listaVentas/">
-          <i class="fas fa-shopping-cart"></i>
-          <span>Ventas</span>
-        </a>
+      <!-- ✅ VENTAS (SOLO DESPLEGA) - FIX: NO DOBLE MARCADO -->
+      <li class="nav-item ventas-menu {% if urlname == 'lista_ventas' or urlname == 'lista_ventas_facturacion' %}show-submenu active-indicator{% endif %}">
+        <div class="d-flex align-items-center justify-content-between">
+
+          <!-- ✅ NO navega: solo despliega -->
+          <button class="nav-link {% if urlname == 'lista_ventas' or urlname == 'lista_ventas_facturacion' %}active{% endif %}"
+                  type="button"
+                  id="ventasTrigger"
+                  aria-label="Desplegar opciones de Ventas"
+                  style="background: transparent; border: 0; width: 100%; text-align: left;">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Ventas</span>
+          </button>
+
+          <!-- ✅ Flecha también despliega -->
+          <button class="btn btn-link toggle-submenu toggle-submenu-ventas"
+                  type="button"
+                  aria-label="Desplegar opciones de Ventas">
+            <i class="fas fa-chevron-down"></i>
+          </button>
+        </div>
+
+        <ul class="nav flex-column nav-submenu">
+          <!-- ✅ Lista de Ventas -->
+          <li class="nav-item {% if urlname == 'lista_ventas' %}active-indicator{% endif %}">
+            <a class="nav-link {% if urlname == 'lista_ventas' %}active{% endif %}"
+               href="{% url 'lista_ventas' %}">
+              <i class="fas fa-receipt text-secondary me-2"></i>
+              <span>Lista de Ventas</span>
+            </a>
+          </li>
+
+          <!-- ✅ Facturaciones -->
+          <li class="nav-item {% if urlname == 'lista_ventas_facturacion' %}active-indicator{% endif %}">
+            <a class="nav-link {% if urlname == 'lista_ventas_facturacion' %}active{% endif %}"
+               href="{% url 'lista_ventas_facturacion' %}">
+              <i class="fas fa-file-invoice-dollar text-secondary me-2"></i>
+              <span>Facturaciones</span>
+            </a>
+          </li>
+        </ul>
       </li>
       {% endif %}
 
@@ -328,23 +124,31 @@
 
         <ul class="nav flex-column nav-submenu">
           <li class="nav-item {% if 'matriculas/lista_matriculas' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'matriculas/lista_matriculas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/matriculas/lista_matriculas/">
+            <a class="nav-link {% if 'matriculas/lista_matriculas' in request.path %}active{% endif %}" href="{% url 'lista_matriculas' %}">
               <i class="fas fa-list-check text-secondary me-2"></i>
               <span>Lista de Matrículas</span>
             </a>
           </li>
 
           <li class="nav-item {% if 'matriculas/listaPreMatriculas' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'matriculas/listaPreMatriculas' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/matriculas/listaPreMatriculas">
+            <a class="nav-link {% if 'matriculas/listaPreMatriculas' in request.path %}active{% endif %}" href="{% url 'lista_prematriculas' %}">
               <i class="fas fa-clipboard-list text-secondary me-2"></i>
               <span>Lista de PreMatrículas</span>
             </a>
           </li>
 
           <li class="nav-item {% if 'matriculas/solicitudes/cambio-beneficiario' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'matriculas/solicitudes/cambio-beneficiario' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/matriculas/solicitudes/cambio-beneficiario">
+            <a class="nav-link {% if 'matriculas/solicitudes/cambio-beneficiario' in request.path %}active{% endif %}" href="{% url 'lista_solicitudes_cambio' %}">
               <i class="fas fa-random text-secondary me-2"></i>
               <span>Solicitud de Matrícula</span>
+            </a>
+          </li>
+
+          <li class="nav-item {% if 'certificados/san-marcos' in request.path %}active-indicator{% endif %}">
+            <a class="nav-link {% if 'certificados/san-marcos' in request.path %}active{% endif %}"
+               href="{% url 'certificados_san_marcos' %}">
+              <i class="fas fa-certificate text-secondary me-2"></i>
+              <span>Certificado San Marcos</span>
             </a>
           </li>
         </ul>
@@ -353,17 +157,17 @@
 
       {% if not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'despacho' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'despacho' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/despacho/aplicar/">
+        <a class="nav-link {% if 'despacho' in request.path %}active{% endif %}" href="{% url 'aplicar_despachos' %}">
           <i class="fas fa-truck"></i>
           <span>Despachos</span>
         </a>
       </li>
       {% endif %}
 
-      {% if not is_vendor or is_admin or request.user|has_group_id:5 %}
+      {% if not is_vendor or is_admin or is_assistant_admin or request.user|has_group_id:5 %}
       <li class="nav-item movimientos-menu {% if 'movimientos' in request.path %}show-submenu active-indicator{% endif %}">
         <div class="d-flex align-items-center justify-content-between">
-          <a class="nav-link {% if 'movimientos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/">
+          <a class="nav-link {% if 'movimientos' in request.path %}active{% endif %}" href="{% url 'movimientos:movimientos_dashboard' %}">
             <i class="fas fa-exchange-alt"></i>
             <span>Movimientos</span>
           </a>
@@ -373,25 +177,25 @@
         </div>
         <ul class="nav flex-column nav-submenu">
           <li class="nav-item {% if 'movimientos/proveedores' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'movimientos/proveedores' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/proveedores">
+            <a class="nav-link {% if 'movimientos/proveedores' in request.path %}active{% endif %}" href="{% url 'movimientos:movimientos_proveedores' %}">
               <i class="fas fa-user-tie text-secondary me-2"></i>
               <span>Proveedores</span>
             </a>
           </li>
           <li class="nav-item {% if 'movimientos/locales-ubicaciones' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'movimientos/locales-ubicaciones' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/locales-ubicaciones">
+            <a class="nav-link {% if 'movimientos/locales-ubicaciones' in request.path %}active{% endif %}" href="{% url 'movimientos:movimientos_locales_ubicaciones' %}">
               <i class="fas fa-building text-secondary me-2"></i>
               <span>Locales & Ubicaciones</span>
             </a>
           </li>
           <li class="nav-item {% if 'movimientos/motivos' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'movimientos/motivos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/motivos">
+            <a class="nav-link {% if 'movimientos/motivos' in request.path %}active{% endif %}" href="{% url 'movimientos:movimientos_motivos' %}">
               <i class="fas fa-tags text-secondary me-2"></i>
               <span>Motivos</span>
             </a>
           </li>
           <li class="nav-item {% if 'movimientos/traslados-internos' in request.path %}active-indicator{% endif %}">
-            <a class="nav-link {% if 'movimientos/traslados-internos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/traslados-internos">
+            <a class="nav-link {% if 'movimientos/traslados-internos' in request.path %}active{% endif %}" href="{% url 'movimientos:movimientos_traslados' %}">
               <i class="fas fa-dolly text-secondary me-2"></i>
               <span>Traslados internos</span>
             </a>
@@ -400,20 +204,17 @@
       </li>
       {% endif %}
 
-      {# TESORERÍA - Grupo 5 o Admin #}
-      {% if request.user|has_group_id:5 or is_admin %}
+      {% if request.user|has_group_id:5 or is_admin or is_assistant_admin %}
       <li class="nav-item {% if 'treasury' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/treasury/pagos-pendientes/">
+        <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{% url 'lista_pagos_pendientes' %}">
           <i class="fas fa-money-check-alt"></i>
           <span>Tesorería</span>
         </a>
       </li>
-
-
       {% endif %}
 
-      <li class="nav-item">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/">
+      <li class="nav-item {% if request.path == '/' %}active-indicator{% endif %}">
+        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
           <i class="fas fa-user"></i>
           <span>Perfil</span>
         </a>
@@ -430,13 +231,14 @@
       </li>
 
       <li class="nav-item bottom">
-        <a class="nav-link" href="{{ MAIN_APP_URL }}/salir/">
+        <a class="nav-link" href="{% url 'logout' %}">
           <i class="fas fa-sign-out-alt"></i>
           <span>Salir</span>
         </a>
       </li>
     </ul>
   </aside>
+
   {% endwith %}
 
   <!-- Notification Offcanvas -->
@@ -466,7 +268,7 @@
     </div>
 
     <div class="p-2 border-top bg-white text-center">
-      <a href="{{ MAIN_APP_URL }}/notificaciones/historial/" class="btn btn-sm btn-outline-primary w-100">
+      <a href="{% url 'notifications:notification_history' %}" class="btn btn-sm btn-outline-primary w-100">
         <i class="fas fa-history me-1"></i> Ver historial completo
       </a>
     </div>
@@ -524,81 +326,63 @@
     #notifBadge.d-none { display: none !important; }
 
     /* =========================================================
-       TOASTS GLOBAL (Despachos + Prematrículas) - COMPACTOS
+       TOASTS GLOBAL (Despachos + Prematrículas)
     ========================================================= */
-    .toast-stack,
-    #toastStack.toast-stack {
+    .toast-stack {
       position: fixed;
-      top: 14px;
-      right: 14px;
+      top: 16px;
+      right: 16px;
       z-index: 50000;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: min(280px, calc(100vw - 28px));
-      pointer-events: none; /* click-through en el stack */
+      width: min(320px, calc(100vw - 32px));
+      pointer-events: none;
     }
 
-    #toastStack .gob-toast,
-    .toast-stack .gob-toast {
+    .gob-toast {
       pointer-events: auto;
-      background: #ffffff;
-      border: 1px solid rgba(148,163,184,0.2);
-      border-radius: 10px;
-      box-shadow: 0 10px 22px rgba(15,23,42,0.12);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148,163,184,0.35);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
       overflow: hidden;
-      transform: translateY(-5px);
+      transform: translateY(-6px);
       opacity: 0;
       transition: transform .18s ease, opacity .18s ease;
-      font-family: 'Montserrat','Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    #toastStack .gob-toast.show,
-    .toast-stack .gob-toast.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
+    .gob-toast.show { transform: translateY(0); opacity: 1; }
 
-    #toastStack .gob-toast .head,
-    .toast-stack .gob-toast .head {
+    .gob-toast .head {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      padding: 9px 10px 7px 10px;
+      gap: 10px;
+      padding: 10px 10px 8px 10px;
     }
 
-    #toastStack .gob-toast .icon,
-    .toast-stack .gob-toast .icon {
-      width: 30px;
-      height: 30px;
+    .gob-toast .icon {
+      width: 32px;
+      height: 32px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex: 0 0 30px;
+      flex: 0 0 32px;
       font-size: 0.95rem;
     }
-    #toastStack .gob-toast.toast-warning .icon,
-    .toast-stack .gob-toast.toast-warning .icon { background: rgba(245,197,68,0.25); color: #b45309; }
-    #toastStack .gob-toast.toast-info .icon,
-    .toast-stack .gob-toast.toast-info .icon { background: rgba(59,130,246,0.18); color: #1d4ed8; }
+    .gob-toast.toast-warning .icon { background: rgba(245,197,68,0.25); color: #b45309; }
+    .gob-toast.toast-info .icon { background: rgba(59,130,246,0.18); color: #1d4ed8; }
 
-    #toastStack .gob-toast .content-toast,
-    .toast-stack .gob-toast .content-toast,
-    #toastStack .gob-toast .content,
-    .toast-stack .gob-toast .content { flex: 1; min-width: 0; }
-    #toastStack .gob-toast .title,
-    #toastStack .gob-toast .title-toast,
-    .toast-stack .gob-toast .title,
-    .toast-stack .gob-toast .title-toast {
-      font-weight: 800;
+    .gob-toast .toast-content { flex: 1; min-width: 0; }
+    .gob-toast .title-toast {
+      font-weight: 700;
       font-size: 0.85rem;
       color: #0f172a;
-      margin: 0 0 4px 0;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
+      margin: 0 0 2px 0;
+      line-height: 1.2;
     }
-    #toastStack .gob-toast .msg,
-    .toast-stack .gob-toast .msg {
+    .gob-toast .msg {
       font-size: 0.78rem;
       color: #475569;
       margin: 0;
@@ -609,65 +393,34 @@
       overflow: hidden;
     }
 
-    #toastStack .gob-toast .close-btn,
-    .toast-stack .gob-toast .close-btn {
+    .gob-toast .close-btn {
       border: 0;
       background: transparent;
       color: #64748b;
-      padding: 2px 4px;
-      border-radius: 7px;
+      padding: 3px 5px;
+      border-radius: 8px;
       line-height: 1;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       margin-left: 4px;
     }
-    #toastStack .gob-toast .close-btn:hover,
-    .toast-stack .gob-toast .close-btn:hover { background: rgba(148,163,184,0.18); color: #334155; }
+    .gob-toast .close-btn:hover { background: rgba(148,163,184,0.18); color: #334155; }
 
-    #toastStack .gob-toast .actions,
-    .toast-stack .gob-toast .actions {
+    .gob-toast .actions {
       display: flex;
       gap: 6px;
-      padding: 0 10px 10px 44px;
+      padding: 0 10px 10px 52px;
       flex-wrap: wrap;
     }
-    #toastStack .gob-toast .actions a,
-    #toastStack .gob-toast .actions button,
-    .toast-stack .gob-toast .actions a,
-    .toast-stack .gob-toast .actions button {
-      border-radius: 12px;
-      font-size: 0.74rem;
+    .gob-toast .actions a,
+    .gob-toast .actions button {
+      border-radius: 999px;
+      font-size: 0.72rem;
       padding: 5px 9px;
-      line-height: 1.0;
-      box-shadow: 0 5px 12px rgba(25,59,89,0.12);
-      border-width: 1px !important;
+      line-height: 1.1;
     }
 
-    #toastStack .gob-toast .actions .btn-warning,
-    .toast-stack .gob-toast .actions .btn-warning {
-      background: #f5c544;
-      border-color: #f5c544;
-      color: #4a2f00;
-    }
-    #toastStack .gob-toast .actions .btn-outline-secondary,
-    .toast-stack .gob-toast .actions .btn-outline-secondary {
-      background: #fff;
-      color: #475569;
-      border-color: #cbd5e1;
-    }
-    #toastStack .gob-toast .actions .btn-primary,
-    .toast-stack .gob-toast .actions .btn-primary {
-      background: #193b59;
-      border-color: #193b59;
-      color: #fff;
-    }
-
-    #toastStack .gob-toast .progress,
-    .toast-stack .gob-toast .progress {
-      height: 2px;
-      background: rgba(148,163,184,0.2);
-    }
-    #toastStack .gob-toast .progress > span,
-    .toast-stack .gob-toast .progress > span {
+    .gob-toast .progress { height: 2px; background: rgba(148,163,184,0.25); }
+    .gob-toast .progress > span {
       display: block;
       height: 100%;
       width: 100%;
@@ -675,18 +428,16 @@
       transform: scaleX(1);
       transition: transform linear;
     }
-    #toastStack .gob-toast.toast-warning .progress > span,
-    .toast-stack .gob-toast.toast-warning .progress > span { background: rgba(245,197,68,0.9); }
-    #toastStack .gob-toast.toast-info .progress > span,
-    .toast-stack .gob-toast.toast-info .progress > span { background: rgba(59,130,246,0.85); }
+    .gob-toast.toast-warning .progress > span { background: rgba(245,197,68,0.9); }
+    .gob-toast.toast-info .progress > span { background: rgba(59,130,246,0.85); }
 
     @media (max-width: 520px) {
       .toast-stack { left: 16px; right: 16px; width: auto; }
-      .toast-stack .gob-toast .actions { padding-left: 10px; }
+      .gob-toast .actions { padding-left: 10px; }
     }
 
     /* =========================================================
-       SIDEBAR UI (mantengo tu estética)
+       SIDEBAR UI
     ========================================================= */
     .sidebar > .nav > .nav-item > .nav-link {
       color: #fff;
@@ -698,7 +449,9 @@
       transition: background 0.2s ease, color 0.2s ease;
     }
 
-    .matriculas-menu > .d-flex > .nav-link {
+    /* ✅ Padre de submenú: Matrículas + Ventas */
+    .matriculas-menu > .d-flex > .nav-link,
+    .ventas-menu > .d-flex > .nav-link {
       color: #fff;
       border-radius: 12px;
       padding: 12px 14px 12px 16px;
@@ -707,7 +460,8 @@
       gap: 12px;
       transition: background 0.2s ease, color 0.2s ease;
     }
-    .matriculas-menu > .d-flex > .nav-link:hover {
+    .matriculas-menu > .d-flex > .nav-link:hover,
+    .ventas-menu > .d-flex > .nav-link:hover {
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
     }
@@ -734,19 +488,14 @@
     }
 
     .movimientos-menu .d-flex,
-    .matriculas-menu .d-flex {
+    .matriculas-menu .d-flex,
+    .ventas-menu .d-flex {
       width: 100%;
       gap: 10px;
       padding-right: 10px;
     }
 
-    .movimientos-menu .toggle-submenu {
-      margin-right: 0.35rem;
-      color: #fff;
-      opacity: 1;
-      flex-shrink: 0;
-      padding: 0 0.25rem;
-    }
+    .movimientos-menu .toggle-submenu { margin-right: 0.35rem; color: #fff; opacity: 1; flex-shrink: 0; padding: 0 0.25rem; }
 
     .movimientos-menu .nav-link {
       display: flex;
@@ -793,7 +542,8 @@
     .toggle-submenu:focus i { color: #f5c544; }
 
     .movimientos-menu.show-submenu .toggle-submenu i,
-    .matriculas-menu.show-submenu .toggle-submenu i { transform: rotate(180deg); }
+    .matriculas-menu.show-submenu .toggle-submenu i,
+    .ventas-menu.show-submenu .toggle-submenu i { transform: rotate(180deg); }
 
     .sidebar[data-collapsed] .toggle-submenu,
     body.sidebar-collapsed .toggle-submenu { display: none !important; }
@@ -815,7 +565,8 @@
     }
 
     .movimientos-menu > .d-flex,
-    .matriculas-menu > .d-flex {
+    .matriculas-menu > .d-flex,
+    .ventas-menu > .d-flex {
       position: relative;
       overflow: visible;
       border-radius: 12px;
@@ -826,7 +577,9 @@
     .movimientos-menu.active-indicator > .d-flex,
     .movimientos-menu.show-submenu > .d-flex,
     .matriculas-menu.active-indicator > .d-flex,
-    .matriculas-menu.show-submenu > .d-flex {
+    .matriculas-menu.show-submenu > .d-flex,
+    .ventas-menu.active-indicator > .d-flex,
+    .ventas-menu.show-submenu > .d-flex {
       background: rgba(255, 255, 255, 0.12);
       border-radius: 12px;
       overflow: visible;
@@ -836,7 +589,8 @@
     }
 
     .movimientos-menu > .d-flex:hover,
-    .matriculas-menu > .d-flex:hover {
+    .matriculas-menu > .d-flex:hover,
+    .ventas-menu > .d-flex:hover {
       background: rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       overflow: visible;
@@ -867,6 +621,13 @@
       const menuItemMat = document.querySelector(".matriculas-menu");
       const matriculasTrigger = document.getElementById("matriculasTrigger");
 
+      // ===========================
+      // SUBMENU VENTAS
+      // ===========================
+      const menuToggleVentas = document.querySelector(".ventas-menu .toggle-submenu");
+      const menuItemVentas = document.querySelector(".ventas-menu");
+      const ventasTrigger = document.getElementById("ventasTrigger");
+
       const updateSidebarCollapsedState = () => {
         if (!sidebar) return;
         const width = sidebar.getBoundingClientRect().width;
@@ -875,6 +636,7 @@
           sidebar.setAttribute("data-collapsed", "true");
           menuItem?.classList.remove("show-submenu");
           menuItemMat?.classList.remove("show-submenu");
+          menuItemVentas?.classList.remove("show-submenu");
         } else {
           sidebar.removeAttribute("data-collapsed");
         }
@@ -926,12 +688,40 @@
         menuItemMat?.classList.toggle("show-submenu");
       });
 
+      // Toggle Ventas (flecha)
+      menuToggleVentas?.addEventListener("click", (event) => {
+        const isCollapsed =
+          document.body.classList.contains("sidebar-collapsed") ||
+          sidebar?.classList.contains("collapsed") ||
+          sidebar?.hasAttribute("data-collapsed");
+        if (isCollapsed) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        menuItemVentas?.classList.toggle("show-submenu");
+      });
+
+      // Toggle Ventas (click en "Ventas")
+      ventasTrigger?.addEventListener("click", (event) => {
+        const isCollapsed =
+          document.body.classList.contains("sidebar-collapsed") ||
+          sidebar?.classList.contains("collapsed") ||
+          sidebar?.hasAttribute("data-collapsed");
+        if (isCollapsed) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        menuItemVentas?.classList.toggle("show-submenu");
+      });
+
       // ===========================
       // NOTIFICACIONES (OFFCANVAS)
       // ===========================
-      const NOTIF_listUrl = "{{ MAIN_APP_URL }}/notificaciones/api/list/";
-      const NOTIF_readUrl = (id) => `{{ MAIN_APP_URL }}/notificaciones/api/read/${id}/`;
-      const NOTIF_readAllUrl = "{{ MAIN_APP_URL }}/notificaciones/api/read-all/";
+      const NOTIF_listUrl = "/notificaciones/api/list/";
+      const NOTIF_readUrl = (id) => `/notificaciones/api/read/${id}/`;
+      const NOTIF_readAllUrl = "/notificaciones/api/read-all/";
 
       const badge = document.getElementById("notifBadge");
       const listContainer = document.getElementById("notifList");
@@ -1009,10 +799,7 @@
 
       const fetchNotifications = async () => {
         try {
-          const res = await fetch(NOTIF_listUrl, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'include'
-          });
+          const res = await fetch(NOTIF_listUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
           if (!res.ok) return;
           const data = await res.json();
 
@@ -1036,20 +823,13 @@
             lastUnreadCount = data.unread_count;
             firstLoad = false;
           }
+
           renderList(data.notifications, data.unread_count);
         } catch (e) { console.warn("Error fetching notifs:", e); }
       };
 
       fetchNotifications();
       setInterval(fetchNotifications, 30000);
-
-      // Normaliza URLs de notificación para que las rutas relativas apunten a la app principal
-      const normalizeNotifUrl = (url) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const base = "{{ MAIN_APP_URL }}".replace(/\/$/, '');
-        return base ? base + url : url;
-      };
 
       const myOffcanvas = document.getElementById('notifOffcanvas');
       myOffcanvas?.addEventListener('show.bs.offcanvas', fetchNotifications);
@@ -1059,19 +839,14 @@
         try {
           await fetch(NOTIF_readUrl(id), {
             method: 'POST',
-            mode: 'cors',
-            credentials: 'include',
-            headers: {
-              'X-CSRFToken': csrftoken,
-              'Content-Type': 'application/json'
-            }
+            mode: 'same-origin',
+            headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
           });
 
           fetchNotifications();
 
-          const finalUrl = normalizeNotifUrl(url);
-          if (finalUrl && finalUrl !== 'null' && finalUrl !== 'None' && finalUrl.trim() !== "") {
-            window.location.href = finalUrl;
+          if (url && url !== 'null' && url !== 'None' && url.trim() !== "") {
+            window.location.href = url;
           }
         } catch(e) { console.error("Exception marking read", e); }
       };
@@ -1081,12 +856,8 @@
         try {
           await fetch(NOTIF_readAllUrl, {
             method: 'POST',
-            mode: 'cors',
-            credentials: 'include',
-            headers: {
-              'X-CSRFToken': csrftoken,
-              'Content-Type': 'application/json'
-            }
+            mode: 'same-origin',
+            headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
           });
           fetchNotifications();
         } catch(e) { console.error(e); }
@@ -1112,13 +883,9 @@
 
         const csrftoken = getCookie('csrftoken');
         try {
-          const res = await fetch('{{ MAIN_APP_URL }}/notificaciones/api/clear/', {
+          const res = await fetch('/notificaciones/api/clear/', {
             method: 'POST',
-            credentials: 'include',
-            headers: {
-              'X-CSRFToken': csrftoken,
-              'Content-Type': 'application/json'
-            }
+            headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
           });
           const data = await res.json();
           if (data.success) fetchNotifications();
@@ -1127,24 +894,20 @@
     });
   </script>
 
+  <!-- Script del sidebar -->
+  <script src="{% static 'js2/_sidebar.js' %}?v=8"></script>
 
   <script>
     // ========================================
     // Sistema Global de Notificaciones (Toasts)
-    // - Despachos pendientes
-    // - Prematrículas (vacantes) pendientes
     // ========================================
+    const POLLING_INTERVAL = 5 * 60 * 1000;
+    const DISPATCH_PENDING_URL = "/notificaciones/api/pending-dispatches/";
+    const PM_PENDING_URL = "/notificaciones/api/pending-prematriculas/";
 
-    const POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutos
-
-    // ✅ ENDPOINTS (ajusta solo si tus urls son distintas)
-    const DISPATCH_PENDING_URL = "{{ MAIN_APP_URL }}/notificaciones/api/pending-dispatches/";
-    const PM_PENDING_URL = "{{ MAIN_APP_URL }}/notificaciones/api/pending-prematriculas/";
-
-    // ✅ UI stack para no saturar
     const toastStack = document.getElementById("toastStack");
     const MAX_TOASTS = 3;
-    const TOAST_TTL_MS = 22000; // 22s (menos saturación)
+    const TOAST_TTL_MS = 22000;
 
     function ensureToastStack() {
       if (toastStack) return toastStack;
@@ -1166,11 +929,8 @@
 
     function createGobToast({ id, kind, title, message, url }) {
       const stack = ensureToastStack();
-
-      // Evita duplicados visuales por sesión
       const key = `toast_shown_${id}`;
       if (sessionStorage.getItem(key)) return;
-
       sessionStorage.setItem(key, "1");
 
       trimToastStack();
@@ -1184,12 +944,11 @@
 
       const safeTitle = (title || "").toString();
       const safeMsg = (message || "").toString();
-      const finalUrl = normalizeNotifUrl(url);
 
       toast.innerHTML = `
-       <div class="head">
+        <div class="head">
           <div class="icon">${iconHtml}</div>
-          <div class="content">
+          <div class="toast-content">
             <div class="title-toast">${safeTitle}</div>
             <p class="msg">${safeMsg}</p>
           </div>
@@ -1199,9 +958,9 @@
         </div>
 
         <div class="actions">
-          ${finalUrl ? `
+          ${url ? `
             <a class="btn btn-sm ${kind === "warning" ? "btn-warning" : "btn-primary"}"
-               href="${finalUrl}"
+               href="${url}"
                onclick="markNotificationAsRead(${id});">
               ${kind === "warning" ? "Ver despacho" : "Ver prematrícula"}
             </a>
@@ -1215,16 +974,10 @@
       `;
 
       stack.prepend(toast);
-
-      // show animation
       requestAnimationFrame(() => toast.classList.add("show"));
 
-      // close
-      toast.querySelector(".close-btn")?.addEventListener("click", () => {
-        toast.remove();
-      });
+      toast.querySelector(".close-btn")?.addEventListener("click", () => toast.remove());
 
-      // auto close + progress bar
       const bar = toast.querySelector(".progress > span");
       if (bar) {
         bar.style.transitionDuration = `${TOAST_TTL_MS}ms`;
@@ -1233,7 +986,6 @@
       setTimeout(() => { toast.remove(); }, TOAST_TTL_MS);
     }
 
-    // Helper CSRF
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -1249,17 +1001,12 @@
       return cookieValue;
     }
 
-    // Marcar notificación como leída (reutiliza tu endpoint)
     async function markNotificationAsRead(notifId) {
       try {
         const csrftoken = getCookie('csrftoken');
-        await fetch(`{{ MAIN_APP_URL }}/notificaciones/api/read/${notifId}/`, {
+        await fetch(`/notificaciones/api/read/${notifId}/`, {
           method: 'POST',
-          credentials: 'include',
-          headers: {
-            'X-CSRFToken': csrftoken,
-            'Content-Type': 'application/json'
-          }
+          headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
         });
       } catch (error) {
         console.error('Error al marcar notificación:', error);
@@ -1267,12 +1014,9 @@
     }
     window.markNotificationAsRead = markNotificationAsRead;
 
-    // -------------------------------
-    // Polling: Despachos
-    // -------------------------------
     async function checkPendingDispatches() {
       try {
-        const response = await fetch(DISPATCH_PENDING_URL, { credentials: 'include' });
+        const response = await fetch(DISPATCH_PENDING_URL);
         if (!response.ok) return;
         const data = await response.json();
 
@@ -1292,12 +1036,9 @@
       }
     }
 
-    // -------------------------------
-    // Polling: Prematrículas
-    // -------------------------------
     async function checkPendingPreMatriculas() {
       try {
-        const response = await fetch(PM_PENDING_URL, { credentials: 'include' });
+        const response = await fetch(PM_PENDING_URL);
         if (!response.ok) return;
         const data = await response.json();
 
@@ -1318,7 +1059,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Para no saturar: valida cada 5 min usando localStorage (misma estrategia que tenías)
       const now = Date.now();
       const fiveMinutes = 5 * 60 * 1000;
 
