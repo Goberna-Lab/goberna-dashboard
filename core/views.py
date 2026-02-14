@@ -21,10 +21,19 @@ try:
 except ImportError:
     openpyxl = None
 
+
+ADMIN_GROUP_IDS = (2, 6)
+
+
+def _is_admin_user(user) -> bool:
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    return bool(user.is_superuser or user.groups.filter(id__in=ADMIN_GROUP_IDS).exists())
+
 @login_required
 def home_dashboard(request):
     """Dashboard de ventas por usuario actual con opción de exportar reportes."""
-    is_admin = request.user.groups.filter(id=2).exists()
+    is_admin = _is_admin_user(request.user)
     
     # Base querysets
     if is_admin:
