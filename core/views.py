@@ -22,7 +22,7 @@ except ImportError:
     openpyxl = None
 
 
-ADMIN_GROUP_IDS = (2, 6)
+ADMIN_GROUP_IDS = (2,)
 
 
 def _is_admin_user(user) -> bool:
