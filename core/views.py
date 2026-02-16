@@ -22,13 +22,18 @@ except ImportError:
     openpyxl = None
 
 
+DASHBOARD_GLOBAL_USER_IDS = {7, 8, 35}
 ADMIN_GROUP_IDS = (2,)
 
 
 def _is_admin_user(user) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    return bool(user.is_superuser or user.groups.filter(id__in=ADMIN_GROUP_IDS).exists())
+    return bool(
+        user.is_superuser
+        or user.id in DASHBOARD_GLOBAL_USER_IDS
+        or user.groups.filter(id__in=ADMIN_GROUP_IDS).exists()
+    )
 
 @login_required
 def home_dashboard(request):
