@@ -972,6 +972,15 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "@vercel/analytics": "{% static 'vendor/vercel/analytics/index.mjs' %}",
+        "@vercel/speed-insights": "{% static 'vendor/vercel/speed-insights/index.mjs' %}"
+      }
+    }
+  </script>
+  <script type="module" src="{% static 'js/vercel-insights.js' %}"></script>
   <script>
     // Variable global para links externos a la app principal
     // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
