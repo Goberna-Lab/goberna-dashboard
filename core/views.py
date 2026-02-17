@@ -24,6 +24,13 @@ except ImportError:
 
 DASHBOARD_GLOBAL_USER_IDS = {7, 8, 35}
 ADMIN_GROUP_IDS = (2,)
+MEDIO_LABELS = {
+    "organico": "Orgánico",
+    "pagado": "Pagado",
+    "referente": "Referente",
+    "remarketing": "Remarketing",
+    "postventa": "Postventa",
+}
 
 
 def _is_admin_user(user) -> bool:
@@ -34,6 +41,13 @@ def _is_admin_user(user) -> bool:
         or user.id in DASHBOARD_GLOBAL_USER_IDS
         or user.groups.filter(id__in=ADMIN_GROUP_IDS).exists()
     )
+
+
+def _medio_label(value: str) -> str:
+    key = (value or "").strip().lower()
+    if not key:
+        return "Sin medio"
+    return MEDIO_LABELS.get(key, key.replace("_", " ").title())
 
 @login_required
 def home_dashboard(request):
@@ -123,6 +137,10 @@ def home_dashboard(request):
         courses_labels = cached_stats.get("courses_labels", [])
         courses_data = cached_stats.get("courses_data", [])
         vendors_data = cached_stats.get("vendors_data", [])
+        country_labels = cached_stats.get("country_labels", [])
+        country_data = cached_stats.get("country_data", [])
+        medium_labels = cached_stats.get("medium_labels", [])
+        medium_data = cached_stats.get("medium_data", [])
     else:
         # CALCULAR
         try:
@@ -278,6 +296,55 @@ def home_dashboard(request):
         except Exception:
             vendors_data = []
 
+        # Ventas por país (basado en país del cliente; fallback a venta.pais)
+        try:
+            country_qs = ventas_qs.values(
+                "cliente__pais__nombre", "pais__nombre"
+            ).annotate(
+                total_ventas=Count("id"),
+                total_monto=Sum("monto_usd")
+            )
+
+            country_bucket = {}
+            for row in country_qs:
+                country_name = (row.get("cliente__pais__nombre") or row.get("pais__nombre") or "").strip() or "Sin país"
+                bucket = country_bucket.setdefault(country_name, {"count": 0, "amount": 0.0})
+                bucket["count"] += int(row.get("total_ventas") or 0)
+                bucket["amount"] += float(row.get("total_monto") or 0)
+
+            top_country = sorted(
+                country_bucket.items(),
+                key=lambda x: (-x[1]["count"], -x[1]["amount"], x[0])
+            )[:12]
+
+            country_labels = [k for k, _ in top_country]
+            country_data = [v["count"] for _, v in top_country]
+        except Exception:
+            country_labels = []
+            country_data = []
+
+        # Ventas por medio
+        try:
+            medium_qs = ventas_qs.values("medio").annotate(
+                total_ventas=Count("id")
+            )
+
+            medium_bucket = {}
+            for row in medium_qs:
+                label = _medio_label(row.get("medio"))
+                medium_bucket[label] = medium_bucket.get(label, 0) + int(row.get("total_ventas") or 0)
+
+            top_medium = sorted(
+                medium_bucket.items(),
+                key=lambda x: (-x[1], x[0])
+            )[:10]
+
+            medium_labels = [k for k, _ in top_medium]
+            medium_data = [v for _, v in top_medium]
+        except Exception:
+            medium_labels = []
+            medium_data = []
+
         ventas_chart_labels = [m["month"] for m in monthly]
         ventas_chart_data = [float(m["total"]) for m in monthly]
         
@@ -301,6 +368,10 @@ def home_dashboard(request):
             "courses_labels": courses_labels,
             "courses_data": courses_data,
             "vendors_data": vendors_data,
+            "country_labels": country_labels,
+            "country_data": country_data,
+            "medium_labels": medium_labels,
+            "medium_data": medium_data,
         }, 300)
 
     # API Carga Asíncrona
@@ -319,12 +390,15 @@ def home_dashboard(request):
         ventas_detalle = list(
             ventas_qs.values(
                 "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
-                "usuario_id", "usuario__username", "usuario__first_name", "usuario__last_name"
+                "usuario_id", "usuario__username", "usuario__first_name", "usuario__last_name",
+                "cliente__pais__nombre", "pais__nombre", "medio"
             )
         )
         for v in ventas_detalle:
             v["monto_total"] = v.pop("monto_usd")
             v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
+            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin país"
+            v["medio_label"] = _medio_label(v.get("medio"))
 
         cuotas_detalle = list(
             cuotas_qs.values(
@@ -412,6 +486,10 @@ def home_dashboard(request):
         "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
         "chart_courses_labels": json.dumps(courses_labels, cls=DjangoJSONEncoder),
         "chart_courses_data": json.dumps(courses_data, cls=DjangoJSONEncoder),
+        "chart_country_labels": json.dumps(country_labels, cls=DjangoJSONEncoder),
+        "chart_country_data": json.dumps(country_data, cls=DjangoJSONEncoder),
+        "chart_medium_labels": json.dumps(medium_labels, cls=DjangoJSONEncoder),
+        "chart_medium_data": json.dumps(medium_data, cls=DjangoJSONEncoder),
         "vendors_data": json.dumps(vendors_data, cls=DjangoJSONEncoder),
         # Variables extra para el template satélite
         "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
