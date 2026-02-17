@@ -204,6 +204,37 @@
       margin: 6px 0;
     }
     .multi-check-list { display: grid; gap: 2px; }
+    .multi-check-search {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #fff;
+      padding-bottom: 6px;
+    }
+    .multi-check-search input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 8px 10px 8px 32px;
+      font-size: 13px;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .multi-check-search input:focus {
+      outline: none;
+      border-color: #193b59;
+      box-shadow: 0 0 0 2px rgba(25, 59, 89, 0.14);
+      background: #fff;
+    }
+    .multi-check-search .icon {
+      position: absolute;
+      left: 11px;
+      top: 9px;
+      font-size: 12px;
+      color: #64748b;
+      pointer-events: none;
+    }
     .filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
     .status-pills {
       display: flex;
@@ -692,6 +723,10 @@
                 <details class="multi-check" id="filtroProductoDropdown">
                   <summary id="filtroProductoSummary">Todos los productos</summary>
                   <div class="multi-check-menu">
+                    <div class="multi-check-search">
+                      <i class="fas fa-search icon"></i>
+                      <input type="text" id="filtroProductoBuscar" placeholder="Buscar producto...">
+                    </div>
                     <label class="multi-check-row">
                       <input type="checkbox" id="filtroProductoAll" checked>
                       <span>Todos los productos</span>
@@ -1100,6 +1135,50 @@
       summary.textContent = summarizeMultiSelection(labels, defaultText);
     }
 
+    function normalizeSearchTerm(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function applyMultiSearchFilter(inputId, optionsId) {
+      const input = document.getElementById(inputId);
+      const optionsContainer = document.getElementById(optionsId);
+      if (!input || !optionsContainer) return;
+
+      const term = normalizeSearchTerm(input.value);
+      optionsContainer.querySelectorAll('.multi-check-row').forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"]');
+        const label = cb?.dataset.label || cb?.value || row.textContent || '';
+        const visible = !term || normalizeSearchTerm(label).includes(term);
+        row.style.display = visible ? '' : 'none';
+      });
+    }
+
+    function wireMultiSearch({ inputId, optionsId, dropdownId }) {
+      const input = document.getElementById(inputId);
+      const dropdown = document.getElementById(dropdownId);
+      if (!input) return;
+
+      input.addEventListener('input', () => {
+        applyMultiSearchFilter(inputId, optionsId);
+      });
+
+      dropdown?.addEventListener('toggle', () => {
+        if (dropdown.open) {
+          applyMultiSearchFilter(inputId, optionsId);
+          requestAnimationFrame(() => input.focus());
+          return;
+        }
+        if (input.value) {
+          input.value = '';
+          applyMultiSearchFilter(inputId, optionsId);
+        }
+      });
+    }
+
     function wireMultiFilterDropdown({ allId, optionsId, summaryId, defaultText }) {
       const allCheckbox = document.getElementById(allId);
       const optionsContainer = document.getElementById(optionsId);
@@ -1160,6 +1239,7 @@
       const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
       allCheckbox.checked = !hasAnySelected;
       updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
+      applyMultiSearchFilter('filtroProductoBuscar', 'filtroProductoOptions');
     }
 
     function buildCuotasFiltradas(ventasFil) {
@@ -2490,6 +2570,11 @@
       optionsId: 'filtroProductoOptions',
       summaryId: 'filtroProductoSummary',
       defaultText: 'Todos los productos',
+    });
+    wireMultiSearch({
+      inputId: 'filtroProductoBuscar',
+      optionsId: 'filtroProductoOptions',
+      dropdownId: 'filtroProductoDropdown',
     });
 
     initCharts();
