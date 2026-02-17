@@ -26,8 +26,34 @@ class Moneda(models.Model):
         managed = False
         db_table = 'tb_moneda'
 
+
+class Pais(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id_pais')
+    nombre = models.CharField(max_length=100, db_column='nombre_pais', unique=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_pais'
+
+
+class Cliente(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id_cliente')
+    pais = models.ForeignKey(
+        Pais, on_delete=models.DO_NOTHING,
+        db_column='id_pais', related_name='clientes_satelite'
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'tb_cliente'
+
 class Venta(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_venta')
+    cliente = models.ForeignKey(
+        Cliente, on_delete=models.DO_NOTHING,
+        db_column='codigo_cliente', related_name='ventas_satelite',
+        null=True, blank=True
+    )
     
     # Relación con User (auth_user existe en la db remota)
     usuario = models.ForeignKey(
@@ -41,6 +67,7 @@ class Venta(models.Model):
     )
 
     folio_venta = models.CharField(max_length=20, db_column='folio_venta', unique=True)
+    medio = models.CharField(max_length=25, db_column='medio_venta', null=True, blank=True)
     monto_total = models.DecimalField(max_digits=12, decimal_places=2, db_column='monto_total', default=0)
     
     ESTADO_CHOICES = [
@@ -58,6 +85,12 @@ class Venta(models.Model):
     radio_multiplicador_usado = models.DecimalField(
         max_digits=12, decimal_places=6,
         null=True, blank=True, db_column='radio_multiplicador_usado'
+    )
+
+    pais = models.ForeignKey(
+        Pais, on_delete=models.DO_NOTHING,
+        db_column='codigo_pais', related_name='ventas_satelite',
+        null=True, blank=True
     )
 
     fecha_venta = models.DateTimeField(db_column='fecha_venta')
