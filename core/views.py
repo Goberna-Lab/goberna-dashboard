@@ -259,16 +259,18 @@ def home_dashboard(request):
         # Asumimos misma DB o configuracion correcta de router.
         try:
             vendors_qs = ventas_qs.values(
-                'usuario__username', 'usuario__first_name', 'usuario__last_name'
+                'usuario_id', 'usuario__username', 'usuario__first_name', 'usuario__last_name'
             ).annotate(
                 total_ventas=Count('id'),
                 total_monto=Sum('monto_usd')
-            ).order_by('-total_ventas')[:20]
+            ).order_by('-total_ventas', '-total_monto')[:20]
             
             vendors_data = []
             for v in vendors_qs:
                 name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
                 vendors_data.append({
+                    "user_id": v['usuario_id'],
+                    "username": v['usuario__username'],
                     "name": name,
                     "count": v['total_ventas'],
                     "amount": float(v['total_monto'] or 0)
@@ -317,7 +319,7 @@ def home_dashboard(request):
         ventas_detalle = list(
             ventas_qs.values(
                 "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
-                "usuario__username", "usuario__first_name", "usuario__last_name"
+                "usuario_id", "usuario__username", "usuario__first_name", "usuario__last_name"
             )
         )
         for v in ventas_detalle:
