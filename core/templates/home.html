@@ -613,6 +613,14 @@
               </div>
             </div>
             <div class="filter-chip">
+              <i class="fas fa-box-open"></i>
+              <div class="filter-body">
+                <select id="filtroProducto">
+                  <option value="">Todos los productos</option>
+                </select>
+              </div>
+            </div>
+            <div class="filter-chip">
               <i class="fas fa-calendar-day"></i>
               <div class="filter-body">
                 <span class="filter-label">Desde</span>
@@ -924,6 +932,7 @@
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
+    const ventaProductosMap = new Map();
 
     const pad2 = (n) => String(n).padStart(2, '0');
     function getWeekKey(date) {
@@ -963,6 +972,45 @@
       return endOfDay
         ? new Date(y, m - 1, d, 23, 59, 59, 999)
         : new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+
+    function rebuildVentaProductosMap() {
+      ventaProductosMap.clear();
+      (detallesCategoria || []).forEach(d => {
+        const ventaId = String(d.venta_id || '');
+        const producto = String(d.producto__nombre_producto || '').trim();
+        if (!ventaId || !producto) return;
+        if (!ventaProductosMap.has(ventaId)) {
+          ventaProductosMap.set(ventaId, new Set());
+        }
+        ventaProductosMap.get(ventaId).add(producto);
+      });
+    }
+
+    function populateProductFilter() {
+      const select = document.getElementById('filtroProducto');
+      if (!select) return;
+
+      const currentVal = select.value;
+      const productos = new Set();
+      (detallesCategoria || []).forEach(d => {
+        const nombre = String(d.producto__nombre_producto || '').trim();
+        if (nombre) productos.add(nombre);
+      });
+
+      const sorted = Array.from(productos).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      select.innerHTML = '<option value="">Todos los productos</option>';
+      sorted.forEach(nombre => {
+        const opt = document.createElement('option');
+        opt.value = nombre;
+        opt.textContent = nombre;
+        select.appendChild(opt);
+      });
+
+      select.value = sorted.includes(currentVal) ? currentVal : '';
     }
 
     function buildCuotasFiltradas(ventasFil) {
@@ -1683,6 +1731,7 @@
       document.getElementById('filtroEstado').value = estado;
       document.getElementById('filtroEstado').value = estado;
       const vendedor = document.getElementById('filtroVendedor').value;
+      const producto = document.getElementById('filtroProducto').value;
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       
       const fechaDesde = parseInputDate(desde, false);
@@ -1695,6 +1744,10 @@
         if (fechaHasta && fecha > fechaHasta) return false;
         if (estado && String(v.estado) !== estado) return false;
         if (vendedor && String(v.usuario__username) !== vendedor) return false;
+        if (producto) {
+          const productosVenta = ventaProductosMap.get(String(v.id || ''));
+          if (!productosVenta || !productosVenta.has(producto)) return false;
+        }
         const folio = String(v.folio_venta || '').toLowerCase();
         if (texto && !folio.includes(texto)) return false;
         return true;
@@ -1768,8 +1821,13 @@
       if (topEl) topEl.innerText = formatearMonto(total);
       const topCount = document.getElementById('ventasFiltradasTop');
       if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
+
+      const productoSelect = document.getElementById('filtroProducto');
+      const productoLabel = productoSelect && producto
+        ? productoSelect.options[productoSelect.selectedIndex]?.text || producto
+        : '';
       
-      renderChipsResumen({ estado, desde, hasta, texto });
+      renderChipsResumen({ estado, desde, hasta, texto, producto: productoLabel });
       updateCharts(ventasFil);
       renderTabla(ventasFil);
       updatePrintHeader();
@@ -2127,8 +2185,10 @@
             ventasDetalle = data.ventas_detalle || [];
             cuotasDetalle = data.cuotas_detalle || [];
             detallesCategoria = data.detalles_categoria || [];
+            rebuildVentaProductosMap();
       
             populateVendorFilter(ventasDetalle);
+            populateProductFilter();
             populateMonthFilters();
             initCuotasPendientes();
             renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
@@ -2180,6 +2240,11 @@
       selectedBooksSort = filtroOrdenLibros.value === 'cantidad' ? 'cantidad' : 'monto';
       aplicarFiltros();
     });
+
+    const filtroProducto = document.getElementById('filtroProducto');
+    filtroProducto?.addEventListener('change', () => {
+      aplicarFiltros();
+    });
     
     document.getElementById('filtroBuscar').addEventListener('keyup', debounce(() => {
         aplicarFiltros();
@@ -2212,6 +2277,7 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroVendedor').value = '';
+      document.getElementById('filtroProducto').value = '';
       document.getElementById('filtroBuscar').value = '';
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
@@ -2240,6 +2306,7 @@
       if (!cont) return;
       const chips = [];
       if (filters.estado) chips.push(`<span class="summary-chip"><i class="fas fa-layer-group"></i> Estado: ${estadoLabels[filters.estado] || filters.estado}</span>`);
+      if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
       if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
