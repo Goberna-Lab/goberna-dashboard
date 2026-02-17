@@ -140,6 +140,70 @@
     }
     .filter-chip input:focus,
     .filter-chip select:focus { outline: none; box-shadow: none; }
+    .multi-check {
+      position: relative;
+      width: 100%;
+    }
+    .multi-check summary {
+      list-style: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      user-select: none;
+    }
+    .multi-check summary::-webkit-details-marker { display: none; }
+    .multi-check summary::after {
+      content: "\f078";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 11px;
+      color: #64748b;
+      transition: transform 0.15s ease;
+      flex: 0 0 auto;
+    }
+    .multi-check[open] summary::after { transform: rotate(180deg); }
+    .multi-check-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+      padding: 8px;
+      z-index: 90;
+      max-height: 240px;
+      overflow: auto;
+    }
+    .multi-check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #0f172a;
+      padding: 6px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .multi-check-row:hover { background: #f8fafc; }
+    .multi-check-row input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #193b59;
+      margin: 0;
+      flex: 0 0 auto;
+    }
+    .multi-check-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 6px 0;
+    }
+    .multi-check-list { display: grid; gap: 2px; }
     .filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
     .status-pills {
       display: flex;
@@ -607,17 +671,35 @@
             <div class="filter-chip">
               <i class="fas fa-user-tag"></i>
               <div class="filter-body">
-                <select id="filtroVendedor">
-                  <option value="">Todos los vendedores</option>
-                </select>
+                <span class="filter-label">Vendedores</span>
+                <details class="multi-check" id="filtroVendedorDropdown">
+                  <summary id="filtroVendedorSummary">Todos los vendedores</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroVendedorAll" checked>
+                      <span>Todos los vendedores</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroVendedorOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
               </div>
             </div>
             <div class="filter-chip">
               <i class="fas fa-box-open"></i>
               <div class="filter-body">
-                <select id="filtroProducto">
-                  <option value="">Todos los productos</option>
-                </select>
+                <span class="filter-label">Productos</span>
+                <details class="multi-check" id="filtroProductoDropdown">
+                  <summary id="filtroProductoSummary">Todos los productos</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroProductoAll" checked>
+                      <span>Todos los productos</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroProductoOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
               </div>
             </div>
             <div class="filter-chip">
@@ -659,26 +741,26 @@
         </div>
 
         <div class="chart-card">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-bullhorn text-primary"></i> Ventas por medio</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-bullhorn text-primary"></i> Ventas por medio</span>
+            <select id="filtroMedioMetric" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="cantidad" selected>Cantidad</option>
+              <option value="monto">Monto</option>
+            </select>
+          </div>
           <canvas id="chartVentasMedio" height="180"></canvas>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+          <div class="section-title d-flex align-items-center gap-2">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
-            <select id="filtroMesLibros" class="form-select form-select-sm" style="max-width: 200px;">
-              <option value="">Todos los meses</option>
-            </select>
           </div>
           <canvas id="chartBooks" height="180"></canvas>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+          <div class="section-title d-flex align-items-center gap-2">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</span>
-            <select id="filtroMesCursos" class="form-select form-select-sm" style="max-width: 200px;">
-              <option value="">Todos los meses</option>
-            </select>
           </div>
           <canvas id="chartCourses" height="180"></canvas>
         </div>
@@ -918,15 +1000,11 @@
     let chartVendorLineInst = null;
     let chartMode = 'monto'; // 'monto' | 'cantidad'
     let chartInterval = 'mes'; // 'mes' | 'semana' | 'dia'
-    // Filtros locales de mes para charts específicos
-    let selectedMesLibros = '';
-    let selectedMesCursos = '';
     let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedVentasMesMetric = 'monto'; // 'monto' | 'cantidad'
+    let selectedMedioMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
-    // Mapa venta_id -> fecha (Date) para filtrar por mes
-    const ventaFechaMap = new Map();
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
@@ -987,11 +1065,72 @@
       });
     }
 
-    function populateProductFilter() {
-      const select = document.getElementById('filtroProducto');
-      if (!select) return;
+    function getCheckedValues(containerId) {
+      const values = new Set();
+      const container = document.getElementById(containerId);
+      if (!container) return values;
+      container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        values.add(String(cb.value || '').trim());
+      });
+      return values;
+    }
 
-      const currentVal = select.value;
+    function getCheckedLabels(containerId) {
+      const labels = [];
+      const container = document.getElementById(containerId);
+      if (!container) return labels;
+      container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        const label = cb.dataset.label || cb.value;
+        if (label) labels.push(label);
+      });
+      return labels;
+    }
+
+    function summarizeMultiSelection(labels, emptyText = '') {
+      if (!labels || !labels.length) return emptyText;
+      if (labels.length === 1) return labels[0];
+      if (labels.length === 2) return `${labels[0]}, ${labels[1]}`;
+      return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
+    }
+
+    function updateMultiSummary(summaryId, containerId, defaultText) {
+      const summary = document.getElementById(summaryId);
+      if (!summary) return;
+      const labels = getCheckedLabels(containerId);
+      summary.textContent = summarizeMultiSelection(labels, defaultText);
+    }
+
+    function wireMultiFilterDropdown({ allId, optionsId, summaryId, defaultText }) {
+      const allCheckbox = document.getElementById(allId);
+      const optionsContainer = document.getElementById(optionsId);
+      if (!allCheckbox || !optionsContainer) return;
+
+      allCheckbox.addEventListener('change', () => {
+        if (!allCheckbox.checked) return;
+        optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.checked = false;
+        });
+        updateMultiSummary(summaryId, optionsId, defaultText);
+        aplicarFiltros();
+      });
+
+      optionsContainer.addEventListener('change', (evt) => {
+        const target = evt.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return;
+        if (target.checked) allCheckbox.checked = false;
+        const hasAny = optionsContainer.querySelector('input[type="checkbox"]:checked');
+        allCheckbox.checked = !hasAny;
+        updateMultiSummary(summaryId, optionsId, defaultText);
+        aplicarFiltros();
+      });
+    }
+
+    function populateProductFilter() {
+      const optionsContainer = document.getElementById('filtroProductoOptions');
+      const allCheckbox = document.getElementById('filtroProductoAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const prevSelected = getCheckedValues('filtroProductoOptions');
       const productos = new Set();
       (detallesCategoria || []).forEach(d => {
         const nombre = String(d.producto__nombre_producto || '').trim();
@@ -1002,15 +1141,25 @@
         a.localeCompare(b, 'es', { sensitivity: 'base' })
       );
 
-      select.innerHTML = '<option value="">Todos los productos</option>';
+      optionsContainer.innerHTML = '';
       sorted.forEach(nombre => {
-        const opt = document.createElement('option');
-        opt.value = nombre;
-        opt.textContent = nombre;
-        select.appendChild(opt);
+        const label = document.createElement('label');
+        label.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = nombre;
+        input.dataset.label = nombre;
+        input.checked = prevSelected.has(nombre);
+        const span = document.createElement('span');
+        span.textContent = nombre;
+        label.appendChild(input);
+        label.appendChild(span);
+        optionsContainer.appendChild(label);
       });
 
-      select.value = sorted.includes(currentVal) ? currentVal : '';
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
     }
 
     function buildCuotasFiltradas(ventasFil) {
@@ -1061,11 +1210,25 @@
         data: {
           labels: mediumLabels.length ? mediumLabels : ['Sin datos'],
           datasets: [{
+            label: 'Ventas',
             data: mediumData.length ? mediumData : [0],
             backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b']
           }]
         },
-        options: { plugins: { legend: legendDots } }
+        options: {
+          plugins: {
+            legend: legendDots,
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = Number(ctx.parsed || 0);
+                  if (selectedMedioMetric === 'monto') return `${ctx.label}: ${formatearMonto(value)}`;
+                  return `${ctx.label}: ${Math.round(value)}`;
+                }
+              }
+            }
+          }
+        }
       });
 
       const cuotasDataMap = Array.isArray(cuotasPorEstado) ? cuotasPorEstado : [0,0,0];
@@ -1251,14 +1414,7 @@
         });
     }
 
-    function passesMonthFilter(ventaId, selectedMonth) {
-        if (!selectedMonth) return true;
-        const fecha = ventaFechaMap.get(ventaId);
-        if (!fecha) return false;
-        return getMonthKey(fecha) === selectedMonth;
-    }
-
-    function updateBooksChart() {
+    function updateBooksChart(ventaIds) {
         if (!chartBooksInst) return;
         const detallesLibros = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
@@ -1267,7 +1423,8 @@
             const esEditorial = negocio.includes('editorial');
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
-            return passesMonthFilter(d.venta_id, selectedMesLibros);
+            if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            return true;
         });
         
         const booksMap = new Map();
@@ -1286,7 +1443,7 @@
         chartBooksInst.update();
     }
 
-    function updateBooksTable() {
+    function updateBooksTable(ventaIds) {
         const bookDetails = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
@@ -1294,7 +1451,8 @@
             const esEditorial = negocio.includes('editorial');
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
-            return passesMonthFilter(d.venta_id, selectedMesLibros);
+            if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            return true;
         });
         
         const booksTableMap = new Map();
@@ -1502,8 +1660,7 @@
         if (!chartCoursesInst) return;
         const detallesFil = detallesCategoria.filter(d => 
             (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6) &&
-            (!ventaIds || ventaIds.has(d.venta_id)) &&
-            passesMonthFilter(d.venta_id, selectedMesCursos)
+            (!ventaIds || ventaIds.has(d.venta_id))
         );
         
         const coursesMap = new Map();
@@ -1520,36 +1677,6 @@
         chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
         chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
         chartCoursesInst.update();
-    }
-
-    function populateMonthFilters() {
-        const meses = new Set();
-        ventasDetalle.forEach(v => {
-            const fecha = new Date(v.fecha_venta);
-            const key = getMonthKey(fecha);
-            if (key) meses.add(key);
-            if (!isNaN(fecha)) ventaFechaMap.set(v.id, fecha);
-        });
-        const sorted = Array.from(meses).sort().reverse(); // más reciente primero
-        const selects = [
-            { el: document.getElementById('filtroMesLibros'), state: 'libros' },
-            { el: document.getElementById('filtroMesCursos'), state: 'cursos' },
-        ];
-        selects.forEach(sel => {
-            if (!sel.el) return;
-            const current = sel.el.value;
-            sel.el.innerHTML = '<option value=\"\">Todos los meses</option>';
-            sorted.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                const [y, mo] = m.split('-');
-                const dt = new Date(Number(y), Number(mo)-1, 1);
-                const label = dt.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
-                opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-                sel.el.appendChild(opt);
-            });
-            sel.el.value = current && sorted.includes(current) ? current : '';
-        });
     }
 
     function updateCharts(ventasFil) {
@@ -1569,12 +1696,14 @@
 
       const countryMap = new Map();
       const mediumMap = new Map();
+      const useMediumAmount = selectedMedioMetric === 'monto';
       ventasFil.forEach(v => {
         const country = String(v.pais_cliente || '').trim() || 'Sin país';
         countryMap.set(country, (countryMap.get(country) || 0) + 1);
 
         const medio = v.medio_label || medioLabel(v.medio);
-        mediumMap.set(medio, (mediumMap.get(medio) || 0) + 1);
+        const medioValue = useMediumAmount ? parseFloat(v.monto_total || 0) : 1;
+        mediumMap.set(medio, (mediumMap.get(medio) || 0) + medioValue);
       });
 
       if (chartCountryInst) {
@@ -1591,6 +1720,7 @@
         const sortedMedia = Array.from(mediumMap.entries())
           .sort((a, b) => b[1] - a[1]);
 
+        chartMediumInst.data.datasets[0].label = useMediumAmount ? 'Monto (USD)' : 'Ventas';
         chartMediumInst.data.labels = sortedMedia.length ? sortedMedia.map(x => x[0]) : ['Sin datos'];
         chartMediumInst.data.datasets[0].data = sortedMedia.length ? sortedMedia.map(x => x[1]) : [0];
         chartMediumInst.update();
@@ -1630,8 +1760,8 @@
         chartCategoriasInst.update();
       }
 
-      // Update Books & Courses Charts (mes selectores dedicados)
-      updateBooksChart();
+      // Update Books & Courses Charts (siguen filtros superiores)
+      updateBooksChart(ventaIds);
       updateCoursesChart(ventaIds);
 
       // Update School Table (Categories 5 & 6)
@@ -1658,8 +1788,8 @@
           
       renderSchoolTable(schoolList);
 
-      // Update Books Table con filtro de mes dedicado
-      updateBooksTable();
+      // Update Books Table con filtros superiores
+      updateBooksTable(ventaIds);
 
       // Update Vendors Table
       const userMap = new Map();
@@ -1730,8 +1860,8 @@
       
       document.getElementById('filtroEstado').value = estado;
       document.getElementById('filtroEstado').value = estado;
-      const vendedor = document.getElementById('filtroVendedor').value;
-      const producto = document.getElementById('filtroProducto').value;
+      const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
+      const productosSeleccionados = getCheckedValues('filtroProductoOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       
       const fechaDesde = parseInputDate(desde, false);
@@ -1743,10 +1873,18 @@
         if (fechaDesde && fecha < fechaDesde) return false;
         if (fechaHasta && fecha > fechaHasta) return false;
         if (estado && String(v.estado) !== estado) return false;
-        if (vendedor && String(v.usuario__username) !== vendedor) return false;
-        if (producto) {
+        if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v.usuario__username || ''))) return false;
+        if (productosSeleccionados.size) {
           const productosVenta = ventaProductosMap.get(String(v.id || ''));
-          if (!productosVenta || !productosVenta.has(producto)) return false;
+          if (!productosVenta) return false;
+          let hasAnyProduct = false;
+          for (const producto of productosSeleccionados) {
+            if (productosVenta.has(producto)) {
+              hasAnyProduct = true;
+              break;
+            }
+          }
+          if (!hasAnyProduct) return false;
         }
         const folio = String(v.folio_venta || '').toLowerCase();
         if (texto && !folio.includes(texto)) return false;
@@ -1821,13 +1959,10 @@
       if (topEl) topEl.innerText = formatearMonto(total);
       const topCount = document.getElementById('ventasFiltradasTop');
       if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
-
-      const productoSelect = document.getElementById('filtroProducto');
-      const productoLabel = productoSelect && producto
-        ? productoSelect.options[productoSelect.selectedIndex]?.text || producto
-        : '';
+      const vendedoresLabel = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), '');
+      const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
       
-      renderChipsResumen({ estado, desde, hasta, texto, producto: productoLabel });
+      renderChipsResumen({ estado, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
       updateCharts(ventasFil);
       renderTabla(ventasFil);
       updatePrintHeader();
@@ -1848,13 +1983,11 @@
     }
     
     function populateVendorFilter(data) {
-        const select = document.getElementById('filtroVendedor');
-        if (!select) return;
-        
-        // Keep "All" option
-        const currentVal = select.value;
-        select.innerHTML = '<option value="">Todos los vendedores</option>';
-        
+        const optionsContainer = document.getElementById('filtroVendedorOptions');
+        const allCheckbox = document.getElementById('filtroVendedorAll');
+        if (!optionsContainer || !allCheckbox) return;
+
+        const prevSelected = getCheckedValues('filtroVendedorOptions');
         const vendors = new Map();
         data.forEach(v => {
             const username = v.usuario__username;
@@ -1864,18 +1997,26 @@
         
         // Sort by name
         const sorted = Array.from(vendors.entries()).sort((a,b) => a[1].localeCompare(b[1]));
-        
+
+        optionsContainer.innerHTML = '';
         sorted.forEach(([user, name]) => {
-            const opt = document.createElement('option');
-            opt.value = user;
-            opt.textContent = name;
-            select.appendChild(opt);
+          const label = document.createElement('label');
+          label.className = 'multi-check-row';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = user;
+          input.dataset.label = name;
+          input.checked = prevSelected.has(user);
+          const span = document.createElement('span');
+          span.textContent = name;
+          label.appendChild(input);
+          label.appendChild(span);
+          optionsContainer.appendChild(label);
         });
-        
-        // Restore selection if possible, else default
-        if (vendors.has(currentVal)) {
-            select.value = currentVal;
-        }
+
+        const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+        allCheckbox.checked = !hasAnySelected;
+        updateMultiSummary('filtroVendedorSummary', 'filtroVendedorOptions', 'Todos los vendedores');
 
         populateVendorHeatmap(vendors);
         populateYearFilter();
@@ -1922,13 +2063,11 @@
       const descEl = document.getElementById('printDesc');
       const userEl = document.getElementById('printUser');
       const dateEl = document.getElementById('printDate');
-      const vendorSelect = document.getElementById('filtroVendedor');
-      const vendorVal = vendorSelect?.value || '';
-      const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : '';
+      const vendorText = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), '');
 
       const baseTitle = vendorText ? `Dashboard de ${vendorText}` : 'Dashboard de ventas';
       if (titleEl) titleEl.textContent = baseTitle;
-      if (descEl) descEl.textContent = vendorText ? `Filtros activos: Vendedor ${vendorText}` : 'Resumen general de ventas y cuotas.';
+      if (descEl) descEl.textContent = vendorText ? `Filtros activos: Vendedores ${vendorText}` : 'Resumen general de ventas y cuotas.';
       if (userEl) userEl.textContent = `Generado por: {{ username }}`;
       if (dateEl) {
         const now = new Date();
@@ -2002,9 +2141,11 @@
         };
 
         // Datos base
-        const vendorSelect = document.getElementById('filtroVendedor');
-        const vendorVal = vendorSelect?.value || '';
-        const vendorText = vendorVal ? vendorSelect.options[vendorSelect.selectedIndex].text : 'General';
+        const vendorValues = Array.from(getCheckedValues('filtroVendedorOptions'));
+        const vendorText = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), 'General');
+        const vendorVal = vendorValues.length === 1
+          ? vendorValues[0].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
+          : '';
         const estadoVal = document.getElementById('filtroEstado').value;
         const estadoTxt = estadoVal ? (estadoLabels[estadoVal] || estadoVal) : 'Todos';
         const desde = document.getElementById('filtroDesde').value || '---';
@@ -2189,7 +2330,6 @@
       
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
-            populateMonthFilters();
             initCuotasPendientes();
             renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
             renderVendorLineChart();
@@ -2241,8 +2381,9 @@
       aplicarFiltros();
     });
 
-    const filtroProducto = document.getElementById('filtroProducto');
-    filtroProducto?.addEventListener('change', () => {
+    const filtroMedioMetric = document.getElementById('filtroMedioMetric');
+    filtroMedioMetric?.addEventListener('change', () => {
+      selectedMedioMetric = filtroMedioMetric.value === 'monto' ? 'monto' : 'cantidad';
       aplicarFiltros();
     });
     
@@ -2250,17 +2391,6 @@
         aplicarFiltros();
     }, 300));
 
-    // Selectores de mes para Libros y Cursos
-    const filtroMesLibros = document.getElementById('filtroMesLibros');
-    const filtroMesCursos = document.getElementById('filtroMesCursos');
-    filtroMesLibros?.addEventListener('change', () => {
-      selectedMesLibros = filtroMesLibros.value;
-      aplicarFiltros();
-    });
-    filtroMesCursos?.addEventListener('change', () => {
-      selectedMesCursos = filtroMesCursos.value;
-      aplicarFiltros();
-    });
     const heatmapSelect = document.getElementById('heatmapVendedor');
     heatmapSelect?.addEventListener('change', () => {
       renderHeatmap(heatmapSelect.value);
@@ -2276,12 +2406,18 @@
       document.getElementById('filtroDesde').value = '';
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
-      document.getElementById('filtroVendedor').value = '';
-      document.getElementById('filtroProducto').value = '';
       document.getElementById('filtroBuscar').value = '';
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
+      const vendedorAll = document.getElementById('filtroVendedorAll');
+      if (vendedorAll) vendedorAll.checked = true;
+      document.querySelectorAll('#filtroVendedorOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroVendedorSummary', 'filtroVendedorOptions', 'Todos los vendedores');
+      const productoAll = document.getElementById('filtroProductoAll');
+      if (productoAll) productoAll.checked = true;
+      document.querySelectorAll('#filtroProductoOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
       setEstadoChip('');
       aplicarFiltros();
     });
@@ -2306,6 +2442,7 @@
       if (!cont) return;
       const chips = [];
       if (filters.estado) chips.push(`<span class="summary-chip"><i class="fas fa-layer-group"></i> Estado: ${estadoLabels[filters.estado] || filters.estado}</span>`);
+      if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
@@ -2341,6 +2478,19 @@
         scopeLabel.innerText = IS_ADMIN ? 'Todas las ventas' : 'Solo tus ventas';
       }
     }
+
+    wireMultiFilterDropdown({
+      allId: 'filtroVendedorAll',
+      optionsId: 'filtroVendedorOptions',
+      summaryId: 'filtroVendedorSummary',
+      defaultText: 'Todos los vendedores',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroProductoAll',
+      optionsId: 'filtroProductoOptions',
+      summaryId: 'filtroProductoSummary',
+      defaultText: 'Todos los productos',
+    });
 
     initCharts();
     loadData();
