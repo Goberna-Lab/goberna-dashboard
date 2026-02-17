@@ -509,6 +509,22 @@
         </div>
         <div class="stat-card">
           <div>
+            <div class="stat-value" id="montoMesActualTop">$ 0.00</div>
+            <div class="stat-label">Vendido este mes</div>
+            <div class="stat-label" id="ventasMesActualTop">0 ventas este mes</div>
+          </div>
+          <span class="icon-badge"><i class="fas fa-calendar-days"></i></span>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-value" id="montoHoyTop">$ 0.00</div>
+            <div class="stat-label">Vendido hoy</div>
+            <div class="stat-label" id="ventasHoyTop">0 ventas hoy</div>
+          </div>
+          <span class="icon-badge warning"><i class="fas fa-clock"></i></span>
+        </div>
+        <div class="stat-card">
+          <div>
             <div class="stat-value" id="cuotasPendientes">-</div>
             <div class="stat-label">Cuotas pendientes</div>
           </div>
@@ -533,6 +549,7 @@
                <div id="metaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; border-radius: 4px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
              <div class="stat-label mt-1" style="font-size: 11px;">Progreso Mensual</div>
+             <div class="stat-label mt-1" id="metaProgressAmount" style="font-size: 12px; font-weight: 700;">$ 0.00 de $ 80000.00</div>
           </div>
         </div>
 
@@ -1695,15 +1712,34 @@
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
+      const currentDay = now.getDate();
+      let monthlyCount = 0;
+      let dailyCount = 0;
+
       const monthlyTotal = (ventasDetalle || []).reduce((acc, v) => {
         const dt = parseVentaDate(v.fecha_venta);
         if (!dt) return acc;
         if (dt.getFullYear() !== currentYear || dt.getMonth() !== currentMonth) return acc;
+        monthlyCount += 1;
         return acc + parseFloat(v.monto_total || 0);
       }, 0);
+
+      const dailyTotal = (ventasDetalle || []).reduce((acc, v) => {
+        const dt = parseVentaDate(v.fecha_venta);
+        if (!dt) return acc;
+        if (
+          dt.getFullYear() !== currentYear ||
+          dt.getMonth() !== currentMonth ||
+          dt.getDate() !== currentDay
+        ) return acc;
+        dailyCount += 1;
+        return acc + parseFloat(v.monto_total || 0);
+      }, 0);
+
       const progress = Math.min((monthlyTotal / target) * 100, 100);
       const progressBar = document.getElementById('metaProgressBar');
       const progressText = document.getElementById('metaProgressText');
+      const progressAmount = document.getElementById('metaProgressAmount');
       
       if (progressBar && progressText) {
         progressBar.style.width = `${progress}%`;
@@ -1714,6 +1750,19 @@
         else if (progress < 70) progressBar.className = 'progress-bar bg-warning';
         else progressBar.className = 'progress-bar bg-success';
       }
+      if (progressAmount) {
+        progressAmount.innerText = `${formatearMonto(monthlyTotal)} de ${formatearMonto(target)}`;
+      }
+
+      const montoMesTop = document.getElementById('montoMesActualTop');
+      const ventasMesTop = document.getElementById('ventasMesActualTop');
+      const montoHoyTop = document.getElementById('montoHoyTop');
+      const ventasHoyTop = document.getElementById('ventasHoyTop');
+
+      if (montoMesTop) montoMesTop.innerText = formatearMonto(monthlyTotal);
+      if (ventasMesTop) ventasMesTop.innerText = `${monthlyCount} ventas este mes`;
+      if (montoHoyTop) montoHoyTop.innerText = formatearMonto(dailyTotal);
+      if (ventasHoyTop) ventasHoyTop.innerText = `${dailyCount} ventas hoy`;
 
       const topEl = document.getElementById('montoFiltradoTop');
       if (topEl) topEl.innerText = formatearMonto(total);
@@ -1972,6 +2021,8 @@
         { title:'Ventas por mes',     inst: chartVentasMesInst,    summary: chartSummary(chartVentasMesInst) },
         { title:'Serie temporal',     inst: chartVentasSerieInst,  summary: chartSummary(chartVentasSerieInst) },
         { title:'Ventas por estado',  inst: chartEstadoInst,       summary: chartSummary(chartEstadoInst) },
+        { title:'Ventas por país',    inst: chartCountryInst,      summary: chartSummary(chartCountryInst) },
+        { title:'Ventas por medio',   inst: chartMediumInst,       summary: chartSummary(chartMediumInst) },
         { title:'Cuotas por estado',  inst: chartCuotasInst,       summary: chartSummary(chartCuotasInst) },
         { title:'Ventas por categoría', inst: chartCategoriasInst, summary: chartSummary(chartCategoriasInst) },
         { title:'Libros más vendidos',  inst: chartBooksInst,      summary: chartSummary(chartBooksInst) },
@@ -2025,7 +2076,7 @@
 
     // Cambiar tema de charts para fullscreen claro/oscuro
     function setChartsTheme(isDark) {
-      const charts = [chartEstadoInst, chartCuotasInst, chartCategoriasInst, chartBooksInst, chartCoursesInst, chartVentasMesInst, chartVentasSerieInst];
+      const charts = [chartEstadoInst, chartCountryInst, chartMediumInst, chartCuotasInst, chartCategoriasInst, chartBooksInst, chartCoursesInst, chartVentasMesInst, chartVentasSerieInst];
       charts.forEach(ch => {
         if (!ch) return;
         const opts = ch.options || {};
