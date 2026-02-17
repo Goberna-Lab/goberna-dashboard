@@ -903,6 +903,22 @@
       return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
     }
 
+    function parseVentaDate(rawDate) {
+      const dt = new Date(rawDate);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function parseInputDate(dateStr, endOfDay = false) {
+      if (!dateStr) return null;
+      const parts = String(dateStr).split('-').map(Number);
+      if (parts.length !== 3) return null;
+      const [y, m, d] = parts;
+      if (!y || !m || !d) return null;
+      return endOfDay
+        ? new Date(y, m - 1, d, 23, 59, 59, 999)
+        : new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+
     function buildCuotasFiltradas(ventasFil) {
       const setFolios = new Set((ventasFil || []).map(v => String(v.folio_venta || '')));
       if (!setFolios.size) return [];
@@ -1494,17 +1510,17 @@
       // Update Vendors Table
       const userMap = new Map();
       ventasFil.forEach(v => {
-        const vendor = v.vendedor || 'Desconocido';
-        if(!userMap.has(vendor)) {
-            userMap.set(vendor, { count: 0, amount: 0 });
+        const vendorKey = String(v.usuario__username || v.usuario_id || '').trim() || `unknown-${v.id}`;
+        const vendorName = v.vendedor || v.usuario__username || `Usuario ${v.usuario_id || 'N/A'}`;
+        if(!userMap.has(vendorKey)) {
+            userMap.set(vendorKey, { name: vendorName, count: 0, amount: 0 });
         }
-        const entry = userMap.get(vendor);
+        const entry = userMap.get(vendorKey);
         entry.count += 1;
         entry.amount += parseFloat(v.monto_total || 0);
       });
 
-      const sortedVendors = Array.from(userMap.entries())
-        .map(([name, val]) => ({ name, ...val }))
+      const sortedVendors = Array.from(userMap.values())
         .sort((a,b) => b.count - a.count)
         .slice(0, 20); // Top 20
 
@@ -1563,10 +1579,14 @@
       const vendedor = document.getElementById('filtroVendedor').value;
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       
+      const fechaDesde = parseInputDate(desde, false);
+      const fechaHasta = parseInputDate(hasta, true);
+
       const ventasFil = ventasDetalle.filter(v => {
-        const fecha = new Date(v.fecha_venta);
-        if (desde && fecha < new Date(desde)) return false;
-        if (hasta && fecha > new Date(hasta + 'T23:59:59')) return false;
+        const fecha = parseVentaDate(v.fecha_venta);
+        if ((fechaDesde || fechaHasta) && !fecha) return false;
+        if (fechaDesde && fecha < fechaDesde) return false;
+        if (fechaHasta && fecha > fechaHasta) return false;
         if (estado && String(v.estado) !== estado) return false;
         if (vendedor && String(v.usuario__username) !== vendedor) return false;
         const folio = String(v.folio_venta || '').toLowerCase();
@@ -1587,8 +1607,8 @@
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
       const monthlyTotal = (ventasDetalle || []).reduce((acc, v) => {
-        const dt = new Date(v.fecha_venta);
-        if (isNaN(dt)) return acc;
+        const dt = parseVentaDate(v.fecha_venta);
+        if (!dt) return acc;
         if (dt.getFullYear() !== currentYear || dt.getMonth() !== currentMonth) return acc;
         return acc + parseFloat(v.monto_total || 0);
       }, 0);
