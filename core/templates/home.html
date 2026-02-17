@@ -629,6 +629,16 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-earth-americas text-primary"></i> Ventas por país (cliente)</div>
+          <canvas id="chartVentasPais" height="180"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-bullhorn text-primary"></i> Ventas por medio</div>
+          <canvas id="chartVentasMedio" height="180"></canvas>
+        </div>
+
+        <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
             <select id="filtroMesLibros" class="form-select form-select-sm" style="max-width: 200px;">
@@ -844,6 +854,10 @@
     const coursesLabels = {{ chart_courses_labels|default:"[]"|safe }};
     const coursesData = {{ chart_courses_data|default:"[]"|safe }};
     const vendorsData = {{ vendors_data|default:"[]"|safe }};
+    const countryLabels = {{ chart_country_labels|default:"[]"|safe }};
+    const countryData = {{ chart_country_data|default:"[]"|safe }};
+    const mediumLabels = {{ chart_medium_labels|default:"[]"|safe }};
+    const mediumData = {{ chart_medium_data|default:"[]"|safe }};
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
 
@@ -854,7 +868,22 @@
       return `$ ${parseFloat(v || 0).toFixed(2)}`;
     }
 
+    function medioLabel(value) {
+      const key = String(value || '').trim().toLowerCase();
+      if (!key) return 'Sin medio';
+      const labels = {
+        organico: 'Orgánico',
+        pagado: 'Pagado',
+        referente: 'Referente',
+        remarketing: 'Remarketing',
+        postventa: 'Postventa',
+      };
+      return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+    }
+
     let chartEstadoInst = null;
+    let chartCountryInst = null;
+    let chartMediumInst = null;
     let chartCuotasInst = null;
     let chartCategoriasInst = null;
     let chartBooksInst = null;
@@ -939,6 +968,37 @@
         data: {
           labels: estadoData.labels,
           datasets: [{ data: estadoData.data, backgroundColor: ['#198754','#ffc107','#6c757d','#dc3545'] }]
+        },
+        options: { plugins: { legend: legendDots } }
+      });
+
+      chartCountryInst = new Chart(document.getElementById('chartVentasPais'), {
+        type: 'bar',
+        data: {
+          labels: countryLabels.length ? countryLabels : ['Sin datos'],
+          datasets: [{
+            label: 'Ventas',
+            data: countryData.length ? countryData : [0],
+            backgroundColor: '#3b82f6',
+            borderColor: '#1d4ed8',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      chartMediumInst = new Chart(document.getElementById('chartVentasMedio'), {
+        type: 'doughnut',
+        data: {
+          labels: mediumLabels.length ? mediumLabels : ['Sin datos'],
+          datasets: [{
+            data: mediumData.length ? mediumData : [0],
+            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b']
+          }]
         },
         options: { plugins: { legend: legendDots } }
       });
@@ -1440,6 +1500,35 @@
       if (chartEstadoInst) {
         chartEstadoInst.data.datasets[0].data = estadoCounts;
         chartEstadoInst.update();
+      }
+
+      const countryMap = new Map();
+      const mediumMap = new Map();
+      ventasFil.forEach(v => {
+        const country = String(v.pais_cliente || '').trim() || 'Sin país';
+        countryMap.set(country, (countryMap.get(country) || 0) + 1);
+
+        const medio = v.medio_label || medioLabel(v.medio);
+        mediumMap.set(medio, (mediumMap.get(medio) || 0) + 1);
+      });
+
+      if (chartCountryInst) {
+        const sortedCountries = Array.from(countryMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 12);
+
+        chartCountryInst.data.labels = sortedCountries.length ? sortedCountries.map(x => x[0]) : ['Sin datos'];
+        chartCountryInst.data.datasets[0].data = sortedCountries.length ? sortedCountries.map(x => x[1]) : [0];
+        chartCountryInst.update();
+      }
+
+      if (chartMediumInst) {
+        const sortedMedia = Array.from(mediumMap.entries())
+          .sort((a, b) => b[1] - a[1]);
+
+        chartMediumInst.data.labels = sortedMedia.length ? sortedMedia.map(x => x[0]) : ['Sin datos'];
+        chartMediumInst.data.datasets[0].data = sortedMedia.length ? sortedMedia.map(x => x[1]) : [0];
+        chartMediumInst.update();
       }
 
       const cuotasFil = buildCuotasFiltradas(ventasFil);
