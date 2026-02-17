@@ -273,7 +273,7 @@
 
     <!-- Menú -->
     <ul class="nav flex-column">
-      {% if not request.user|has_group_id:5 %}
+      {% if request.user.id != 19 and not request.user|has_group_id:5 %}
       <li class="nav-item">
         <a class="nav-link" href="https://vercel.goberna.pe">
           <i class="fas fa-home"></i>
@@ -282,7 +282,7 @@
       </li>
       {% endif %}
 
-      {% if not request.user|has_group_id:5 %}
+      {% if request.user.id != 19 and not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'clientes' in request.path %}active-indicator{% endif %}">
         <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/clientes/listaClientes/">
           <i class="fas fa-users"></i>
@@ -298,7 +298,7 @@
         </a>
       </li>
 
-      {% if not request.user|has_group_id:5 %}
+      {% if request.user.id == 19 or not request.user|has_group_id:5 %}
       <li class="nav-item ventas-menu {% if urlname == 'lista_ventas' or urlname == 'lista_ventas_facturacion' or 'listaVentas' in request.path or 'listaVentasFacturacion' in request.path %}show-submenu active-indicator{% endif %}">
         <div class="d-flex align-items-center justify-content-between">
           <button class="nav-link {% if urlname == 'lista_ventas' or urlname == 'lista_ventas_facturacion' or 'listaVentas' in request.path or 'listaVentasFacturacion' in request.path %}active{% endif %}"
@@ -315,12 +315,14 @@
         </div>
 
         <ul class="nav flex-column nav-submenu">
+          {% if request.user.id != 19 %}
           <li class="nav-item {% if urlname == 'lista_ventas' or 'listaVentas/' in request.path %}active-indicator{% endif %}">
             <a class="nav-link {% if urlname == 'lista_ventas' or 'listaVentas/' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/listaVentas/">
               <i class="fas fa-receipt text-secondary me-2"></i>
               <span>Lista de Ventas</span>
             </a>
           </li>
+          {% endif %}
           <li class="nav-item {% if urlname == 'lista_ventas_facturacion' or 'listaVentasFacturacion' in request.path %}active-indicator{% endif %}">
             <a class="nav-link {% if urlname == 'lista_ventas_facturacion' or 'listaVentasFacturacion' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/listaVentasFacturacion/">
               <i class="fas fa-file-invoice-dollar text-secondary me-2"></i>
@@ -331,7 +333,7 @@
       </li>
       {% endif %}
 
-      {% if not request.user|has_group_id:5 %}
+      {% if request.user.id != 19 and not request.user|has_group_id:5 %}
       <!-- ✅ MATRÍCULAS (DESPLEGABLE COMO MOVIMIENTOS) -->
       <li class="nav-item matriculas-menu {% if 'matriculas' in request.path %}show-submenu active-indicator{% endif %}">
         <div class="d-flex align-items-center justify-content-between">
@@ -381,7 +383,7 @@
       </li>
       {% endif %}
 
-      {% if not request.user|has_group_id:5 %}
+      {% if request.user.id == 19 or not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'despacho' in request.path %}active-indicator{% endif %}">
         <a class="nav-link {% if 'despacho' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/despacho/aplicar/">
           <i class="fas fa-truck"></i>
@@ -390,7 +392,7 @@
       </li>
       {% endif %}
 
-      {% if not is_vendor or is_admin or request.user|has_group_id:5 %}
+      {% if request.user.id == 19 or not is_vendor or is_admin or request.user|has_group_id:5 %}
       <li class="nav-item movimientos-menu {% if 'movimientos' in request.path %}show-submenu active-indicator{% endif %}">
         <div class="d-flex align-items-center justify-content-between">
           <a class="nav-link {% if 'movimientos' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/movimientos/">
@@ -431,7 +433,7 @@
       {% endif %}
 
       {# TESORERÍA - Grupo 5 o Admin #}
-      {% if request.user|has_group_id:5 or is_admin %}
+      {% if request.user.id != 19 and request.user|has_group_id:5 or request.user.id != 19 and is_admin %}
       <li class="nav-item {% if 'treasury' in request.path %}active-indicator{% endif %}">
         <a class="nav-link {% if 'treasury' in request.path %}active{% endif %}" href="{{ MAIN_APP_URL }}/ventas/treasury/pagos-pendientes/">
           <i class="fas fa-money-check-alt"></i>
