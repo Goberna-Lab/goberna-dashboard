@@ -97,6 +97,7 @@ class Venta(models.Model):
     )
 
     fecha_venta = models.DateTimeField(db_column='fecha_venta')
+    fecha_registro = models.DateTimeField(db_column='fecha_registro', null=True, blank=True)
 
     class Meta:
         managed = False
