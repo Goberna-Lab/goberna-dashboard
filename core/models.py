@@ -75,6 +75,9 @@ class Venta(models.Model):
         (2, 'Pendiente'),
         (3, 'No Validado'),
         (4, 'Anulado'),
+        (5, 'Cotización'),
+        (6, 'Preventa'),
+        (7, 'Retirado'),
     ]
     estado = models.IntegerField(choices=ESTADO_CHOICES, default=2, db_column='estado')
 
@@ -112,6 +115,8 @@ class Cuota(models.Model):
         (1, 'Pagado'),
         (2, 'Pendiente'),
         (3, 'Vencida'),
+        (4, 'Reintento solicitado'),
+        (5, 'Retirada'),
     ]
     estado = models.IntegerField(choices=ESTADO_CHOICES, default=2, db_column='estado')
     
@@ -121,6 +126,32 @@ class Cuota(models.Model):
     class Meta:
         managed = False
         db_table = 'tb_cuotas'
+
+
+class Pago(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_pago')
+    cuota = models.ForeignKey(
+        Cuota, on_delete=models.DO_NOTHING,
+        db_column='codigo_cuota', related_name='pagos_satelite'
+    )
+    estado = models.IntegerField(db_column='estado')
+    confirmado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.DO_NOTHING,
+        db_column='usuario_confirmacion',
+        null=True,
+        blank=True,
+        related_name='pagos_confirmados_satelite',
+    )
+    fecha_confirmacion = models.DateTimeField(
+        db_column='fecha_confirmacion',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'tb_pago'
 
 class Categoria(models.Model):
     codigo_categoria = models.AutoField(primary_key=True)
