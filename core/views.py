@@ -6,7 +6,20 @@ import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField, Value, Case, When
+from django.db.models import (
+    Case,
+    Count,
+    DateTimeField,
+    DecimalField,
+    Exists,
+    ExpressionWrapper,
+    F,
+    OuterRef,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
@@ -14,7 +27,7 @@ from django.conf import settings
 from django.core.cache import cache
 import hashlib
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, Pago
 
 try:
     import openpyxl
@@ -55,14 +68,38 @@ def _medio_label(value: str) -> str:
 def home_dashboard(request):
     """Dashboard de ventas por usuario actual con opción de exportar reportes."""
     is_admin = _is_admin_user(request.user)
-    
-    # Base querysets
+
+    # Base scope por usuario
     if is_admin:
-        ventas_base = Venta.objects.all()
-        cuotas_base = Cuota.objects.all()
+        ventas_scope = Venta.objects.all()
     else:
-        ventas_base = Venta.objects.filter(usuario=request.user)
-        cuotas_base = Cuota.objects.filter(venta__usuario=request.user)
+        ventas_scope = Venta.objects.filter(usuario=request.user)
+
+    # Solo ventas realmente pagadas y confirmadas por Tesorería:
+    # - venta.estado = 1 (Pagado)
+    # - existe al menos un pago confirmado por Tesorería
+    # - fecha de referencia = última fecha_confirmacion del pago confirmado
+    pagos_confirmados_sq = (
+        Pago.objects.filter(
+            cuota__venta_id=OuterRef("pk"),
+            estado=2,
+            confirmado_por__isnull=False,
+            fecha_confirmacion__isnull=False,
+        )
+        .order_by("-fecha_confirmacion", "-id")
+    )
+    ventas_base = (
+        ventas_scope.filter(estado=1)
+        .annotate(
+            has_pago_confirmado=Exists(pagos_confirmados_sq),
+            fecha_pagado=Subquery(
+                pagos_confirmados_sq.values("fecha_confirmacion")[:1],
+                output_field=DateTimeField(),
+            ),
+        )
+        .filter(has_pago_confirmado=True, fecha_pagado__isnull=False)
+    )
+    cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
 
     # CÁLCULO EN DÓLARES (USD)
     
@@ -85,6 +122,8 @@ def home_dashboard(request):
             F('monto_total') / F('tasa_final'),
             output_field=DecimalField(max_digits=12, decimal_places=2)
         )
+    ).annotate(
+        fecha_evento=Coalesce("fecha_pagado", "fecha_venta", output_field=DateTimeField())
     )
 
     # Anotar Cuotas con monto_usd
@@ -119,8 +158,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v4: fuerza a recalcular para que el ranking de libros ignore los filtros del dashboard
-    cache_key = f"dash_stats_v4_books_{request.user.id}_{is_admin}_{params_hash}"
+    # v5: solo ventas pagadas confirmadas por Tesorería y fecha_evento=fecha_confirmacion
+    cache_key = f"dash_stats_v5_treasury_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -163,8 +202,8 @@ def home_dashboard(request):
 
         # Gráficos (Mensual)
         monthly_qs = ventas_qs.annotate(
-            year=ExtractYear('fecha_venta'),
-            month=ExtractMonth('fecha_venta')
+            year=ExtractYear('fecha_evento'),
+            month=ExtractMonth('fecha_evento')
         ).values('year', 'month').annotate(
             total_usd=Sum(ExpressionWrapper(
                 F('monto_total') / Case(
@@ -251,6 +290,7 @@ def home_dashboard(request):
         top_books_qs = (
             DetalleVenta.objects.filter(
                 libros_filter,
+                venta__in=ventas_qs,
                 producto__codigo_negocio__nombre_negocio__icontains="editorial"
             )
             .values("producto__nombre_producto")
@@ -378,7 +418,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v2_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v3_treasury_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -391,13 +431,15 @@ def home_dashboard(request):
         
         ventas_detalle = list(
             ventas_qs.values(
-                "id", "folio_venta", "monto_usd", "estado", "fecha_venta",
+                "id", "folio_venta", "monto_usd", "estado", "fecha_evento",
                 "usuario_id", "usuario__username", "usuario__first_name", "usuario__last_name",
                 "cliente__pais__nombre", "pais__nombre", "medio"
             )
         )
         for v in ventas_detalle:
             v["monto_total"] = v.pop("monto_usd")
+            # Mantener compatibilidad con el frontend actual (usa v.fecha_venta)
+            v["fecha_venta"] = v.pop("fecha_evento", None)
             v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
             v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin país"
             v["medio_label"] = _medio_label(v.get("medio"))
@@ -506,6 +548,10 @@ def _export_ventas(queryset, fmt: str = "csv"):
         if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
         return dt
 
+    def _fecha_export(v):
+        # Prioriza fecha de pago confirmado por Tesorería
+        return getattr(v, "fecha_evento", None) or getattr(v, "fecha_pagado", None) or getattr(v, "fecha_venta", None)
+
     if fmt in ("xls", "xlsx") and openpyxl:
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -514,7 +560,7 @@ def _export_ventas(queryset, fmt: str = "csv"):
         for v in queryset:
             ws.append([
                 v.folio_venta, float(v.monto_usd or 0), v.estado,
-                _naive(v.fecha_venta) if hasattr(v, "fecha_venta") else "",
+                _naive(_fecha_export(v)),
             ])
         buffer = BytesIO()
         wb.save(buffer)
@@ -526,7 +572,7 @@ def _export_ventas(queryset, fmt: str = "csv"):
     writer = csv.writer(buffer)
     writer.writerow(["Folio", "Monto (USD)", "Estado", "Fecha"])
     for v in queryset:
-        writer.writerow([v.folio_venta, v.monto_usd, v.estado, v.fecha_venta])
+        writer.writerow([v.folio_venta, v.monto_usd, v.estado, _fecha_export(v)])
     resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
     resp["Content-Disposition"] = "attachment; filename=ventas.csv"
     return resp
