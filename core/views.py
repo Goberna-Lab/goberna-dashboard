@@ -15,7 +15,7 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     OuterRef,
-    Subquery,
+    Q,
     Sum,
     Value,
     When,
@@ -74,30 +74,26 @@ def home_dashboard(request):
         ventas_scope = Venta.objects.all()
     else:
         ventas_scope = Venta.objects.filter(usuario=request.user)
+    cuotas_scope = Cuota.objects.filter(venta__in=ventas_scope)
 
-    # Solo ventas realmente pagadas y confirmadas por Tesorería:
-    # - venta.estado = 1 (Pagado)
-    # - existe al menos un pago confirmado por Tesorería
-    # - fecha de referencia = última fecha_confirmacion del pago confirmado
+    # Universo de ventas del dashboard:
+    # - Pagadas (1): solo si tienen confirmación de Tesorería.
+    # - Pendientes (2): también se consideran.
     pagos_confirmados_sq = (
         Pago.objects.filter(
             cuota__venta_id=OuterRef("pk"),
             estado=2,
             confirmado_por__isnull=False,
-            fecha_confirmacion__isnull=False,
         )
-        .order_by("-fecha_confirmacion", "-id")
     )
     ventas_base = (
-        ventas_scope.filter(estado=1)
+        ventas_scope
         .annotate(
             has_pago_confirmado=Exists(pagos_confirmados_sq),
-            fecha_pagado=Subquery(
-                pagos_confirmados_sq.values("fecha_confirmacion")[:1],
-                output_field=DateTimeField(),
-            ),
         )
-        .filter(has_pago_confirmado=True, fecha_pagado__isnull=False)
+        .filter(
+            Q(estado=2) | Q(estado=1, has_pago_confirmado=True)
+        )
     )
     cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
 
@@ -123,7 +119,14 @@ def home_dashboard(request):
             output_field=DecimalField(max_digits=12, decimal_places=2)
         )
     ).annotate(
-        fecha_evento=Coalesce("fecha_pagado", "fecha_venta", output_field=DateTimeField())
+        # Regla de fecha:
+        # - Pendiente: fecha_registro de la venta.
+        # - Pagada: fecha_venta (no fecha de pago de Tesorería).
+        fecha_evento=Case(
+            When(estado=2, then=Coalesce("fecha_registro", "fecha_venta", output_field=DateTimeField())),
+            default=Coalesce("fecha_venta", "fecha_registro", output_field=DateTimeField()),
+            output_field=DateTimeField(),
+        )
     )
 
     # Anotar Cuotas con monto_usd
@@ -158,8 +161,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v5: solo ventas pagadas confirmadas por Tesorería y fecha_evento=fecha_confirmacion
-    cache_key = f"dash_stats_v5_treasury_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v7: incluye pendientes + pagadas confirmadas; fecha_evento ajustada
+    cache_key = f"dash_stats_v7_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -233,21 +236,17 @@ def home_dashboard(request):
             })
 
         # Estados
-        ventas_estado_qs = ventas_qs.values('estado').annotate(total=Count('id'))
-        ventas_estado_chart_data = [0,0,0,0]
-        for v in ventas_estado_qs:
-            idx = v['estado'] - 1
-            if 0 <= idx < 4:
-                ventas_estado_chart_data[idx] = v['total']
+        ventas_estado_qs = ventas_scope.values('estado').annotate(total=Count('id'))
+        ventas_estado_keys = [1, 2, 3, 4, 5, 6, 7]
+        ventas_estado_map = {int(v["estado"]): int(v["total"] or 0) for v in ventas_estado_qs}
+        ventas_estado_chart_data = [ventas_estado_map.get(k, 0) for k in ventas_estado_keys]
         
         ventas_por_estado = [] 
 
-        cuotas_estado_qs = cuotas_qs.values('estado').annotate(total=Count('id'))
-        cuotas_estado_chart_data = [0,0,0]
-        for c in cuotas_estado_qs:
-            idx = c['estado'] - 1
-            if 0 <= idx < 3:
-                cuotas_estado_chart_data[idx] = c['total']
+        cuotas_estado_qs = cuotas_scope.values('estado').annotate(total=Count('id'))
+        cuotas_estado_keys = [1, 2, 3, 4, 5]
+        cuotas_estado_map = {int(c["estado"]): int(c["total"] or 0) for c in cuotas_estado_qs}
+        cuotas_estado_chart_data = [cuotas_estado_map.get(k, 0) for k in cuotas_estado_keys]
         cuotas_por_estado = []
 
         # Categorías
@@ -418,7 +417,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v3_treasury_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v5_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -480,6 +479,8 @@ def home_dashboard(request):
         response_data = {
             "ventas_detalle": ventas_detalle,
             "cuotas_detalle": cuotas_detalle,
+            "ventas_estado_detalle": list(ventas_scope.values("estado")),
+            "cuotas_estado_detalle": list(cuotas_scope.values("estado")),
             "detalles_categoria": list(detalles_export), 
         }
         cache.set(list_cache_key, response_data, 300)
@@ -549,8 +550,7 @@ def _export_ventas(queryset, fmt: str = "csv"):
         return dt
 
     def _fecha_export(v):
-        # Prioriza fecha de pago confirmado por Tesorería
-        return getattr(v, "fecha_evento", None) or getattr(v, "fecha_pagado", None) or getattr(v, "fecha_venta", None)
+        return getattr(v, "fecha_evento", None) or getattr(v, "fecha_venta", None) or getattr(v, "fecha_registro", None)
 
     if fmt in ("xls", "xlsx") and openpyxl:
         wb = openpyxl.Workbook()
