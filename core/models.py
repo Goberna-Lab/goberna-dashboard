@@ -1,610 +1,209 @@
-import csv
-import json
-from decimal import Decimal
-from io import StringIO, BytesIO
-import datetime
-
-from django.contrib.auth.decorators import login_required
-from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import (
-    Case,
-    Count,
-    DateTimeField,
-    DecimalField,
-    Exists,
-    ExpressionWrapper,
-    F,
-    OuterRef,
-    Q as DJANGO_Q,
-    Sum,
-    Value,
-    When,
-)
-from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, redirect
+from django.db import models
 from django.conf import settings
-from django.core.cache import cache
-import hashlib
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, Pago
+class PerfilUsuario(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="perfil_satelite")
+    foto = models.ImageField(upload_to="profile_photos/", null=True, blank=True)
+    actualizado = models.DateTimeField(auto_now=True)
 
-try:
-    import openpyxl
-except ImportError:
-    openpyxl = None
+    class Meta:
+        managed = False
+        db_table = "tb_perfil_usuario"
 
-
-DASHBOARD_GLOBAL_USER_IDS = {7, 8, 35}
-ADMIN_GROUP_IDS = (2,)
-DASHBOARD_SCOPE_GROUP_NAMES = ("Scope - Dashboard Satelite Global",)
-MEDIO_LABELS = {
-    "organico": "Orgánico",
-    "pagado": "Pagado",
-    "referente": "Referente",
-    "remarketing": "Remarketing",
-    "postventa": "Postventa",
-}
-
-
-def _is_admin_user(user) -> bool:
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    return bool(
-        user.is_superuser
-        or user.id in DASHBOARD_GLOBAL_USER_IDS
-        or user.groups.filter(id__in=ADMIN_GROUP_IDS).exists()
-        or user.groups.filter(name__in=DASHBOARD_SCOPE_GROUP_NAMES).exists()
+class Moneda(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_moneda')
+    nombre = models.CharField(max_length=100, db_column='nombre_moneda')
+    radioDivisor = models.DecimalField(
+        max_digits=12, decimal_places=6,
+        db_column='radio_divisor', null=True, blank=True
+    )
+    radioMultiplicador = models.DecimalField(
+        max_digits=12, decimal_places=6,
+        db_column='radio_multiplicador', null=True, blank=True
     )
 
+    class Meta:
+        managed = False
+        db_table = 'tb_moneda'
 
-def _medio_label(value: str) -> str:
-    key = (value or "").strip().lower()
-    if not key:
-        return "Sin medio"
-    return MEDIO_LABELS.get(key, key.replace("_", " ").title())
 
-@login_required
-def home_dashboard(request):
-    """Dashboard de ventas por usuario actual con opción de exportar reportes."""
-    is_admin = _is_admin_user(request.user)
+class Pais(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id_pais')
+    nombre = models.CharField(max_length=100, db_column='nombre_pais', unique=True)
 
-    # Base scope por usuario
-    if is_admin:
-        ventas_scope = Venta.objects.all()
-    else:
-        ventas_scope = Venta.objects.filter(usuario=request.user)
-    cuotas_scope = Cuota.objects.filter(venta__in=ventas_scope)
+    class Meta:
+        managed = False
+        db_table = 'tb_pais'
 
-    # Universo de ventas del dashboard:
-    # - Pagadas (1): solo si tienen confirmación de Tesorería.
-    # - Pendientes (2): también se consideran.
-    pagos_confirmados_sq = (
-        Pago.objects.filter(
-            cuota__venta_id=OuterRef("pk"),
-            estado=2,
-            confirmado_por__isnull=False,
-        )
+
+class Cliente(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id_cliente')
+    pais = models.ForeignKey(
+        Pais, on_delete=models.DO_NOTHING,
+        db_column='id_pais', related_name='clientes_satelite'
     )
-    ventas_base = (
-        ventas_scope
-        .annotate(
-            has_pago_confirmado=Exists(pagos_confirmados_sq),
-        )
-        .filter(
-            DJANGO_Q(estado=2) | DJANGO_Q(estado=1, has_pago_confirmado=True)
-        )
-    )
-    cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
 
-    # CÁLCULO EN DÓLARES (USD)
+    class Meta:
+        managed = False
+        db_table = 'tb_cliente'
+
+class Venta(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_venta')
+    cliente = models.ForeignKey(
+        Cliente, on_delete=models.DO_NOTHING,
+        db_column='codigo_cliente', related_name='ventas_satelite',
+        null=True, blank=True
+    )
     
-    # Anotar Ventas con monto_usd
-    ventas_qs = ventas_base.annotate(
-        tasa_cambio=Coalesce(
-            'radio_multiplicador_usado', 
-            'moneda__radioMultiplicador', 
-            1,
-            output_field=DecimalField()
-        )
-    ).annotate(
-        tasa_final=Case(
-            When(tasa_cambio=0, then=Value(1)),
-            default=F('tasa_cambio'),
-            output_field=DecimalField()
-        )
-    ).annotate(
-        monto_usd=ExpressionWrapper(
-            F('monto_total') / F('tasa_final'),
-            output_field=DecimalField(max_digits=12, decimal_places=2)
-        )
-    ).annotate(
-        # Regla de fecha:
-        # - Pendiente: fecha_registro de la venta.
-        # - Pagada: fecha_venta (no fecha de pago de Tesorería).
-        fecha_evento=Case(
-            When(estado=2, then=Coalesce("fecha_registro", "fecha_venta", output_field=DateTimeField())),
-            default=Coalesce("fecha_venta", "fecha_registro", output_field=DateTimeField()),
-            output_field=DateTimeField(),
-        )
+    # Relación con User (auth_user existe en la db remota)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING,
+        db_column='codigo_usuario', related_name='ventas_satelite'
     )
-
-    # Anotar Cuotas con monto_usd
-    cuotas_qs = cuotas_base.select_related('venta', 'venta__moneda').annotate(
-        tasa_cambio=Coalesce(
-            'venta__radio_multiplicador_usado', 
-            'venta__moneda__radioMultiplicador', 
-            1,
-            output_field=DecimalField()
-        )
-    ).annotate(
-        tasa_final=Case(
-            When(tasa_cambio=0, then=Value(1)),
-            default=F('tasa_cambio'),
-            output_field=DecimalField()
-        )
-    ).annotate(
-        monto_usd=ExpressionWrapper(
-            F('monto_total') / F('tasa_final'),
-            output_field=DecimalField(max_digits=12, decimal_places=2)
-        )
-    )
-
-    # Exportaciones
-    reporte = request.GET.get("reporte")
-    fmt = request.GET.get("fmt", "csv").lower()
-    if reporte == "ventas":
-        return _export_ventas(ventas_qs, fmt)
-    if reporte == "cuotas":
-        return _export_cuotas(cuotas_qs, fmt)
-
-    # CACHÉ DE ESTADÍSTICAS
-    params_sorted = sorted(request.GET.items())
-    params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v7: incluye pendientes + pagadas confirmadas; fecha_evento ajustada
-    cache_key = f"dash_stats_v7_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
-    cached_stats = cache.get(cache_key)
-
-    if cached_stats:
-        ventas_resumen = cached_stats["ventas_resumen"]
-        ventas_por_estado = cached_stats["ventas_por_estado"]
-        monthly = cached_stats["monthly"]
-        cuotas_por_estado = cached_stats["cuotas_por_estado"]
-        ventas_chart_labels = cached_stats["ventas_chart_labels"]
-        ventas_chart_data = cached_stats["ventas_chart_data"]
-        ventas_estado_chart_data = cached_stats["ventas_estado_chart_data"]
-        cuotas_estado_chart_data = cached_stats["cuotas_estado_chart_data"]
-        cat_labels = cached_stats.get("cat_labels", [])
-        cat_data = cached_stats.get("cat_data", [])
-        books_labels = cached_stats.get("books_labels", [])
-        books_data = cached_stats.get("books_data", [])
-        courses_labels = cached_stats.get("courses_labels", [])
-        courses_data = cached_stats.get("courses_data", [])
-        vendors_data = cached_stats.get("vendors_data", [])
-        country_labels = cached_stats.get("country_labels", [])
-        country_data = cached_stats.get("country_data", [])
-        medium_labels = cached_stats.get("medium_labels", [])
-        medium_data = cached_stats.get("medium_data", [])
-    else:
-        # CALCULAR
-        try:
-            ventas_resumen = ventas_qs.aggregate(
-                total=Count("id"),
-                monto=Sum(ExpressionWrapper(
-                    F('monto_total') / Case(
-                        When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
-                        When(moneda__radioMultiplicador=0, then=Value(1)),
-                        default=F('moneda__radioMultiplicador'),
-                        output_field=DecimalField()
-                    ),
-                    output_field=DecimalField()
-                ))
-            )
-        except Exception:
-            ventas_resumen = {"total": 0, "monto": 0}
-
-        # Gráficos (Mensual)
-        monthly_qs = ventas_qs.annotate(
-            year=ExtractYear('fecha_evento'),
-            month=ExtractMonth('fecha_evento')
-        ).values('year', 'month').annotate(
-            total_usd=Sum(ExpressionWrapper(
-                F('monto_total') / Case(
-                    When(moneda__radioMultiplicador__isnull=True, then=Value(1)),
-                    When(moneda__radioMultiplicador=0, then=Value(1)),
-                    default=F('moneda__radioMultiplicador'),
-                    output_field=DecimalField()
-                ),
-                output_field=DecimalField()
-            )),
-            count=Count('id')
-        ).order_by('year', 'month')
-
-        monthly = []
-        for m in monthly_qs:
-            try:
-                y = m['year'] or 2024
-                mo = m['month'] or 1
-                date_obj = datetime.date(y, mo, 1)
-                m_iso = date_obj.isoformat()
-            except:
-                m_iso = "Unknown"
-            monthly.append({
-                "month": m_iso,
-                "total": m['total_usd'] or 0,
-                "count": m['count']
-            })
-
-        # Estados
-        ventas_estado_qs = ventas_scope.values('estado').annotate(total=Count('id'))
-        ventas_estado_keys = [1, 2, 3, 4, 5, 6, 7]
-        ventas_estado_map = {int(v["estado"]): int(v["total"] or 0) for v in ventas_estado_qs}
-        ventas_estado_chart_data = [ventas_estado_map.get(k, 0) for k in ventas_estado_keys]
-        
-        ventas_por_estado = [] 
-
-        cuotas_estado_qs = cuotas_scope.values('estado').annotate(total=Count('id'))
-        cuotas_estado_keys = [1, 2, 3, 4, 5]
-        cuotas_estado_map = {int(c["estado"]): int(c["total"] or 0) for c in cuotas_estado_qs}
-        cuotas_estado_chart_data = [cuotas_estado_map.get(k, 0) for k in cuotas_estado_keys]
-        cuotas_por_estado = []
-
-        # Categorías
-        detalles_qs = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
-            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio'
-        ).annotate(
-            tasa_cambio=Coalesce(
-                'venta__radio_multiplicador_usado', 
-                'venta__moneda__radioMultiplicador', 
-                1,
-                output_field=DecimalField()
-            )
-        ).annotate(
-            tasa_final=Case(
-                When(tasa_cambio=0, then=Value(1)),
-                default=F('tasa_cambio'),
-                output_field=DecimalField()
-            )
-        ).annotate(
-            monto_usd=ExpressionWrapper(
-                F('precio_total') / F('tasa_final'),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
-            )
-        )
-        
-        cats = detalles_qs.values('producto__codigo_categoria__nombre_categoria').annotate(
-            total=Sum('monto_usd')
-        ).order_by('-total')
-
-        cat_labels = [c['producto__codigo_categoria__nombre_categoria'] for c in cats]
-        cat_data = [float(c['total']) for c in cats]
-
-        # Top Ranking Libros (Físico / Preventa) - considerar IDs y nombre de categoría
-        libros_filter = DJANGO_Q(producto__codigo_categoria__in=[1, 15]) | DJANGO_Q(
-            producto__codigo_categoria__nombre_categoria__icontains="fisico"
-        ) | DJANGO_Q(producto__codigo_categoria__nombre_categoria__icontains="físico") | DJANGO_Q(
-            producto__codigo_categoria__nombre_categoria__icontains="preventa"
-        )
-        top_books_qs = (
-            DetalleVenta.objects.filter(
-                libros_filter,
-                venta__in=ventas_qs,
-                producto__codigo_negocio__nombre_negocio__icontains="editorial"
-            )
-            .values("producto__nombre_producto")
-            .annotate(total_qty=Sum("cantidad"))
-            .order_by("-total_qty")[:10]
-        )
-        
-        books_labels = [b['producto__nombre_producto'] for b in top_books_qs]
-        books_data = [int(b['total_qty']) for b in top_books_qs]
-        
-        # Top Ranking Cursos (5=Online, 6=Virtual)
-        top_courses_qs = DetalleVenta.objects.filter(
-            venta__in=ventas_qs,
-            producto__codigo_categoria__in=[5, 6]
-        ).values('producto__nombre_producto').annotate(
-            total_qty=Sum('cantidad')
-        ).order_by('-total_qty')[:10]
-        
-        courses_labels = [b['producto__nombre_producto'] for b in top_courses_qs]
-        courses_data = [int(b['total_qty']) for b in top_courses_qs]
-        
-        # Ranking Vendedores (Por cantidad de ventas)
-        # Necesitamos usuario__username o usuario__first_name
-        # Como Venta es managed=False y usuario es FK a auth_user (que si existe en default db o misma db),
-        # el join deberia funcionar si estamos en la misma DB. Sino, podria fallar.
-        # Asumimos misma DB o configuracion correcta de router.
-        try:
-            vendors_qs = ventas_qs.values(
-                'usuario_id', 'usuario__username', 'usuario__first_name', 'usuario__last_name'
-            ).annotate(
-                total_ventas=Count('id'),
-                total_monto=Sum('monto_usd')
-            ).order_by('-total_ventas', '-total_monto')[:20]
-            
-            vendors_data = []
-            for v in vendors_qs:
-                name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
-                vendors_data.append({
-                    "user_id": v['usuario_id'],
-                    "username": v['usuario__username'],
-                    "name": name,
-                    "count": v['total_ventas'],
-                    "amount": float(v['total_monto'] or 0)
-                })
-        except Exception:
-            vendors_data = []
-
-        # Ventas por país (basado en país del cliente; fallback a venta.pais)
-        try:
-            country_qs = ventas_qs.values(
-                "cliente__pais__nombre", "pais__nombre"
-            ).annotate(
-                total_ventas=Count("id"),
-                total_monto=Sum("monto_usd")
-            )
-
-            country_bucket = {}
-            for row in country_qs:
-                country_name = (row.get("cliente__pais__nombre") or row.get("pais__nombre") or "").strip() or "Sin país"
-                bucket = country_bucket.setdefault(country_name, {"count": 0, "amount": 0.0})
-                bucket["count"] += int(row.get("total_ventas") or 0)
-                bucket["amount"] += float(row.get("total_monto") or 0)
-
-            top_country = sorted(
-                country_bucket.items(),
-                key=lambda x: (-x[1]["count"], -x[1]["amount"], x[0])
-            )[:12]
-
-            country_labels = [k for k, _ in top_country]
-            country_data = [v["count"] for _, v in top_country]
-        except Exception:
-            country_labels = []
-            country_data = []
-
-        # Ventas por medio
-        try:
-            medium_qs = ventas_qs.values("medio").annotate(
-                total_ventas=Count("id")
-            )
-
-            medium_bucket = {}
-            for row in medium_qs:
-                label = _medio_label(row.get("medio"))
-                medium_bucket[label] = medium_bucket.get(label, 0) + int(row.get("total_ventas") or 0)
-
-            top_medium = sorted(
-                medium_bucket.items(),
-                key=lambda x: (-x[1], x[0])
-            )[:10]
-
-            medium_labels = [k for k, _ in top_medium]
-            medium_data = [v for _, v in top_medium]
-        except Exception:
-            medium_labels = []
-            medium_data = []
-
-        ventas_chart_labels = [m["month"] for m in monthly]
-        ventas_chart_data = [float(m["total"]) for m in monthly]
-        
-        if not ventas_chart_data and ventas_resumen.get("monto"):
-            ventas_chart_labels = ["Actual"]
-            ventas_chart_data = [float(ventas_resumen.get("monto") or 0)]
-        
-        cache.set(cache_key, {
-            "ventas_resumen": ventas_resumen,
-            "ventas_por_estado": ventas_por_estado,
-            "monthly": monthly,
-            "cuotas_por_estado": cuotas_por_estado,
-            "ventas_chart_labels": ventas_chart_labels,
-            "ventas_chart_data": ventas_chart_data,
-            "ventas_estado_chart_data": ventas_estado_chart_data,
-            "cuotas_estado_chart_data": cuotas_estado_chart_data,
-            "cat_labels": cat_labels,
-            "cat_data": cat_data,
-            "books_labels": books_labels,
-            "books_data": books_data,
-            "courses_labels": courses_labels,
-            "courses_data": courses_data,
-            "vendors_data": vendors_data,
-            "country_labels": country_labels,
-            "country_data": country_data,
-            "medium_labels": medium_labels,
-            "medium_data": medium_data,
-        }, 300)
-
-    # API Carga Asíncrona
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v5_pending_paid_{request.user.id}_{is_admin}"
-        cached_lists = cache.get(list_cache_key)
-        
-        if cached_lists:
-            return JsonResponse(cached_lists, encoder=DjangoJSONEncoder)
-
-        # Para Vendedores dinámico en JS, necesitamos saber quien vendió cada venta.
-        # Ya tenemos ventas_detalle, pero falta el nombre del vendedor.
-        # Agregamos username a ventas_detalle query arriba? 
-        # Mejor re-hacemos la query de ventas_detalle para incluir usuario info.
-        
-        ventas_detalle = list(
-            ventas_qs.values(
-                "id", "folio_venta", "monto_usd", "estado", "fecha_evento",
-                "usuario_id", "usuario__username", "usuario__first_name", "usuario__last_name",
-                "cliente__pais__nombre", "pais__nombre", "medio"
-            )
-        )
-        for v in ventas_detalle:
-            v["monto_total"] = v.pop("monto_usd")
-            # Mantener compatibilidad con el frontend actual (usa v.fecha_venta)
-            v["fecha_venta"] = v.pop("fecha_evento", None)
-            v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
-            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin país"
-            v["medio_label"] = _medio_label(v.get("medio"))
-
-        cuotas_detalle = list(
-            cuotas_qs.values(
-                "id", "venta__folio_venta", "monto_usd", "estado", "fecha_vencimiento",
-            )
-        )
-        for c in cuotas_detalle:
-            c["monto_total"] = c.pop("monto_usd")
-        
-        # Detalles con categoría para filtrar en JS
-        # (Reutilizamos la query de detalles_qs pero sin agrupar, filtrando por ID venta)
-        # Nota: detalles_qs ya depende de ventas_qs, asi que es consistente.
-        # Pero ventas_qs es QuerySet, asi que podemos reconstruir detalles query rapido:
-        
-        detalles_export = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
-            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio'
-        ).annotate(
-            tasa_cambio=Coalesce('venta__radio_multiplicador_usado', 'venta__moneda__radioMultiplicador', 1, output_field=DecimalField())
-        ).annotate(
-            tasa_final=Case(When(tasa_cambio=0, then=Value(1)), default=F('tasa_cambio'), output_field=DecimalField())
-        ).annotate(
-            monto_usd=ExpressionWrapper(F('precio_total') / F('tasa_final'), output_field=DecimalField(max_digits=12, decimal_places=2))
-        ).values(
-            "venta_id", 
-            "producto__codigo_categoria__nombre_categoria", 
-            "producto__codigo_categoria__nombre_categoria", 
-            "monto_usd",
-            "producto__codigo_categoria", # Para filtrar ID en JS
-            "producto__codigo_negocio",
-            "producto__codigo_negocio__nombre_negocio",
-            "producto__nombre_producto",
-            "cantidad"
-        )
-
-        response_data = {
-            "ventas_detalle": ventas_detalle,
-            "cuotas_detalle": cuotas_detalle,
-            "ventas_estado_detalle": list(ventas_scope.values("estado")),
-            "cuotas_estado_detalle": list(cuotas_scope.values("estado")),
-            "detalles_categoria": list(detalles_export), 
-        }
-        cache.set(list_cache_key, response_data, 300)
-        return JsonResponse(response_data, encoder=DjangoJSONEncoder)
     
-    # Perfil
-    perfil = None
-    try:
-        # PerfilUsuario usa OneToOne con user, pero en managed=False puede fallar si no hay user instance real
-        # Si estamos debugueando, omitimos perfil o lo buscamos manual
-        if request.user.is_authenticated:
-            perfil = PerfilUsuario.objects.get(user=request.user)
-        else:
-            # Fake perfil lookup if needed, or pass None
-            pass
-    except PerfilUsuario.DoesNotExist:
-        pass
+    moneda = models.ForeignKey(
+        Moneda, on_delete=models.DO_NOTHING,
+        db_column='codigo_moneda', related_name='ventas'
+    )
 
-    username_str = "Visitante (Debug)"
-    if request.user.is_authenticated:
-        username_str = request.user.get_full_name() or request.user.username
-    else:
-        # Intentar simular nombre si quisieramos, pero 'Visitante' basta
-        pass
+    folio_venta = models.CharField(max_length=20, db_column='folio_venta', unique=True)
+    medio = models.CharField(max_length=25, db_column='medio_venta', null=True, blank=True)
+    monto_total = models.DecimalField(max_digits=12, decimal_places=2, db_column='monto_total', default=0)
+    
+    ESTADO_CHOICES = [
+        (1, 'Pagado'),
+        (2, 'Pendiente'),
+        (3, 'No Validado'),
+        (4, 'Anulado'),
+        (5, 'Cotización'),
+        (6, 'Preventa'),
+        (7, 'Retirado'),
+    ]
+    estado = models.IntegerField(choices=ESTADO_CHOICES, default=2, db_column='estado')
 
-    context = {
-        "username": username_str,
-        "perfil": perfil,
-        "ventas_resumen": {
-            "total": ventas_resumen.get("total") or 0,
-            "monto": ventas_resumen.get("monto") or Decimal("0.00"),
-        },
-        "is_admin": is_admin,
-        "ventas_por_estado": list(ventas_por_estado),
-        "monthly": list(monthly),
-        "cuotas_por_estado": list(cuotas_por_estado),
-        "ventas_detalle_json": "[]", 
-        "cuotas_detalle_json": "[]",
-        "chart_ventas_labels": json.dumps(ventas_chart_labels, cls=DjangoJSONEncoder),
-        "chart_ventas_data": json.dumps(ventas_chart_data, cls=DjangoJSONEncoder),
-        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
-        "chart_ventas_estado": json.dumps(ventas_estado_chart_data, cls=DjangoJSONEncoder),
-        "chart_cuotas_estado": json.dumps(cuotas_estado_chart_data, cls=DjangoJSONEncoder),
-        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
-        "chart_cat_labels": json.dumps(cat_labels, cls=DjangoJSONEncoder),
-        "chart_cat_data": json.dumps(cat_data, cls=DjangoJSONEncoder),
-        "chart_books_labels": json.dumps(books_labels, cls=DjangoJSONEncoder),
-        "chart_books_data": json.dumps(books_data, cls=DjangoJSONEncoder),
-        "chart_courses_labels": json.dumps(courses_labels, cls=DjangoJSONEncoder),
-        "chart_courses_data": json.dumps(courses_data, cls=DjangoJSONEncoder),
-        "chart_country_labels": json.dumps(country_labels, cls=DjangoJSONEncoder),
-        "chart_country_data": json.dumps(country_data, cls=DjangoJSONEncoder),
-        "chart_medium_labels": json.dumps(medium_labels, cls=DjangoJSONEncoder),
-        "chart_medium_data": json.dumps(medium_data, cls=DjangoJSONEncoder),
-        "vendors_data": json.dumps(vendors_data, cls=DjangoJSONEncoder),
-        # Variables extra para el template satélite
-        "MAIN_APP_URL": getattr(settings, 'MAIN_APP_URL', ''),
-    }
-    return render(request, "home.html", context)
+    radio_divisor_usado = models.DecimalField(
+        max_digits=12, decimal_places=6,
+        null=True, blank=True, db_column='radio_divisor_usado'
+    )
+    radio_multiplicador_usado = models.DecimalField(
+        max_digits=12, decimal_places=6,
+        null=True, blank=True, db_column='radio_multiplicador_usado'
+    )
 
+    pais = models.ForeignKey(
+        Pais, on_delete=models.DO_NOTHING,
+        db_column='codigo_pais', related_name='ventas_satelite',
+        null=True, blank=True
+    )
 
-def _export_ventas(queryset, fmt: str = "csv"):
-    # (Misma implementación de exportación)
-    def _naive(dt):
-        if not dt: return ""
-        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
-        return dt
+    fecha_venta = models.DateTimeField(db_column='fecha_venta')
+    fecha_registro = models.DateTimeField(db_column='fecha_registro', null=True, blank=True)
 
-    def _fecha_export(v):
-        return getattr(v, "fecha_evento", None) or getattr(v, "fecha_venta", None) or getattr(v, "fecha_registro", None)
+    class Meta:
+        managed = False
+        db_table = 'tb_venta'
 
-    if fmt in ("xls", "xlsx") and openpyxl:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Ventas"
-        ws.append(["Folio", "Monto (USD)", "Estado", "Fecha"])
-        for v in queryset:
-            ws.append([
-                v.folio_venta, float(v.monto_usd or 0), v.estado,
-                _naive(_fecha_export(v)),
-            ])
-        buffer = BytesIO()
-        wb.save(buffer)
-        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        resp["Content-Disposition"] = "attachment; filename=ventas.xlsx"
-        return resp
-        
-    buffer = StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(["Folio", "Monto (USD)", "Estado", "Fecha"])
-    for v in queryset:
-        writer.writerow([v.folio_venta, v.monto_usd, v.estado, _fecha_export(v)])
-    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
-    resp["Content-Disposition"] = "attachment; filename=ventas.csv"
-    return resp
+class Cuota(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_cuota')
+    venta = models.ForeignKey(
+        Venta, on_delete=models.DO_NOTHING,
+        db_column='codigo_venta', related_name='cuotas'
+    )
+    numero_cuota = models.PositiveIntegerField(db_column='numero_cuotas')
+    monto_total = models.DecimalField(max_digits=12, decimal_places=2, db_column='monto_total')
+    
+    ESTADO_CHOICES = [
+        (1, 'Pagado'),
+        (2, 'Pendiente'),
+        (3, 'Vencida'),
+        (4, 'Reintento solicitado'),
+        (5, 'Retirada'),
+    ]
+    estado = models.IntegerField(choices=ESTADO_CHOICES, default=2, db_column='estado')
+    
+    fecha_registro = models.DateField(db_column='fecha_registro')
+    fecha_vencimiento = models.DateField(db_column='fecha_vencimiento')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_cuotas'
 
 
-def _export_cuotas(queryset, fmt: str = "csv"):
-    def _naive(dt):
-        if not dt: return ""
-        if hasattr(dt, "tzinfo") and dt.tzinfo: return dt.replace(tzinfo=None)
-        return dt
+class Pago(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_pago')
+    cuota = models.ForeignKey(
+        Cuota, on_delete=models.DO_NOTHING,
+        db_column='codigo_cuota', related_name='pagos_satelite'
+    )
+    estado = models.IntegerField(db_column='estado')
+    confirmado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.DO_NOTHING,
+        db_column='usuario_confirmacion',
+        null=True,
+        blank=True,
+        related_name='pagos_confirmados_satelite',
+    )
+    fecha_confirmacion = models.DateTimeField(
+        db_column='fecha_confirmacion',
+        null=True,
+        blank=True,
+    )
 
-    if fmt in ("xls", "xlsx") and openpyxl:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Cuotas"
-        ws.append(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
-        for c in queryset:
-            # c.venta ya se trajo con select_related
-            ws.append([
-                c.venta.folio_venta, c.numero_cuota, float(c.monto_usd or 0), c.estado,
-                _naive(c.fecha_vencimiento) if hasattr(c, "fecha_vencimiento") else "",
-            ])
-        buffer = BytesIO()
-        wb.save(buffer)
-        resp = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        resp["Content-Disposition"] = "attachment; filename=cuotas.xlsx"
-        return resp
+    class Meta:
+        managed = False
+        db_table = 'tb_pago'
 
-    buffer = StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(["Venta", "Cuota", "Monto (USD)", "Estado", "Vence"])
-    for c in queryset:
-        writer.writerow([c.venta.folio_venta, c.numero_cuota, c.monto_usd, c.estado, c.fecha_vencimiento])
-    resp = HttpResponse(buffer.getvalue(), content_type="text/csv")
-    resp["Content-Disposition"] = "attachment; filename=cuotas.csv"
-    return resp
+class Categoria(models.Model):
+    codigo_categoria = models.AutoField(primary_key=True)
+    nombre_categoria = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_categoria'
+
+class Negocio(models.Model):
+    codigo_negocio = models.AutoField(primary_key=True)
+    nombre_negocio = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_negocio'
+
+class Producto(models.Model):
+    codigo_producto = models.AutoField(primary_key=True)
+    sku_producto = models.CharField(max_length=50, unique=True)
+    nombre_producto = models.CharField(max_length=200)
+    
+    codigo_categoria = models.ForeignKey(
+        Categoria, on_delete=models.DO_NOTHING,
+        db_column='codigo_categoria', related_name='productos'
+    )
+    codigo_negocio = models.ForeignKey(
+        Negocio, on_delete=models.DO_NOTHING,
+        db_column='codigo_negocio', related_name='productos'
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'tb_producto'
+
+class DetalleVenta(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_detalle')
+    
+    venta = models.ForeignKey(
+        Venta, on_delete=models.DO_NOTHING,
+        db_column='codigo_venta', related_name='detalles'
+    )
+    
+    producto = models.ForeignKey(
+        Producto, on_delete=models.DO_NOTHING,
+        db_column='codigo_producto', related_name='detalles_venta'
+    )
+    
+    cantidad = models.PositiveIntegerField(db_column='cantidad', default=1)
+    precio_total = models.DecimalField(max_digits=12, decimal_places=2, db_column='precio_total')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_detalleVenta'
