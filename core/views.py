@@ -15,7 +15,7 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     OuterRef,
-    Q,
+    Q as DJANGO_Q,
     Sum,
     Value,
     When,
@@ -92,7 +92,7 @@ def home_dashboard(request):
             has_pago_confirmado=Exists(pagos_confirmados_sq),
         )
         .filter(
-            Q(estado=2) | Q(estado=1, has_pago_confirmado=True)
+            DJANGO_Q(estado=2) | DJANGO_Q(estado=1, has_pago_confirmado=True)
         )
     )
     cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
@@ -280,10 +280,9 @@ def home_dashboard(request):
         cat_data = [float(c['total']) for c in cats]
 
         # Top Ranking Libros (Físico / Preventa) - considerar IDs y nombre de categoría
-        from django.db.models import Q
-        libros_filter = Q(producto__codigo_categoria__in=[1, 15]) | Q(
+        libros_filter = DJANGO_Q(producto__codigo_categoria__in=[1, 15]) | DJANGO_Q(
             producto__codigo_categoria__nombre_categoria__icontains="fisico"
-        ) | Q(producto__codigo_categoria__nombre_categoria__icontains="físico") | Q(
+        ) | DJANGO_Q(producto__codigo_categoria__nombre_categoria__icontains="físico") | DJANGO_Q(
             producto__codigo_categoria__nombre_categoria__icontains="preventa"
         )
         top_books_qs = (
