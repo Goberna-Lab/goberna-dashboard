@@ -1113,6 +1113,7 @@
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
     const ventaProductosMap = new Map();
+    const productNameToIdsMap = new Map();
 
     const pad2 = (n) => String(n).padStart(2, '0');
     function getWeekKey(date) {
@@ -1180,16 +1181,67 @@
       };
     }
 
-    function buildVentasListUrl({ fechaInicio = '', fechaFin = '', usuario = '', tab = 'todo' } = {}) {
+    function getSelectedProductIdsForRedirect() {
+      const selectedNames = getCheckedValues('filtroProductoOptions');
+      if (!selectedNames.size) return [];
+
+      const ids = new Set();
+      selectedNames.forEach((name) => {
+        const productName = String(name || '').trim();
+        if (!productName) return;
+        const mappedIds = productNameToIdsMap.get(productName);
+        if (!mappedIds) return;
+        mappedIds.forEach((id) => {
+          const pid = Number(id || 0);
+          if (pid > 0) ids.add(pid);
+        });
+      });
+      return Array.from(ids).sort((a, b) => a - b);
+    }
+
+    function getDashboardNavigationFilters(overrides = {}) {
+      const base = getDashboardDateFilters();
+      const productoIds = getSelectedProductIdsForRedirect();
+      const estado = String(document.getElementById('filtroEstado')?.value || '').trim();
+      const folio = String(document.getElementById('filtroBuscar')?.value || '').trim();
+      if (productoIds.length) base.productoIds = productoIds;
+      if (estado) base.estado = estado;
+      if (folio) base.folio = folio;
+      return { ...base, ...overrides };
+    }
+
+    function buildVentasListUrl({
+      fechaInicio = '',
+      fechaFin = '',
+      usuario = '',
+      tab = 'todo',
+      productoIds = [],
+      estado = '',
+      folio = '',
+    } = {}) {
       const params = new URLSearchParams();
       const from = String(fechaInicio || '').trim();
       const to = String(fechaFin || '').trim();
       const userValue = String(usuario || '').trim();
+      const estadoValue = String(estado || '').trim();
+      const folioValue = String(folio || '').trim();
+      const cleanProductIds = Array.isArray(productoIds)
+        ? Array.from(
+            new Set(
+              productoIds
+                .map((value) => Number(value || 0))
+                .filter((value) => value > 0)
+            )
+          ).sort((a, b) => a - b)
+        : [];
 
       if (tab) params.set('tab', String(tab));
       if (from) params.set('fecha_inicio', from);
       if (to) params.set('fecha_fin', to);
       if (userValue) params.set('usuario', userValue);
+      if (cleanProductIds.length) params.set('producto_id', cleanProductIds.join(','));
+      if (estadoValue) params.set('estado', estadoValue);
+      if (folioValue) params.set('folio', folioValue);
 
       const base = buildMainAppPath(VENTAS_LIST_PATH);
       const query = params.toString();
@@ -1203,7 +1255,7 @@
     }
 
     function getMonthDateRange(monthLabel) {
-      const match = String(monthLabel || '').trim().match(/^(\d{4})-(\d{2})$/);
+      const match = String(monthLabel || '').trim().match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
       if (!match) return null;
       const year = Number(match[1]);
       const month = Number(match[2]);
@@ -1219,6 +1271,7 @@
 
     function rebuildVentaProductosMap() {
       ventaProductosMap.clear();
+      productNameToIdsMap.clear();
       (detallesCategoria || []).forEach(d => {
         const ventaId = String(d.venta_id || '');
         const producto = String(d.producto__nombre_producto || '').trim();
@@ -1227,6 +1280,14 @@
           ventaProductosMap.set(ventaId, new Set());
         }
         ventaProductosMap.get(ventaId).add(producto);
+
+        const productoId = Number(d.producto__codigo_producto || 0);
+        if (productoId > 0) {
+          if (!productNameToIdsMap.has(producto)) {
+            productNameToIdsMap.set(producto, new Set());
+          }
+          productNameToIdsMap.get(producto).add(productoId);
+        }
       });
     }
 
@@ -1521,7 +1582,7 @@
             const label = chartVentasMesInst?.data?.labels?.[idx];
             const range = getMonthDateRange(label);
             if (!range) return;
-            redirectToVentasList(range);
+            redirectToVentasList(getDashboardNavigationFilters(range));
           },
           onHover: (event, elements) => {
             const canvas = event?.native?.target || chartVentasMesInst?.canvas;
@@ -1687,12 +1748,9 @@
                 tr.classList.add('vendor-click-row');
                 tr.title = 'Ver ventas del vendedor con filtros actuales';
                 tr.addEventListener('click', () => {
-                    const { fechaInicio, fechaFin } = getDashboardDateFilters();
-                    redirectToVentasList({
-                        fechaInicio,
-                        fechaFin,
+                    redirectToVentasList(getDashboardNavigationFilters({
                         usuario: vendorFilter,
-                    });
+                    }));
                 });
             }
             tbody.appendChild(tr);
@@ -1906,11 +1964,11 @@
                         div.title = `${txt}\nClick para ver ventas`;
                         div.addEventListener('click', () => {
                             const dayKey = getDateKey(cell.date);
-                            redirectToVentasList({
+                            redirectToVentasList(getDashboardNavigationFilters({
                                 fechaInicio: dayKey,
                                 fechaFin: dayKey,
                                 usuario: vendorFilter,
-                            });
+                            }));
                         });
                     }
                     if (tooltip) {
