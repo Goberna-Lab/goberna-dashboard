@@ -1865,9 +1865,8 @@
       const cuotaIndexMap = new Map(cuotaEstadoKeys.map((k, idx) => [k, idx]));
       const useCuotasAmount = selectedCuotasMetric === 'monto';
       const cuotasValues = Array(cuotaEstadoKeys.length).fill(0);
-      const cuotaSource = useCuotasAmount
-        ? (cuotasDetalle || [])
-        : ((cuotasEstadoDetalle && cuotasEstadoDetalle.length) ? cuotasEstadoDetalle : cuotasDetalle);
+      // Las cuotas del pastel siguen las ventas filtradas (incluye filtro de fecha).
+      const cuotaSource = buildCuotasFiltradas(ventasFil);
       (cuotaSource || []).forEach(c => {
         const pos = cuotaIndexMap.get(Number(c.estado));
         if (pos === undefined) return;
