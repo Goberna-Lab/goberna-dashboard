@@ -1113,6 +1113,11 @@
         : new Date(y, m - 1, d, 0, 0, 0, 0);
     }
 
+    function getDateKey(dateObj) {
+      if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
+      return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+    }
+
     function rebuildVentaProductosMap() {
       ventaProductosMap.clear();
       (detallesCategoria || []).forEach(d => {
@@ -1819,7 +1824,8 @@
       const estadoKeys = Object.keys(estadoLabels).map(Number);
       const estadoIndexMap = new Map(estadoKeys.map((k, idx) => [k, idx]));
       const estadoCounts = Array(estadoKeys.length).fill(0);
-      const estadoSource = (ventasEstadoDetalle && ventasEstadoDetalle.length) ? ventasEstadoDetalle : ventasDetalle;
+      // El gráfico de estado sigue el mismo conjunto filtrado (incluye rango de fechas).
+      const estadoSource = ventasFil;
       (estadoSource || []).forEach(v => {
         const pos = estadoIndexMap.get(Number(v.estado));
         if (pos !== undefined) estadoCounts[pos] += 1;
@@ -2008,15 +2014,15 @@
       const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
-      
-      const fechaDesde = parseInputDate(desde, false);
-      const fechaHasta = parseInputDate(hasta, true);
+      const fechaDesdeKey = String(desde || '').trim();
+      const fechaHastaKey = String(hasta || '').trim();
 
       const ventasFil = ventasDetalle.filter(v => {
         const fecha = parseVentaDate(v.fecha_venta);
-        if ((fechaDesde || fechaHasta) && !fecha) return false;
-        if (fechaDesde && fecha < fechaDesde) return false;
-        if (fechaHasta && fecha > fechaHasta) return false;
+        if ((fechaDesdeKey || fechaHastaKey) && !fecha) return false;
+        const fechaKey = getDateKey(fecha);
+        if (fechaDesdeKey && fechaKey < fechaDesdeKey) return false;
+        if (fechaHastaKey && fechaKey > fechaHastaKey) return false;
         if (estado && String(v.estado) !== estado) return false;
         if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v.usuario__username || ''))) return false;
         if (productosSeleccionados.size) {
