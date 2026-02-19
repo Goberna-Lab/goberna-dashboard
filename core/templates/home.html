@@ -1514,7 +1514,20 @@
         options: { 
             indexAxis: 'y',
             scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } } 
+            plugins: { legend: { display: false } },
+            onClick: (_event, elements) => {
+              if (!elements || !elements.length) return;
+              const idx = elements[0].index;
+              const label = chartBooksInst?.data?.labels?.[idx];
+              if (!label || label === 'Sin datos') return;
+              seleccionarProductosEnFiltro([label]);
+              aplicarFiltros();
+            },
+            onHover: (event, elements) => {
+              const canvas = event?.native?.target || chartBooksInst?.canvas;
+              if (!canvas) return;
+              canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+            },
         }
       });
 
@@ -1645,7 +1658,7 @@
         });
     }
 
-    function updateBooksChart(ventaIds) {
+    function updateBooksChart(ventaIds, productosSeleccionados) {
         if (!chartBooksInst) return;
         const detallesLibros = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
@@ -1655,6 +1668,7 @@
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
             return true;
         });
         
@@ -1680,7 +1694,7 @@
         chartBooksInst.update();
     }
 
-    function updateBooksTable(ventaIds) {
+    function updateBooksTable(ventaIds, productosSeleccionados) {
         const bookDetails = detallesCategoria.filter(d => {
             const catId = d.producto__codigo_categoria;
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
@@ -1689,6 +1703,7 @@
             const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
             return true;
         });
         
@@ -2024,7 +2039,7 @@
       }
 
       // Update Books & Courses Charts (siguen filtros superiores)
-      updateBooksChart(ventaIds);
+      updateBooksChart(ventaIds, productosSeleccionados);
       updateCoursesChart(ventaIds, productosSeleccionados);
 
       // Update School Table (Categories 5 & 6)
@@ -2058,7 +2073,7 @@
       renderSchoolTable(schoolList);
 
       // Update Books Table con filtros superiores
-      updateBooksTable(ventaIds);
+      updateBooksTable(ventaIds, productosSeleccionados);
 
       // Update Vendors Table
       const userMap = new Map();
