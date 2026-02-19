@@ -395,7 +395,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v7_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v8_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -444,6 +444,7 @@ def home_dashboard(request):
             monto_usd=ExpressionWrapper(F('precio_total') / F('tasa_final'), output_field=DecimalField(max_digits=12, decimal_places=2))
         ).values(
             "venta_id", 
+            "producto__codigo_producto",
             "producto__codigo_categoria__nombre_categoria", 
             "producto__codigo_categoria__nombre_categoria", 
             "monto_usd",
