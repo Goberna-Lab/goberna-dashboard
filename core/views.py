@@ -102,14 +102,10 @@ def home_dashboard(request):
             output_field=DecimalField(max_digits=12, decimal_places=2)
         )
     ).annotate(
-        # Regla de fecha:
-        # - Pendiente: fecha_registro de la venta.
-        # - Pagada: fecha_venta (no fecha de pago de Tesorería).
-        fecha_evento=Case(
-            When(estado=2, then=Coalesce("fecha_registro", "fecha_venta", output_field=DateTimeField())),
-            default=Coalesce("fecha_venta", "fecha_registro", output_field=DateTimeField()),
-            output_field=DateTimeField(),
-        )
+        # Regla de fecha del dashboard:
+        # - Siempre usar fecha_venta.
+        # - Fallback a fecha_registro solo si fecha_venta viene nula.
+        fecha_evento=Coalesce("fecha_venta", "fecha_registro", output_field=DateTimeField())
     )
 
     # Anotar Cuotas con monto_usd
@@ -144,8 +140,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v8: incluye pendientes + pagadas (sin confirmación de Tesorería)
-    cache_key = f"dash_stats_v8_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v9: fecha_evento usa fecha_venta (fallback fecha_registro)
+    cache_key = f"dash_stats_v9_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -399,7 +395,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v6_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v7_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
