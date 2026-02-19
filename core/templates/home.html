@@ -787,15 +787,23 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2">
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
+            <select id="filtroOrdenBooksChartDir" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="desc" selected>Descendente</option>
+              <option value="asc">Ascendente</option>
+            </select>
           </div>
           <canvas id="chartBooks" height="180"></canvas>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2">
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</span>
+            <select id="filtroOrdenCursosDir" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="desc" selected>Descendente</option>
+              <option value="asc">Ascendente</option>
+            </select>
           </div>
           <canvas id="chartCourses" height="180"></canvas>
         </div>
@@ -814,7 +822,19 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</span>
+            <div class="d-flex align-items-center gap-2">
+              <select id="filtroOrdenVendedores" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="cantidad" selected>Ventas</option>
+                <option value="monto">Monto</option>
+              </select>
+              <select id="filtroOrdenVendedoresDir" class="form-select form-select-sm" style="max-width: 180px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
+          </div>
           <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableVendors" style="min-width: 100%;">
               <thead class="text-secondary small-header">
@@ -832,10 +852,16 @@
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</span>
-            <select id="filtroOrdenEscuela" class="form-select form-select-sm" style="max-width: 180px;">
-              <option value="monto" selected>Monto</option>
-              <option value="cantidad">Cantidad</option>
-            </select>
+            <div class="d-flex align-items-center gap-2">
+              <select id="filtroOrdenEscuela" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="monto" selected>Monto</option>
+                <option value="cantidad">Cantidad</option>
+              </select>
+              <select id="filtroOrdenEscuelaDir" class="form-select form-select-sm" style="max-width: 180px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
           </div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableSchool">
@@ -854,10 +880,16 @@
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</span>
-            <select id="filtroOrdenLibros" class="form-select form-select-sm" style="max-width: 180px;">
-              <option value="monto" selected>Monto</option>
-              <option value="cantidad">Cantidad</option>
-            </select>
+            <div class="d-flex align-items-center gap-2">
+              <select id="filtroOrdenLibros" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="monto" selected>Monto</option>
+                <option value="cantidad">Cantidad</option>
+              </select>
+              <select id="filtroOrdenLibrosDir" class="form-select form-select-sm" style="max-width: 180px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
           </div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableBooks">
@@ -1066,6 +1098,12 @@
     let selectedCuotasMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
+    let selectedVendorSort = 'cantidad'; // 'cantidad' | 'monto'
+    let selectedVendorSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedSchoolSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedBooksSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedCoursesSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedBooksChartSortOrder = 'desc'; // 'asc' | 'desc'
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
@@ -1095,6 +1133,11 @@
     function getMonthKey(date) {
       if (!(date instanceof Date) || isNaN(date)) return null;
       return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+    }
+
+    function compareByOrder(a, b, order = 'desc') {
+      const diff = Number(a || 0) - Number(b || 0);
+      return order === 'asc' ? diff : -diff;
     }
 
     function parseVentaDate(rawDate) {
@@ -1508,7 +1551,14 @@
         }
       });
 
-      renderVendorTable(vendorsData);
+      const initialVendors = Array.isArray(vendorsData) ? [...vendorsData] : [];
+      initialVendors.sort((a, b) => {
+        const key = selectedVendorSort === 'monto' ? 'amount' : 'count';
+        const cmp = compareByOrder(a?.[key], b?.[key], selectedVendorSortOrder);
+        if (cmp !== 0) return cmp;
+        return String(a?.name || '').localeCompare(String(b?.name || ''), 'es', { sensitivity: 'base' });
+      });
+      renderVendorTable(initialVendors.slice(0, 20));
     } 
 
     function renderVendorTable(data) {
@@ -1615,7 +1665,13 @@
             booksMap.set(name, (booksMap.get(name) || 0) + qty);
         });
 
-        const sortedBooks = Array.from(booksMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const sortedBooks = Array.from(booksMap.entries())
+          .sort((a, b) => {
+            const cmp = compareByOrder(a[1], b[1], selectedBooksChartSortOrder);
+            if (cmp !== 0) return cmp;
+            return String(a[0] || '').localeCompare(String(b[0] || ''), 'es', { sensitivity: 'base' });
+          })
+          .slice(0, 10);
         const bookLabels = sortedBooks.map(x => x[0]);
         const bookData = sortedBooks.map(x => x[1]);
 
@@ -1648,8 +1704,11 @@
         const booksTableList = Array.from(booksTableMap.entries())
             .map(([name, val]) => ({ name, ...val }))
             .sort((a,b) => {
-              if (selectedBooksSort === 'cantidad') return b.qty - a.qty;
-              return b.amount - a.amount;
+              const base = selectedBooksSort === 'cantidad'
+                ? compareByOrder(a.qty, b.qty, selectedBooksSortOrder)
+                : compareByOrder(a.amount, b.amount, selectedBooksSortOrder);
+              if (base !== 0) return base;
+              return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
             });
         
         renderBooksTable(booksTableList);
@@ -1854,7 +1913,13 @@
             coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
         });
 
-        const sortedCourses = Array.from(coursesMap.entries()).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        const sortedCourses = Array.from(coursesMap.entries())
+          .sort((a, b) => {
+            const cmp = compareByOrder(a[1], b[1], selectedCoursesSortOrder);
+            if (cmp !== 0) return cmp;
+            return String(a[0] || '').localeCompare(String(b[0] || ''), 'es', { sensitivity: 'base' });
+          })
+          .slice(0, 10);
         const courseLabels = sortedCourses.map(x => x[0]);
         const courseData = sortedCourses.map(x => x[1]);
 
@@ -1983,8 +2048,11 @@
       const schoolList = Array.from(schoolMap.entries())
           .map(([name, val]) => ({ name, ...val }))
           .sort((a,b) => {
-            if (selectedSchoolSort === 'cantidad') return b.qty - a.qty;
-            return b.amount - a.amount;
+            const base = selectedSchoolSort === 'cantidad'
+              ? compareByOrder(a.qty, b.qty, selectedSchoolSortOrder)
+              : compareByOrder(a.amount, b.amount, selectedSchoolSortOrder);
+            if (base !== 0) return base;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
           });
           
       renderSchoolTable(schoolList);
@@ -2006,7 +2074,13 @@
       });
 
       const sortedVendors = Array.from(userMap.values())
-        .sort((a,b) => b.count - a.count)
+        .sort((a,b) => {
+          const base = selectedVendorSort === 'monto'
+            ? compareByOrder(a.amount, b.amount, selectedVendorSortOrder)
+            : compareByOrder(a.count, b.count, selectedVendorSortOrder);
+          if (base !== 0) return base;
+          return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+        })
         .slice(0, 20); // Top 20
 
       renderVendorTable(sortedVendors);
@@ -2577,10 +2651,43 @@
       selectedSchoolSort = filtroOrdenEscuela.value === 'cantidad' ? 'cantidad' : 'monto';
       aplicarFiltros();
     });
+    const filtroOrdenEscuelaDir = document.getElementById('filtroOrdenEscuelaDir');
+    filtroOrdenEscuelaDir?.addEventListener('change', () => {
+      selectedSchoolSortOrder = filtroOrdenEscuelaDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
 
     const filtroOrdenLibros = document.getElementById('filtroOrdenLibros');
     filtroOrdenLibros?.addEventListener('change', () => {
       selectedBooksSort = filtroOrdenLibros.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+    const filtroOrdenLibrosDir = document.getElementById('filtroOrdenLibrosDir');
+    filtroOrdenLibrosDir?.addEventListener('change', () => {
+      selectedBooksSortOrder = filtroOrdenLibrosDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenVendedores = document.getElementById('filtroOrdenVendedores');
+    filtroOrdenVendedores?.addEventListener('change', () => {
+      selectedVendorSort = filtroOrdenVendedores.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+    const filtroOrdenVendedoresDir = document.getElementById('filtroOrdenVendedoresDir');
+    filtroOrdenVendedoresDir?.addEventListener('change', () => {
+      selectedVendorSortOrder = filtroOrdenVendedoresDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenCursosDir = document.getElementById('filtroOrdenCursosDir');
+    filtroOrdenCursosDir?.addEventListener('change', () => {
+      selectedCoursesSortOrder = filtroOrdenCursosDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenBooksChartDir = document.getElementById('filtroOrdenBooksChartDir');
+    filtroOrdenBooksChartDir?.addEventListener('change', () => {
+      selectedBooksChartSortOrder = filtroOrdenBooksChartDir.value === 'asc' ? 'asc' : 'desc';
       aplicarFiltros();
     });
 
