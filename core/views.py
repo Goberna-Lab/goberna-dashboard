@@ -11,10 +11,8 @@ from django.db.models import (
     Count,
     DateTimeField,
     DecimalField,
-    Exists,
     ExpressionWrapper,
     F,
-    OuterRef,
     Q as DJANGO_Q,
     Sum,
     Value,
@@ -27,7 +25,7 @@ from django.conf import settings
 from django.core.cache import cache
 import hashlib
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, Pago
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
 
 try:
     import openpyxl
@@ -77,24 +75,9 @@ def home_dashboard(request):
     cuotas_scope = Cuota.objects.filter(venta__in=ventas_scope)
 
     # Universo de ventas del dashboard:
-    # - Pagadas (1): solo si tienen confirmación de Tesorería.
-    # - Pendientes (2): también se consideran.
-    pagos_confirmados_sq = (
-        Pago.objects.filter(
-            cuota__venta_id=OuterRef("pk"),
-            estado=2,
-            confirmado_por__isnull=False,
-        )
-    )
-    ventas_base = (
-        ventas_scope
-        .annotate(
-            has_pago_confirmado=Exists(pagos_confirmados_sq),
-        )
-        .filter(
-            DJANGO_Q(estado=2) | DJANGO_Q(estado=1, has_pago_confirmado=True)
-        )
-    )
+    # - Pagadas (1) y Pendientes (2).
+    # - Sin exigir confirmación de Tesorería para estado=1.
+    ventas_base = ventas_scope.filter(estado__in=[1, 2])
     cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
 
     # CÁLCULO EN DÓLARES (USD)
@@ -161,8 +144,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v7: incluye pendientes + pagadas confirmadas; fecha_evento ajustada
-    cache_key = f"dash_stats_v7_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v8: incluye pendientes + pagadas (sin confirmación de Tesorería)
+    cache_key = f"dash_stats_v8_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -416,7 +399,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v5_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v6_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
