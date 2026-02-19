@@ -428,7 +428,10 @@
     .heatmap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#0f172a; }
     .heatmap-body { overflow-x:auto; padding-bottom:8px; }
     .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; width:fit-content; }
-    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; cursor:pointer; }
+    .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; cursor:pointer; transition: box-shadow .12s ease, transform .12s ease; }
+    .contrib-cell.contrib-cell-clickable:hover { box-shadow: 0 0 0 1px #0ea5e9 inset; transform: scale(1.08); }
+    #tableVendors tbody tr.vendor-click-row { cursor: pointer; }
+    #tableVendors tbody tr.vendor-click-row:hover { background: #f8fafc; }
     .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:10px; flex-wrap:wrap; }
     .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#e5e7eb; }
     .heatmap-meta { font-size:13px; color:#475569; }
@@ -1161,6 +1164,59 @@
       return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
     }
 
+    const MAIN_APP_BASE = String(MAIN_APP_URL || '').trim().replace(/\/+$/, '');
+    const VENTAS_LIST_PATH = '/ventas/listaVentas/';
+    const VENTA_DETALLE_PATH = '/ventas/verVenta/';
+
+    function buildMainAppPath(path) {
+      const safePath = `/${String(path || '').replace(/^\/+/, '')}`;
+      return MAIN_APP_BASE ? `${MAIN_APP_BASE}${safePath}` : safePath;
+    }
+
+    function getDashboardDateFilters() {
+      return {
+        fechaInicio: String(document.getElementById('filtroDesde')?.value || '').trim(),
+        fechaFin: String(document.getElementById('filtroHasta')?.value || '').trim(),
+      };
+    }
+
+    function buildVentasListUrl({ fechaInicio = '', fechaFin = '', usuario = '', tab = 'todo' } = {}) {
+      const params = new URLSearchParams();
+      const from = String(fechaInicio || '').trim();
+      const to = String(fechaFin || '').trim();
+      const userValue = String(usuario || '').trim();
+
+      if (tab) params.set('tab', String(tab));
+      if (from) params.set('fecha_inicio', from);
+      if (to) params.set('fecha_fin', to);
+      if (userValue) params.set('usuario', userValue);
+
+      const base = buildMainAppPath(VENTAS_LIST_PATH);
+      const query = params.toString();
+      return query ? `${base}?${query}` : base;
+    }
+
+    function redirectToVentasList(filters = {}) {
+      const target = buildVentasListUrl(filters);
+      if (!target) return;
+      window.location.href = target;
+    }
+
+    function getMonthDateRange(monthLabel) {
+      const match = String(monthLabel || '').trim().match(/^(\d{4})-(\d{2})$/);
+      if (!match) return null;
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      if (!year || month < 1 || month > 12) return null;
+
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+      return {
+        fechaInicio: getDateKey(start),
+        fechaFin: getDateKey(end),
+      };
+    }
+
     function rebuildVentaProductosMap() {
       ventaProductosMap.clear();
       (detallesCategoria || []).forEach(d => {
@@ -1457,7 +1513,22 @@
       chartVentasMesInst = new Chart(document.getElementById('chartVentasMes'), {
         type: 'bar',
         data: { labels: labelsMes, datasets: [{ label: 'Monto', data: dataMes, backgroundColor: '#193b59' }]},
-        options: { scales: { y: { beginAtZero: true } } }
+        options: {
+          scales: { y: { beginAtZero: true } },
+          onClick: (_event, elements) => {
+            if (!elements || !elements.length) return;
+            const idx = elements[0].index;
+            const label = chartVentasMesInst?.data?.labels?.[idx];
+            const range = getMonthDateRange(label);
+            if (!range) return;
+            redirectToVentasList(range);
+          },
+          onHover: (event, elements) => {
+            const canvas = event?.native?.target || chartVentasMesInst?.canvas;
+            if (!canvas) return;
+            canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+          },
+        }
       });
 
       chartVentasSerieInst = new Chart(document.getElementById('chartVentasSerie'), {
@@ -1589,6 +1660,7 @@
 
         data.forEach(d => {
             const tr = document.createElement('tr');
+            const vendorFilter = String(d.user_id || d.userId || d.username || '').trim();
             
             // Heatmap logic: 0% = blue/white, 100% = red/orange
             // We'll use HSL for simpler gradient. 
@@ -1611,6 +1683,18 @@
                 </td>
                 <td class="text-end text-muted small">$${d.amount.toFixed(2)}</td>
             `;
+            if (vendorFilter) {
+                tr.classList.add('vendor-click-row');
+                tr.title = 'Ver ventas del vendedor con filtros actuales';
+                tr.addEventListener('click', () => {
+                    const { fechaInicio, fechaFin } = getDashboardDateFilters();
+                    redirectToVentasList({
+                        fechaInicio,
+                        fechaFin,
+                        usuario: vendorFilter,
+                    });
+                });
+            }
             tbody.appendChild(tr);
         });
 
@@ -1771,6 +1855,7 @@
         const container = document.getElementById('heatmapContainer');
         const meta = document.getElementById('heatmapMeta');
         const tooltip = document.getElementById('heatmapTooltip');
+        const vendorFilter = String(vendorUser || '').trim();
         if (!container || !meta) return;
         container.innerHTML = '';
         if (tooltip) tooltip.style.display = 'none';
@@ -1816,6 +1901,18 @@
                     div.style.background = color;
                     const txt = `${cell.count} venta(s)\n${cell.date.toLocaleDateString('es-PE')}`;
                     div.title = txt;
+                    if (cell.count > 0) {
+                        div.classList.add('contrib-cell-clickable');
+                        div.title = `${txt}\nClick para ver ventas`;
+                        div.addEventListener('click', () => {
+                            const dayKey = getDateKey(cell.date);
+                            redirectToVentasList({
+                                fechaInicio: dayKey,
+                                fechaFin: dayKey,
+                                usuario: vendorFilter,
+                            });
+                        });
+                    }
                     if (tooltip) {
                         div.addEventListener('mouseenter', (e) => {
                             tooltip.style.display = 'block';
@@ -2078,10 +2175,18 @@
       // Update Vendors Table
       const userMap = new Map();
       ventasFil.forEach(v => {
-        const vendorKey = String(v.usuario__username || v.usuario_id || '').trim() || `unknown-${v.id}`;
+        const vendorUsername = String(v.usuario__username || '').trim();
+        const vendorUserId = Number(v.usuario_id || 0) || '';
+        const vendorKey = vendorUsername || String(vendorUserId || '').trim() || `unknown-${v.id}`;
         const vendorName = v.vendedor || v.usuario__username || `Usuario ${v.usuario_id || 'N/A'}`;
         if(!userMap.has(vendorKey)) {
-            userMap.set(vendorKey, { name: vendorName, count: 0, amount: 0 });
+            userMap.set(vendorKey, {
+              name: vendorName,
+              username: vendorUsername,
+              user_id: vendorUserId,
+              count: 0,
+              amount: 0,
+            });
         }
         const entry = userMap.get(vendorKey);
         entry.count += 1;
@@ -2790,9 +2895,7 @@
       const filas = visibleItems.map(v => {
         const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '';
         const estado = estadoLabels[v.estado] || '---';
-        // AQUÍ USAMOS MAIN_APP_URL
-        // Si no hay URL remota, usamos '#' o path relativo
-        const urlVenta = MAIN_APP_URL ? `${MAIN_APP_URL}/ventas/verVenta/${v.id}/` : `/ventas/verVenta/${v.id}/`;
+        const urlVenta = buildMainAppPath(`${VENTA_DETALLE_PATH}${v.id}/`);
         
         return `
           <tr>
