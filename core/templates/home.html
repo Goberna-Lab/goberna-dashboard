@@ -1141,6 +1141,37 @@
       return values;
     }
 
+    function detalleCoincideProductoSeleccionado(detalle, productosSeleccionados) {
+      if (!productosSeleccionados || !productosSeleccionados.size) return true;
+      const nombreProducto = String(detalle?.producto__nombre_producto || '').trim();
+      if (!nombreProducto) return false;
+      return productosSeleccionados.has(nombreProducto);
+    }
+
+    function seleccionarProductosEnFiltro(productNames) {
+      const optionsContainer = document.getElementById('filtroProductoOptions');
+      const allCheckbox = document.getElementById('filtroProductoAll');
+      if (!optionsContainer) return;
+
+      const targetNames = new Set(
+        Array.from(productNames || [])
+          .map(name => String(name || '').trim())
+          .filter(Boolean)
+      );
+
+      let hasAnySelected = false;
+      optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const checked = targetNames.has(String(cb.value || '').trim());
+        cb.checked = checked;
+        if (checked) hasAnySelected = true;
+      });
+
+      if (allCheckbox) {
+        allCheckbox.checked = !hasAnySelected;
+      }
+      updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
+    }
+
     function getCheckedLabels(containerId) {
       const labels = [];
       const container = document.getElementById(containerId);
@@ -1460,7 +1491,20 @@
         options: { 
             indexAxis: 'y',
             scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } } 
+            plugins: { legend: { display: false } },
+            onClick: (_event, elements) => {
+              if (!elements || !elements.length) return;
+              const idx = elements[0].index;
+              const label = chartCoursesInst?.data?.labels?.[idx];
+              if (!label || label === 'Sin datos') return;
+              seleccionarProductosEnFiltro([label]);
+              aplicarFiltros();
+            },
+            onHover: (event, elements) => {
+              const canvas = event?.native?.target || chartCoursesInst?.canvas;
+              if (!canvas) return;
+              canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+            },
         }
       });
 
@@ -1793,12 +1837,15 @@
         }
     }
 
-    function updateCoursesChart(ventaIds) {
+    function updateCoursesChart(ventaIds, productosSeleccionados) {
         if (!chartCoursesInst) return;
-        const detallesFil = detallesCategoria.filter(d => 
-            (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6) &&
-            (!ventaIds || ventaIds.has(d.venta_id))
-        );
+        const detallesFil = detallesCategoria.filter(d => {
+            const categoria = Number(d.producto__codigo_categoria);
+            const esCurso = categoria === 5 || categoria === 6;
+            if (!esCurso) return false;
+            if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
+        });
         
         const coursesMap = new Map();
         detallesFil.forEach(d => {
@@ -1816,7 +1863,7 @@
         chartCoursesInst.update();
     }
 
-    function updateCharts(ventasFil) {
+    function updateCharts(ventasFil, productosSeleccionados = getCheckedValues('filtroProductoOptions')) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
       const ventaIds = new Set(ventasFil.map(v => v.id));
@@ -1913,13 +1960,16 @@
 
       // Update Books & Courses Charts (siguen filtros superiores)
       updateBooksChart(ventaIds);
-      updateCoursesChart(ventaIds);
+      updateCoursesChart(ventaIds, productosSeleccionados);
 
       // Update School Table (Categories 5 & 6)
-      const schoolDetails = detallesCategoria.filter(d => 
-          ventaIds.has(d.venta_id) && 
-          (d.producto__codigo_categoria === 5 || d.producto__codigo_categoria === 6)
-      );
+      const schoolDetails = detallesCategoria.filter(d => {
+          const categoria = Number(d.producto__codigo_categoria);
+          const esCurso = categoria === 5 || categoria === 6;
+          if (!esCurso) return false;
+          if (!ventaIds.has(d.venta_id)) return false;
+          return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
+      });
       
       const schoolMap = new Map();
       schoolDetails.forEach(d => {
@@ -2114,7 +2164,7 @@
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
       
       renderChipsResumen({ estado, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
-      updateCharts(ventasFil);
+      updateCharts(ventasFil, productosSeleccionados);
       renderTabla(ventasFil);
       updatePrintHeader();
     }
