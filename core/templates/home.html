@@ -874,7 +874,13 @@
         </div>
 
         <div class="chart-card">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</span>
+            <select id="filtroCuotasMetric" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="cantidad" selected>Cantidad</option>
+              <option value="monto">Monto</option>
+            </select>
+          </div>
           <canvas id="chartCuotas" height="180"></canvas>
         </div>
 
@@ -986,6 +992,8 @@
     // Variables de inicialización
     let ventasDetalle = [];
     let cuotasDetalle = [];
+    let ventasEstadoDetalle = [];
+    let cuotasEstadoDetalle = [];
     let detallesCategoria = [];
     
     // Variables de charts
@@ -1005,7 +1013,22 @@
     const ventasMensualLabels = {{ chart_ventas_labels|default:"[]"|safe }};
     const ventasMensualData = {{ chart_ventas_data|default:"[]"|safe }};
 
-    const estadoLabels = {1: "Pagado", 2: "Pendiente", 3: "No validado", 4: "Anulado"};
+    const estadoLabels = {
+      1: "Pagado",
+      2: "Pendiente",
+      3: "No validado",
+      4: "Anulado",
+      5: "Cotización",
+      6: "Preventa",
+      7: "Retirado",
+    };
+    const cuotaEstadoLabels = {
+      1: "Pagadas",
+      2: "Pendientes",
+      3: "Vencidas",
+      4: "Reintento",
+      5: "Retiradas",
+    };
     const IS_ADMIN = {{ is_admin|yesno:"true,false" }};
 
     function formatearMonto(v) {
@@ -1040,6 +1063,7 @@
     let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedVentasMesMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedMedioMetric = 'cantidad'; // 'monto' | 'cantidad'
+    let selectedCuotasMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
@@ -1255,15 +1279,21 @@
         position: 'bottom',
         labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 14 }
       };
+      const estadoKeys = Object.keys(estadoLabels).map(Number);
       const estadoData = {
-        labels: Object.keys(estadoLabels).map(k => estadoLabels[k]),
-        data: Array.isArray(ventasPorEstado) ? ventasPorEstado : [0,0,0,0]
+        labels: estadoKeys.map(k => estadoLabels[k]),
+        data: estadoKeys.map((_, idx) =>
+          Number((Array.isArray(ventasPorEstado) ? ventasPorEstado[idx] : 0) || 0)
+        ),
       };
       chartEstadoInst = new Chart(document.getElementById('chartEstado'), {
         type: 'doughnut',
         data: {
           labels: estadoData.labels,
-          datasets: [{ data: estadoData.data, backgroundColor: ['#198754','#ffc107','#6c757d','#dc3545'] }]
+          datasets: [{
+            data: estadoData.data,
+            backgroundColor: ['#198754', '#ffc107', '#6c757d', '#dc3545', '#3b82f6', '#8b5cf6', '#334155']
+          }]
         },
         options: { plugins: { legend: legendDots } }
       });
@@ -1313,14 +1343,34 @@
         }
       });
 
-      const cuotasDataMap = Array.isArray(cuotasPorEstado) ? cuotasPorEstado : [0,0,0];
+      const cuotaEstadoKeys = Object.keys(cuotaEstadoLabels).map(Number);
+      const cuotasDataMap = cuotaEstadoKeys.map((_, idx) =>
+        Number((Array.isArray(cuotasPorEstado) ? cuotasPorEstado[idx] : 0) || 0)
+      );
       chartCuotasInst = new Chart(document.getElementById('chartCuotas'), {
         type: 'pie',
         data: {
-          labels: ['Pagadas','Pendientes','Vencidas'],
-          datasets: [{ data: cuotasDataMap, backgroundColor: ['#193b59','#ffc107','#dc3545'] }]
+          labels: cuotaEstadoKeys.map(k => cuotaEstadoLabels[k]),
+          datasets: [{
+            label: 'Cuotas',
+            data: cuotasDataMap,
+            backgroundColor: ['#193b59', '#ffc107', '#dc3545', '#6c757d', '#111827']
+          }]
         },
-        options: { plugins: { legend: legendDots } }
+        options: {
+          plugins: {
+            legend: legendDots,
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = Number(ctx.parsed || 0);
+                  if (selectedCuotasMetric === 'monto') return `${ctx.label}: ${formatearMonto(value)}`;
+                  return `${ctx.label}: ${Math.round(value)}`;
+                }
+              }
+            }
+          }
+        }
       });
 
       const labelsMes = ventasMensualLabels.length ? ventasMensualLabels : [''];
@@ -1766,10 +1816,13 @@
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
       const ventaIds = new Set(ventasFil.map(v => v.id));
 
-      const estadoCounts = [0,0,0,0];
-      ventasFil.forEach(v => {
-        const idx = Number(v.estado) - 1;
-        if (idx >=0 && idx < 4) estadoCounts[idx] += 1;
+      const estadoKeys = Object.keys(estadoLabels).map(Number);
+      const estadoIndexMap = new Map(estadoKeys.map((k, idx) => [k, idx]));
+      const estadoCounts = Array(estadoKeys.length).fill(0);
+      const estadoSource = (ventasEstadoDetalle && ventasEstadoDetalle.length) ? ventasEstadoDetalle : ventasDetalle;
+      (estadoSource || []).forEach(v => {
+        const pos = estadoIndexMap.get(Number(v.estado));
+        if (pos !== undefined) estadoCounts[pos] += 1;
       });
       if (chartEstadoInst) {
         chartEstadoInst.data.datasets[0].data = estadoCounts;
@@ -1808,15 +1861,26 @@
         chartMediumInst.update();
       }
 
-      const cuotasFil = buildCuotasFiltradas(ventasFil);
-      const cuotasCounts = [0,0,0]; 
-      cuotasFil.forEach(c => {
-        if (c.estado === 1) cuotasCounts[0] += 1;
-        else if (c.estado === 2) cuotasCounts[1] += 1;
-        else if (c.estado === 3) cuotasCounts[2] += 1;
+      const cuotaEstadoKeys = Object.keys(cuotaEstadoLabels).map(Number);
+      const cuotaIndexMap = new Map(cuotaEstadoKeys.map((k, idx) => [k, idx]));
+      const useCuotasAmount = selectedCuotasMetric === 'monto';
+      const cuotasValues = Array(cuotaEstadoKeys.length).fill(0);
+      const cuotaSource = useCuotasAmount
+        ? (cuotasDetalle || [])
+        : ((cuotasEstadoDetalle && cuotasEstadoDetalle.length) ? cuotasEstadoDetalle : cuotasDetalle);
+      (cuotaSource || []).forEach(c => {
+        const pos = cuotaIndexMap.get(Number(c.estado));
+        if (pos === undefined) return;
+        if (useCuotasAmount) {
+          const amount = parseFloat(c.monto_total || 0);
+          cuotasValues[pos] += Number.isFinite(amount) ? amount : 0;
+          return;
+        }
+        cuotasValues[pos] += 1;
       });
       if (chartCuotasInst) {
-        chartCuotasInst.data.datasets[0].data = cuotasCounts;
+        chartCuotasInst.data.datasets[0].label = useCuotasAmount ? 'Monto (USD)' : 'Cuotas';
+        chartCuotasInst.data.datasets[0].data = cuotasValues;
         chartCuotasInst.update();
       }
 
@@ -2407,6 +2471,8 @@
             const data = await response.json();
             ventasDetalle = data.ventas_detalle || [];
             cuotasDetalle = data.cuotas_detalle || [];
+            ventasEstadoDetalle = data.ventas_estado_detalle || [];
+            cuotasEstadoDetalle = data.cuotas_estado_detalle || [];
             detallesCategoria = data.detalles_categoria || [];
             rebuildVentaProductosMap();
       
@@ -2466,6 +2532,12 @@
     const filtroMedioMetric = document.getElementById('filtroMedioMetric');
     filtroMedioMetric?.addEventListener('change', () => {
       selectedMedioMetric = filtroMedioMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroCuotasMetric = document.getElementById('filtroCuotasMetric');
+    filtroCuotasMetric?.addEventListener('change', () => {
+      selectedCuotasMetric = filtroCuotasMetric.value === 'monto' ? 'monto' : 'cantidad';
       aplicarFiltros();
     });
     
