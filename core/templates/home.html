@@ -774,7 +774,13 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2"><i class="fas fa-earth-americas text-primary"></i> Ventas por país (cliente)</div>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-earth-americas text-primary"></i> Ventas por país (cliente)</span>
+            <select id="filtroPaisMetric" class="form-select form-select-sm" style="max-width: 180px;">
+              <option value="cantidad" selected>Cantidad</option>
+              <option value="monto">Monto</option>
+            </select>
+          </div>
           <canvas id="chartVentasPais" height="180"></canvas>
         </div>
 
@@ -1098,6 +1104,7 @@
     let selectedCategoriaMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedVentasMesMetric = 'monto'; // 'monto' | 'cantidad'
     let selectedMedioMetric = 'cantidad'; // 'monto' | 'cantidad'
+    let selectedCountryMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedCuotasMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
@@ -1512,7 +1519,18 @@
         options: {
           indexAxis: 'y',
           scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = Number(ctx.parsed?.x ?? ctx.parsed ?? 0);
+                  if (selectedCountryMetric === 'monto') return `${ctx.label}: ${formatearMonto(value)}`;
+                  return `${ctx.label}: ${Math.round(value)}`;
+                }
+              }
+            }
+          }
         }
       });
 
@@ -2137,9 +2155,11 @@
       const countryMap = new Map();
       const mediumMap = new Map();
       const useMediumAmount = selectedMedioMetric === 'monto';
+      const useCountryAmount = selectedCountryMetric === 'monto';
       ventasFil.forEach(v => {
         const country = String(v.pais_cliente || '').trim() || 'Sin país';
-        countryMap.set(country, (countryMap.get(country) || 0) + 1);
+        const countryValue = useCountryAmount ? parseFloat(v.monto_total || 0) : 1;
+        countryMap.set(country, (countryMap.get(country) || 0) + countryValue);
 
         const medio = v.medio_label || medioLabel(v.medio);
         const medioValue = useMediumAmount ? parseFloat(v.monto_total || 0) : 1;
@@ -2151,6 +2171,7 @@
           .sort((a, b) => b[1] - a[1])
           .slice(0, 12);
 
+        chartCountryInst.data.datasets[0].label = useCountryAmount ? 'Monto (USD)' : 'Ventas';
         chartCountryInst.data.labels = sortedCountries.length ? sortedCountries.map(x => x[0]) : ['Sin datos'];
         chartCountryInst.data.datasets[0].data = sortedCountries.length ? sortedCountries.map(x => x[1]) : [0];
         chartCountryInst.update();
@@ -2889,6 +2910,12 @@
     const filtroMedioMetric = document.getElementById('filtroMedioMetric');
     filtroMedioMetric?.addEventListener('change', () => {
       selectedMedioMetric = filtroMedioMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroPaisMetric = document.getElementById('filtroPaisMetric');
+    filtroPaisMetric?.addEventListener('change', () => {
+      selectedCountryMetric = filtroPaisMetric.value === 'monto' ? 'monto' : 'cantidad';
       aplicarFiltros();
     });
 
