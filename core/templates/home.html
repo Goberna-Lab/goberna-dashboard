@@ -1217,6 +1217,7 @@
       tab = 'todo',
       productoIds = [],
       estado = '',
+      cuotaEstado = '',
       folio = '',
     } = {}) {
       const params = new URLSearchParams();
@@ -1224,6 +1225,7 @@
       const to = String(fechaFin || '').trim();
       const userValue = String(usuario || '').trim();
       const estadoValue = String(estado || '').trim();
+      const cuotaEstadoValue = String(cuotaEstado || '').trim();
       const folioValue = String(folio || '').trim();
       const cleanProductIds = Array.isArray(productoIds)
         ? Array.from(
@@ -1241,6 +1243,7 @@
       if (userValue) params.set('usuario', userValue);
       if (cleanProductIds.length) params.set('producto_id', cleanProductIds.join(','));
       if (estadoValue) params.set('estado', estadoValue);
+      if (cuotaEstadoValue) params.set('cuota_estado', cuotaEstadoValue);
       if (folioValue) params.set('folio', folioValue);
 
       const base = buildMainAppPath(VENTAS_LIST_PATH);
@@ -1565,7 +1568,21 @@
                 }
               }
             }
-          }
+          },
+          onClick: (_event, elements) => {
+            if (!elements || !elements.length) return;
+            const idx = elements[0].index;
+            const cuotaEstadoId = cuotaEstadoKeys[idx];
+            if (!cuotaEstadoId) return;
+            redirectToVentasList(getDashboardNavigationFilters({
+              cuotaEstado: String(cuotaEstadoId),
+            }));
+          },
+          onHover: (event, elements) => {
+            const canvas = event?.native?.target || chartCuotasInst?.canvas;
+            if (!canvas) return;
+            canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+          },
         }
       });
 
