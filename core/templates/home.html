@@ -701,6 +701,16 @@
                 </select>
               </div>
             </div>
+
+            <div class="filter-chip">
+              <i class="fas fa-bullhorn"></i>
+              <div class="filter-body">
+                <span class="filter-label">Medio</span>
+                <select id="filtroMedio">
+                  <option value="">Todos los medios</option>
+                </select>
+              </div>
+            </div>
             
             <div class="filter-chip">
               <i class="fas fa-user-tag"></i>
@@ -1089,6 +1099,29 @@
       return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
     }
 
+    function normalizeMedioValue(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function getMedioFilterValue(value) {
+      const normalized = normalizeMedioValue(value);
+      return normalized || MEDIO_EMPTY_VALUE;
+    }
+
+    function getMedioFilterLabelFromSelect() {
+      const medioSelect = document.getElementById('filtroMedio');
+      if (!medioSelect) return '';
+      const option = medioSelect.selectedOptions?.[0];
+      if (!option || !option.value) return '';
+      return String(option.textContent || '').trim();
+    }
+
+    function resolveMedioFilterValueFromLabel(label) {
+      const normalizedLabel = normalizeSearchTerm(label);
+      if (!normalizedLabel || normalizedLabel === 'sin datos') return '';
+      return medioLabelToValueMap.get(normalizedLabel) || '';
+    }
+
     let chartEstadoInst = null;
     let chartCountryInst = null;
     let chartMediumInst = null;
@@ -1116,6 +1149,8 @@
     let selectedBooksChartSortOrder = 'desc'; // 'asc' | 'desc'
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
+    const MEDIO_EMPTY_VALUE = '__sin_medio__';
+    const medioLabelToValueMap = new Map();
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
@@ -1474,6 +1509,34 @@
       applyMultiSearchFilter('filtroProductoBuscar', 'filtroProductoOptions');
     }
 
+    function populateMediumFilter(data = ventasDetalle) {
+      const select = document.getElementById('filtroMedio');
+      if (!select) return;
+
+      const previousValue = String(select.value || '').trim();
+      const mediumEntries = new Map();
+      medioLabelToValueMap.clear();
+
+      (data || []).forEach((venta) => {
+        const value = getMedioFilterValue(venta?.medio);
+        const label = String(venta?.medio_label || medioLabel(venta?.medio) || 'Sin medio').trim() || 'Sin medio';
+        mediumEntries.set(value, label);
+        medioLabelToValueMap.set(normalizeSearchTerm(label), value);
+      });
+
+      select.innerHTML = '<option value="">Todos los medios</option>';
+      Array.from(mediumEntries.entries())
+        .sort((a, b) => String(a[1] || '').localeCompare(String(b[1] || ''), 'es', { sensitivity: 'base' }))
+        .forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+
+      select.value = previousValue && mediumEntries.has(previousValue) ? previousValue : '';
+    }
+
     function buildCuotasFiltradas(ventasFil) {
       const setFolios = new Set((ventasFil || []).map(v => String(v.folio_venta || '')));
       if (!setFolios.size) return [];
@@ -1556,7 +1619,23 @@
                 }
               }
             }
-          }
+          },
+          onClick: (_event, elements) => {
+            if (!elements || !elements.length) return;
+            const idx = elements[0].index;
+            const label = chartMediumInst?.data?.labels?.[idx];
+            const medioValue = resolveMedioFilterValueFromLabel(label);
+            if (!medioValue) return;
+            const medioSelect = document.getElementById('filtroMedio');
+            if (!medioSelect) return;
+            medioSelect.value = medioValue;
+            aplicarFiltros();
+          },
+          onHover: (event, elements) => {
+            const canvas = event?.native?.target || chartMediumInst?.canvas;
+            if (!canvas) return;
+            canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+          },
         }
       });
 
@@ -2348,6 +2427,7 @@
       const hasta = document.getElementById('filtroHasta').value;
       const chipActivo = document.querySelector('.estado-chip.active');
       const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
+      const medio = String(document.getElementById('filtroMedio')?.value || '').trim();
       
       document.getElementById('filtroEstado').value = estado;
       document.getElementById('filtroEstado').value = estado;
@@ -2364,6 +2444,7 @@
         if (fechaDesdeKey && fechaKey < fechaDesdeKey) return false;
         if (fechaHastaKey && fechaKey > fechaHastaKey) return false;
         if (estado && String(v.estado) !== estado) return false;
+        if (medio && getMedioFilterValue(v.medio) !== medio) return false;
         if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v.usuario__username || ''))) return false;
         if (productosSeleccionados.size) {
           const productosVenta = ventaProductosMap.get(String(v.id || ''));
@@ -2452,8 +2533,9 @@
       if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
       const vendedoresLabel = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), '');
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
+      const medioLabel = getMedioFilterLabelFromSelect();
       
-      renderChipsResumen({ estado, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
+      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
       updateCharts(ventasFil, productosSeleccionados);
       renderTabla(ventasFil);
       updatePrintHeader();
@@ -2823,6 +2905,7 @@
       
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
+            populateMediumFilter(ventasDetalle);
             initCuotasPendientes();
             renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
             renderVendorLineChart();
@@ -2913,6 +2996,11 @@
       aplicarFiltros();
     });
 
+    const filtroMedio = document.getElementById('filtroMedio');
+    filtroMedio?.addEventListener('change', () => {
+      aplicarFiltros();
+    });
+
     const filtroPaisMetric = document.getElementById('filtroPaisMetric');
     filtroPaisMetric?.addEventListener('change', () => {
       selectedCountryMetric = filtroPaisMetric.value === 'monto' ? 'monto' : 'cantidad';
@@ -2948,6 +3036,7 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
+      document.getElementById('filtroMedio').value = '';
       const vendedorAll = document.getElementById('filtroVendedorAll');
       if (vendedorAll) vendedorAll.checked = true;
       document.querySelectorAll('#filtroVendedorOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -2980,6 +3069,7 @@
       if (!cont) return;
       const chips = [];
       if (filters.estado) chips.push(`<span class="summary-chip"><i class="fas fa-layer-group"></i> Estado: ${estadoLabels[filters.estado] || filters.estado}</span>`);
+      if (filters.medio) chips.push(`<span class="summary-chip"><i class="fas fa-bullhorn"></i> Medio: ${filters.medio}</span>`);
       if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
