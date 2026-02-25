@@ -706,9 +706,17 @@
               <i class="fas fa-bullhorn"></i>
               <div class="filter-body">
                 <span class="filter-label">Medio</span>
-                <select id="filtroMedio">
-                  <option value="">Todos los medios</option>
-                </select>
+                <details class="multi-check" id="filtroMedioDropdown">
+                  <summary id="filtroMedioSummary">Todos los medios</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroMedioAll" checked>
+                      <span>Todos los medios</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroMedioOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
               </div>
             </div>
             
@@ -1108,18 +1116,13 @@
       return normalized || MEDIO_EMPTY_VALUE;
     }
 
-    function getMedioFilterLabelFromSelect() {
-      const medioSelect = document.getElementById('filtroMedio');
-      if (!medioSelect) return '';
-      const option = medioSelect.selectedOptions?.[0];
-      if (!option || !option.value) return '';
-      return String(option.textContent || '').trim();
-    }
-
     function resolveMedioFilterValueFromLabel(label) {
       const normalizedLabel = normalizeSearchTerm(label);
       if (!normalizedLabel || normalizedLabel === 'sin datos') return '';
-      return medioLabelToValueMap.get(normalizedLabel) || '';
+      const mapped = medioLabelToValueMap.get(normalizedLabel);
+      if (mapped) return mapped;
+      if (normalizedLabel === 'sin medio') return MEDIO_EMPTY_VALUE;
+      return '';
     }
 
     let chartEstadoInst = null;
@@ -1377,6 +1380,30 @@
       updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
     }
 
+    function seleccionarMediosEnFiltro(medioValues) {
+      const optionsContainer = document.getElementById('filtroMedioOptions');
+      const allCheckbox = document.getElementById('filtroMedioAll');
+      if (!optionsContainer) return;
+
+      const targetValues = new Set(
+        Array.from(medioValues || [])
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+      );
+
+      let hasAnySelected = false;
+      optionsContainer.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        const checked = targetValues.has(String(cb.value || '').trim());
+        cb.checked = checked;
+        if (checked) hasAnySelected = true;
+      });
+
+      if (allCheckbox) {
+        allCheckbox.checked = !hasAnySelected;
+      }
+      updateMultiSummary('filtroMedioSummary', 'filtroMedioOptions', 'Todos los medios');
+    }
+
     function getCheckedLabels(containerId) {
       const labels = [];
       const container = document.getElementById(containerId);
@@ -1510,10 +1537,11 @@
     }
 
     function populateMediumFilter(data = ventasDetalle) {
-      const select = document.getElementById('filtroMedio');
-      if (!select) return;
+      const optionsContainer = document.getElementById('filtroMedioOptions');
+      const allCheckbox = document.getElementById('filtroMedioAll');
+      if (!optionsContainer || !allCheckbox) return;
 
-      const previousValue = String(select.value || '').trim();
+      const previousSelected = getCheckedValues('filtroMedioOptions');
       const mediumEntries = new Map();
       medioLabelToValueMap.clear();
 
@@ -1521,20 +1549,33 @@
         const value = getMedioFilterValue(venta?.medio);
         const label = String(venta?.medio_label || medioLabel(venta?.medio) || 'Sin medio').trim() || 'Sin medio';
         mediumEntries.set(value, label);
-        medioLabelToValueMap.set(normalizeSearchTerm(label), value);
+        const normalizedLabel = normalizeSearchTerm(label);
+        if (!medioLabelToValueMap.has(normalizedLabel)) {
+          medioLabelToValueMap.set(normalizedLabel, value);
+        }
       });
 
-      select.innerHTML = '<option value="">Todos los medios</option>';
+      optionsContainer.innerHTML = '';
       Array.from(mediumEntries.entries())
         .sort((a, b) => String(a[1] || '').localeCompare(String(b[1] || ''), 'es', { sensitivity: 'base' }))
         .forEach(([value, label]) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = label;
-          select.appendChild(option);
+          const row = document.createElement('label');
+          row.className = 'multi-check-row';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = value;
+          input.dataset.label = label;
+          input.checked = previousSelected.has(value);
+          const span = document.createElement('span');
+          span.textContent = label;
+          row.appendChild(input);
+          row.appendChild(span);
+          optionsContainer.appendChild(row);
         });
 
-      select.value = previousValue && mediumEntries.has(previousValue) ? previousValue : '';
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroMedioSummary', 'filtroMedioOptions', 'Todos los medios');
     }
 
     function buildCuotasFiltradas(ventasFil) {
@@ -1626,9 +1667,7 @@
             const label = chartMediumInst?.data?.labels?.[idx];
             const medioValue = resolveMedioFilterValueFromLabel(label);
             if (!medioValue) return;
-            const medioSelect = document.getElementById('filtroMedio');
-            if (!medioSelect) return;
-            medioSelect.value = medioValue;
+            seleccionarMediosEnFiltro([medioValue]);
             aplicarFiltros();
           },
           onHover: (event, elements) => {
@@ -2427,11 +2466,11 @@
       const hasta = document.getElementById('filtroHasta').value;
       const chipActivo = document.querySelector('.estado-chip.active');
       const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
-      const medio = String(document.getElementById('filtroMedio')?.value || '').trim();
       
       document.getElementById('filtroEstado').value = estado;
       document.getElementById('filtroEstado').value = estado;
       const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
+      const mediosSeleccionados = getCheckedValues('filtroMedioOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       const fechaDesdeKey = String(desde || '').trim();
@@ -2444,7 +2483,7 @@
         if (fechaDesdeKey && fechaKey < fechaDesdeKey) return false;
         if (fechaHastaKey && fechaKey > fechaHastaKey) return false;
         if (estado && String(v.estado) !== estado) return false;
-        if (medio && getMedioFilterValue(v.medio) !== medio) return false;
+        if (mediosSeleccionados.size && !mediosSeleccionados.has(getMedioFilterValue(v.medio))) return false;
         if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v.usuario__username || ''))) return false;
         if (productosSeleccionados.size) {
           const productosVenta = ventaProductosMap.get(String(v.id || ''));
@@ -2533,7 +2572,7 @@
       if (topCount) topCount.innerText = `${ventasFil.length} ventas`;
       const vendedoresLabel = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), '');
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
-      const medioLabel = getMedioFilterLabelFromSelect();
+      const medioLabel = summarizeMultiSelection(getCheckedLabels('filtroMedioOptions'), '');
       
       renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
       updateCharts(ventasFil, productosSeleccionados);
@@ -2996,11 +3035,6 @@
       aplicarFiltros();
     });
 
-    const filtroMedio = document.getElementById('filtroMedio');
-    filtroMedio?.addEventListener('change', () => {
-      aplicarFiltros();
-    });
-
     const filtroPaisMetric = document.getElementById('filtroPaisMetric');
     filtroPaisMetric?.addEventListener('change', () => {
       selectedCountryMetric = filtroPaisMetric.value === 'monto' ? 'monto' : 'cantidad';
@@ -3036,7 +3070,10 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
-      document.getElementById('filtroMedio').value = '';
+      const medioAll = document.getElementById('filtroMedioAll');
+      if (medioAll) medioAll.checked = true;
+      document.querySelectorAll('#filtroMedioOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroMedioSummary', 'filtroMedioOptions', 'Todos los medios');
       const vendedorAll = document.getElementById('filtroVendedorAll');
       if (vendedorAll) vendedorAll.checked = true;
       document.querySelectorAll('#filtroVendedorOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -3116,6 +3153,12 @@
       optionsId: 'filtroProductoOptions',
       summaryId: 'filtroProductoSummary',
       defaultText: 'Todos los productos',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroMedioAll',
+      optionsId: 'filtroMedioOptions',
+      summaryId: 'filtroMedioSummary',
+      defaultText: 'Todos los medios',
     });
     wireMultiSearch({
       inputId: 'filtroProductoBuscar',
