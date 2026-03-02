@@ -75,7 +75,7 @@ def home_dashboard(request):
     cuotas_scope = Cuota.objects.filter(venta__in=ventas_scope)
 
     # Universo de ventas del dashboard:
-    # - Pagadas (1) y Pendientes (2).
+    # - Pagadas (1) y Pendientes (2)..
     # - Sin exigir confirmación de Tesorería para estado=1.
     ventas_base = ventas_scope.filter(estado__in=[1, 2])
     cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
