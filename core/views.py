@@ -66,7 +66,7 @@ def _medio_label(value: str) -> str:
 def home_dashboard(request):
     """Dashboard de ventas por usuario actual con opción de exportar reportes."""
     is_admin = _is_admin_user(request.user)
-
+    # cambios del vvito
     # Base scope por usuario
     if is_admin:
         ventas_scope = Venta.objects.all()
