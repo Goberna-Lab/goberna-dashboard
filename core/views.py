@@ -67,7 +67,7 @@ def home_dashboard(request):
     """Dashboard de ventas por usuario actual con opción de exportar reportes."""
     is_admin = _is_admin_user(request.user)
 
-    # Base scope por usuario.
+    # Base scope por usuario
     if is_admin:
         ventas_scope = Venta.objects.all()
     else:
@@ -424,7 +424,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v8_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v9_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -442,13 +442,40 @@ def home_dashboard(request):
                 "cliente__pais__nombre", "pais__nombre", "medio"
             )
         )
+        cuotas_por_venta_qs = cuotas_qs.values("venta_id").annotate(
+            cuota_pendiente_usd=Sum(
+                Case(
+                    When(estado=2, then=F("monto_usd")),
+                    default=Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            ),
+            cuota_pagada_usd=Sum(
+                Case(
+                    When(estado=1, then=F("monto_usd")),
+                    default=Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            ),
+        )
+        cuotas_por_venta_map = {
+            int(row["venta_id"]): {
+                "cuota_pendiente_usd": float(row.get("cuota_pendiente_usd") or 0),
+                "cuota_pagada_usd": float(row.get("cuota_pagada_usd") or 0),
+            }
+            for row in cuotas_por_venta_qs
+            if row.get("venta_id") is not None
+        }
         for v in ventas_detalle:
             v["monto_total"] = v.pop("monto_usd")
             # Mantener compatibilidad con el frontend actual (usa v.fecha_venta)
             v["fecha_venta"] = v.pop("fecha_evento", None)
             v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
-            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin país"
+            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin pais"
             v["medio_label"] = _medio_label(v.get("medio"))
+            cuotas_venta = cuotas_por_venta_map.get(int(v["id"]), {"cuota_pendiente_usd": 0.0, "cuota_pagada_usd": 0.0})
+            v["cuota_pendiente_usd"] = cuotas_venta["cuota_pendiente_usd"]
+            v["cuota_pagada_usd"] = cuotas_venta["cuota_pagada_usd"]
 
         cuotas_detalle = list(
             cuotas_qs.values(
