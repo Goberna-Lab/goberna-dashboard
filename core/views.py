@@ -140,8 +140,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v10: ranking de vendedores incluye deuda/pagado/total en USD
-    cache_key = f"dash_stats_v10_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v11: ranking de vendedores usa deuda/pagado desde cuotas (USD)
+    cache_key = f"dash_stats_v11_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -289,16 +289,19 @@ def home_dashboard(request):
         courses_labels = [b['producto__nombre_producto'] for b in top_courses_qs]
         courses_data = [int(b['total_qty']) for b in top_courses_qs]
         
-        # Ranking Vendedores (Por cantidad de ventas)
-        # Necesitamos usuario__username o usuario__first_name
-        # Como Venta es managed=False y usuario es FK a auth_user (que si existe en default db o misma db),
-        # el join deberia funcionar si estamos en la misma DB. Sino, podria fallar.
-        # Asumimos misma DB o configuracion correcta de router.
+        # Ranking Vendedores (cantidad de ventas + montos de cuotas en USD)
         try:
             vendors_qs = ventas_qs.values(
                 'usuario_id', 'usuario__username', 'usuario__first_name', 'usuario__last_name'
             ).annotate(
                 total_ventas=Count('id'),
+                total_monto=Sum('monto_usd')
+            ).order_by('-total_ventas', '-total_monto')[:20]
+
+            # Deuda/pagado por vendedor desde cuotas (mismo universo del dashboard).
+            # Deuda: cuotas estado=2 (Pendiente)
+            # Pagado: cuotas estado=1 (Pagado)
+            vendor_cuotas_qs = cuotas_qs.values('venta__usuario_id').annotate(
                 deuda_usd=Sum(
                     Case(
                         When(estado=2, then=F("monto_usd")),
@@ -313,19 +316,27 @@ def home_dashboard(request):
                         output_field=DecimalField(max_digits=12, decimal_places=2),
                     )
                 ),
-                total_monto=Sum('monto_usd')
-            ).order_by('-total_ventas', '-total_monto')[:20]
-            
+            )
+            vendor_cuotas_map = {
+                int(row["venta__usuario_id"]): {
+                    "deuda_usd": float(row.get("deuda_usd") or 0),
+                    "monto_pagado_usd": float(row.get("monto_pagado_usd") or 0),
+                }
+                for row in vendor_cuotas_qs
+                if row.get("venta__usuario_id") is not None
+            }
+
             vendors_data = []
             for v in vendors_qs:
                 name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
+                cuota_stats = vendor_cuotas_map.get(int(v['usuario_id']), {"deuda_usd": 0.0, "monto_pagado_usd": 0.0})
                 vendors_data.append({
                     "user_id": v['usuario_id'],
                     "username": v['usuario__username'],
                     "name": name,
                     "count": v['total_ventas'],
-                    "deuda_usd": float(v['deuda_usd'] or 0),
-                    "monto_pagado_usd": float(v['monto_pagado_usd'] or 0),
+                    "deuda_usd": cuota_stats["deuda_usd"],
+                    "monto_pagado_usd": cuota_stats["monto_pagado_usd"],
                     "monto_total_usd": float(v['total_monto'] or 0),
                     # Compatibilidad con frontend previo.
                     "amount": float(v['total_monto'] or 0)
