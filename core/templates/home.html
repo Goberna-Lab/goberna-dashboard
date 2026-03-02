@@ -2424,11 +2424,10 @@
         entry.count += 1;
         entry.monto_total_usd += montoVenta;
         entry.amount = entry.monto_total_usd;
-        if (Number(v.estado) === 1) {
-          entry.monto_pagado_usd += montoVenta;
-        } else if (Number(v.estado) === 2) {
-          entry.deuda_usd += montoVenta;
-        }
+        
+        // Use cuota data provided by the backend for exact amounts
+        entry.monto_pagado_usd += parseFloat(v.cuota_pagada_usd || 0);
+        entry.deuda_usd += parseFloat(v.cuota_pendiente_usd || 0);
       });
 
       const sortedVendors = Array.from(userMap.values())
