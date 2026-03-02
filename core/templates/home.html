@@ -2399,7 +2399,7 @@
 
       // Update Books Table con filtros superiores
       updateBooksTable(ventaIds, productosSeleccionados);
-
+      // EL QUE LE ESTO ES GAY
       // Update Vendors Table
       const userMap = new Map();
       ventasFil.forEach(v => {
@@ -2599,12 +2599,14 @@
       
       renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
       updateCharts(ventasFil, productosSeleccionados);
+      initCuotasPendientes(ventasFil);
       renderTabla(ventasFil);
       updatePrintHeader();
     }
 
-    function initCuotasPendientes() {
-      const pendientes = cuotasDetalle.filter(c => c.estado === 2 || c.estado === 3);
+    function initCuotasPendientes(ventasLocales) {
+      const cuotasFiltradas = buildCuotasFiltradas(ventasLocales || ventasDetalle);
+      const pendientes = cuotasFiltradas.filter(c => c.estado === 2 || c.estado === 3);
       const total = pendientes.reduce((acc, c) => acc + parseFloat(c.monto_total), 0);
       document.getElementById('cuotasPendientes').innerText = `${pendientes.length} / ${formatearMonto(total)}`;
     }
@@ -2968,7 +2970,7 @@
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
             populateMediumFilter(ventasDetalle);
-            initCuotasPendientes();
+            initCuotasPendientes(ventasDetalle);
             renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
             renderVendorLineChart();
             aplicarFiltros(); 
