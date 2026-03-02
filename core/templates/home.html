@@ -1853,8 +1853,14 @@
 
       const initialVendors = Array.isArray(vendorsData) ? [...vendorsData] : [];
       initialVendors.sort((a, b) => {
-        const key = selectedVendorSort === 'monto' ? 'amount' : 'count';
-        const cmp = compareByOrder(a?.[key], b?.[key], selectedVendorSortOrder);
+        const key = selectedVendorSort === 'monto' ? 'monto_total_usd' : 'count';
+        const valueA = key === 'monto_total_usd'
+          ? Number(a?.monto_total_usd ?? a?.amount ?? 0)
+          : Number(a?.count ?? 0);
+        const valueB = key === 'monto_total_usd'
+          ? Number(b?.monto_total_usd ?? b?.amount ?? 0)
+          : Number(b?.count ?? 0);
+        const cmp = compareByOrder(valueA, valueB, selectedVendorSortOrder);
         if (cmp !== 0) return cmp;
         return String(a?.name || '').localeCompare(String(b?.name || ''), 'es', { sensitivity: 'base' });
       });
@@ -1867,21 +1873,25 @@
         tbody.innerHTML = '';
         
         if(!data || !data.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin datos</td></tr>';
             return;
         }
 
         // Find Max for Heatmap calculation
-        const maxSales = Math.max(...data.map(d => d.count)) || 1;
+        const maxSales = Math.max(...data.map(d => Number(d.count || 0))) || 1;
 
         data.forEach(d => {
             const tr = document.createElement('tr');
             const vendorFilter = String(d.user_id || d.userId || d.username || '').trim();
+            const salesCount = Number(d.count || 0);
+            const deudaUsd = Number(d.deuda_usd ?? 0);
+            const montoPagadoUsd = Number(d.monto_pagado_usd ?? 0);
+            const montoTotalUsd = Number(d.monto_total_usd ?? d.amount ?? 0);
             
             // Heatmap logic: 0% = blue/white, 100% = red/orange
             // We'll use HSL for simpler gradient. 
             // Low (0) -> 200 (Blue). High (100) -> 0 (Red).
-            const percent = d.count / maxSales;
+            const percent = salesCount / maxSales;
             const hue = (1 - percent) * 200; // 200 to 0
             
             // Or simpler badges approach as requested "cuadro con temperatura"
@@ -1894,10 +1904,12 @@
                 <td><small class="fw-bold text-dark">${d.name}</small></td>
                 <td class="text-end">
                     <span class="badge" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${textColor};">
-                        ${d.count} <i class="fas fa-fire-alt small"></i>
+                        ${salesCount} <i class="fas fa-fire-alt small"></i>
                     </span>
                 </td>
-                <td class="text-end text-muted small">$${d.amount.toFixed(2)}</td>
+                <td class="text-end text-muted small">${formatearMonto(deudaUsd)}</td>
+                <td class="text-end text-muted small">${formatearMonto(montoPagadoUsd)}</td>
+                <td class="text-end text-muted small">${formatearMonto(montoTotalUsd)}</td>
             `;
             if (vendorFilter) {
                 tr.classList.add('vendor-click-row');
@@ -2401,18 +2413,28 @@
               username: vendorUsername,
               user_id: vendorUserId,
               count: 0,
-              amount: 0,
+              deuda_usd: 0,
+              monto_pagado_usd: 0,
+              monto_total_usd: 0,
+              amount: 0, // compatibilidad con lÃ³gica anterior
             });
         }
         const entry = userMap.get(vendorKey);
+        const montoVenta = parseFloat(v.monto_total || 0);
         entry.count += 1;
-        entry.amount += parseFloat(v.monto_total || 0);
+        entry.monto_total_usd += montoVenta;
+        entry.amount = entry.monto_total_usd;
+        if (Number(v.estado) === 1) {
+          entry.monto_pagado_usd += montoVenta;
+        } else if (Number(v.estado) === 2) {
+          entry.deuda_usd += montoVenta;
+        }
       });
 
       const sortedVendors = Array.from(userMap.values())
         .sort((a,b) => {
           const base = selectedVendorSort === 'monto'
-            ? compareByOrder(a.amount, b.amount, selectedVendorSortOrder)
+            ? compareByOrder(a.monto_total_usd, b.monto_total_usd, selectedVendorSortOrder)
             : compareByOrder(a.count, b.count, selectedVendorSortOrder);
           if (base !== 0) return base;
           return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });

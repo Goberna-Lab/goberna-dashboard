@@ -140,8 +140,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v9: fecha_evento usa fecha_venta (fallback fecha_registro)
-    cache_key = f"dash_stats_v9_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v10: ranking de vendedores incluye deuda/pagado/total en USD
+    cache_key = f"dash_stats_v10_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -299,6 +299,20 @@ def home_dashboard(request):
                 'usuario_id', 'usuario__username', 'usuario__first_name', 'usuario__last_name'
             ).annotate(
                 total_ventas=Count('id'),
+                deuda_usd=Sum(
+                    Case(
+                        When(estado=2, then=F("monto_usd")),
+                        default=Value(Decimal("0.00")),
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    )
+                ),
+                monto_pagado_usd=Sum(
+                    Case(
+                        When(estado=1, then=F("monto_usd")),
+                        default=Value(Decimal("0.00")),
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    )
+                ),
                 total_monto=Sum('monto_usd')
             ).order_by('-total_ventas', '-total_monto')[:20]
             
@@ -310,6 +324,10 @@ def home_dashboard(request):
                     "username": v['usuario__username'],
                     "name": name,
                     "count": v['total_ventas'],
+                    "deuda_usd": float(v['deuda_usd'] or 0),
+                    "monto_pagado_usd": float(v['monto_pagado_usd'] or 0),
+                    "monto_total_usd": float(v['total_monto'] or 0),
+                    # Compatibilidad con frontend previo.
                     "amount": float(v['total_monto'] or 0)
                 })
         except Exception:
