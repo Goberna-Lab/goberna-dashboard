@@ -75,7 +75,7 @@ def home_dashboard(request):
     cuotas_scope = Cuota.objects.filter(venta__in=ventas_scope)
 
     # Universo de ventas del dashboard:
-    # - Pagadas (1) y Pendientes (2)...
+    # - Pagadas (1) y Pendientes (2)..
     # - Sin exigir confirmación de Tesorería para estado=1.
     ventas_base = ventas_scope.filter(estado__in=[1, 2])
     cuotas_base = Cuota.objects.filter(venta__in=ventas_base)
@@ -140,8 +140,8 @@ def home_dashboard(request):
     # CACHÉ DE ESTADÍSTICAS
     params_sorted = sorted(request.GET.items())
     params_hash = hashlib.md5(str(params_sorted).encode()).hexdigest()
-    # v11: ranking de vendedores usa deuda/pagado desde cuotas (USD)
-    cache_key = f"dash_stats_v11_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
+    # v12: ranking de vendedores total = deuda + pagado (cuotas USD)
+    cache_key = f"dash_stats_v12_pending_paid_{request.user.id}_{is_admin}_{params_hash}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats:
@@ -330,6 +330,7 @@ def home_dashboard(request):
             for v in vendors_qs:
                 name = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
                 cuota_stats = vendor_cuotas_map.get(int(v['usuario_id']), {"deuda_usd": 0.0, "monto_pagado_usd": 0.0})
+                total_cuotas_usd = float(cuota_stats["deuda_usd"] or 0) + float(cuota_stats["monto_pagado_usd"] or 0)
                 vendors_data.append({
                     "user_id": v['usuario_id'],
                     "username": v['usuario__username'],
@@ -337,9 +338,9 @@ def home_dashboard(request):
                     "count": v['total_ventas'],
                     "deuda_usd": cuota_stats["deuda_usd"],
                     "monto_pagado_usd": cuota_stats["monto_pagado_usd"],
-                    "monto_total_usd": float(v['total_monto'] or 0),
+                    "monto_total_usd": total_cuotas_usd,
                     # Compatibilidad con frontend previo.
-                    "amount": float(v['total_monto'] or 0)
+                    "amount": total_cuotas_usd,
                 })
         except Exception:
             vendors_data = []
@@ -424,7 +425,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v9_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v10_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -471,7 +472,7 @@ def home_dashboard(request):
             # Mantener compatibilidad con el frontend actual (usa v.fecha_venta)
             v["fecha_venta"] = v.pop("fecha_evento", None)
             v["vendedor"] = f"{v['usuario__first_name']} {v['usuario__last_name']}".strip() or v['usuario__username']
-            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin pais"
+            v["pais_cliente"] = (v.pop("cliente__pais__nombre", None) or v.pop("pais__nombre", None) or "").strip() or "Sin país"
             v["medio_label"] = _medio_label(v.get("medio"))
             cuotas_venta = cuotas_por_venta_map.get(int(v["id"]), {"cuota_pendiente_usd": 0.0, "cuota_pagada_usd": 0.0})
             v["cuota_pendiente_usd"] = cuotas_venta["cuota_pendiente_usd"]
