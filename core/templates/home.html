@@ -600,7 +600,7 @@
         </div>
         <div class="stat-card">
           <div>
-            <div class="stat-value" id="montoVendidoTop">$ {{ ventas_resumen.monto|floatformat:2 }}</div>
+            <div class="stat-value" id="montoVendidoTop" data-raw-amount="{{ ventas_resumen.monto|default_if_none:'0' }}">$ 0.00</div>
             <div class="stat-label">Monto vendido</div>
           </div>
           <span class="icon-badge success"><i class="fas fa-dollar-sign"></i></span>
@@ -647,7 +647,7 @@
                <div id="metaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; border-radius: 4px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
              <div class="stat-label mt-1" style="font-size: 11px;">Progreso Mensual</div>
-             <div class="stat-label mt-1" id="metaProgressAmount" style="font-size: 12px; font-weight: 700;">$ 0.00 de $ 80000.00</div>
+             <div class="stat-label mt-1" id="metaProgressAmount" style="font-size: 12px; font-weight: 700;">$ 0.00 de $ 80,000.00</div>
           </div>
         </div>
 
@@ -1092,9 +1092,53 @@
     };
     const IS_ADMIN = {{ is_admin|yesno:"true,false" }};
 
-    function formatearMonto(v) {
-      return `$ ${parseFloat(v || 0).toFixed(2)}`;
+    const MONTO_FORMATTER = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    function toNumber(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      if (value === null || value === undefined) return 0;
+
+      const cleaned = String(value).trim().replace(/[^\d,.-]/g, '');
+      if (!cleaned) return 0;
+
+      const lastComma = cleaned.lastIndexOf(',');
+      const lastDot = cleaned.lastIndexOf('.');
+      let normalized = cleaned;
+
+      if (lastComma > lastDot) {
+        normalized = cleaned.replace(/\./g, '').replace(',', '.');
+      } else if (lastDot > lastComma) {
+        normalized = cleaned.replace(/,/g, '');
+      } else {
+        normalized = cleaned.replace(/,/g, '');
+      }
+
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
     }
+
+    function formatearMonto(v) {
+      return `$ ${MONTO_FORMATTER.format(toNumber(v))}`;
+    }
+
+    function formatearTickMonto(v) {
+      return MONTO_FORMATTER.format(toNumber(v));
+    }
+
+    function formatearTickCantidad(v) {
+      return Math.round(toNumber(v)).toLocaleString('en-US');
+    }
+
+    function setMontoVendidoTop(value) {
+      const amountEl = document.getElementById('montoVendidoTop');
+      if (!amountEl) return;
+      amountEl.innerText = formatearMonto(value);
+    }
+
+    setMontoVendidoTop(document.getElementById('montoVendidoTop')?.dataset?.rawAmount || 0);
 
     function medioLabel(value) {
       const key = String(value || '').trim().toLowerCase();
@@ -1624,7 +1668,17 @@
         },
         options: {
           indexAxis: 'y',
-          scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0,
+                callback: (value) => selectedCountryMetric === 'monto'
+                  ? formatearTickMonto(value)
+                  : formatearTickCantidad(value),
+              }
+            }
+          },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -1730,7 +1784,27 @@
         type: 'bar',
         data: { labels: labelsMes, datasets: [{ label: 'Monto', data: dataMes, backgroundColor: '#193b59' }]},
         options: {
-          scales: { y: { beginAtZero: true } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => selectedVentasMesMetric === 'monto'
+                  ? formatearTickMonto(value)
+                  : formatearTickCantidad(value),
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = Number(ctx.parsed?.y ?? ctx.parsed ?? 0);
+                  if (selectedVentasMesMetric === 'monto') return `${ctx.dataset.label}: ${formatearMonto(value)}`;
+                  return `${ctx.dataset.label}: ${formatearTickCantidad(value)}`;
+                }
+              }
+            }
+          },
           onClick: (_event, elements) => {
             if (!elements || !elements.length) return;
             const idx = elements[0].index;
@@ -1767,9 +1841,27 @@
         },
         options: {
           scales: {
-            y: { beginAtZero: true }
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => chartMode === 'monto'
+                  ? formatearTickMonto(value)
+                  : formatearTickCantidad(value),
+              }
+            }
           },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = Number(ctx.parsed?.y ?? ctx.parsed ?? 0);
+                  if (chartMode === 'monto') return `${ctx.dataset.label}: ${formatearMonto(value)}`;
+                  return `${ctx.dataset.label}: ${formatearTickCantidad(value)}`;
+                }
+              }
+            }
+          }
         }
       });
 
@@ -1940,7 +2032,7 @@
             tr.innerHTML = `
                 <td><small class="fw-bold text-dark">${d.name}</small></td>
                 <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
-                <td class="text-end text-success fw-bold small">$${d.amount.toFixed(2)}</td>
+                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -1961,7 +2053,7 @@
             tr.innerHTML = `
                 <td><small class="fw-bold text-dark">${d.name}</small></td>
                 <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
-                <td class="text-end text-success fw-bold small">$${d.amount.toFixed(2)}</td>
+                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -2022,7 +2114,7 @@
             if(!booksTableMap.has(name)) booksTableMap.set(name, { qty: 0, amount: 0 });
             const entry = booksTableMap.get(name);
             entry.qty += parseInt(d.cantidad || 0);
-            entry.amount += parseFloat(d.monto_usd || 0);
+            entry.amount += toNumber(d.monto_usd || 0);
         });
         
         const booksTableList = Array.from(booksTableMap.entries())
@@ -2290,11 +2382,11 @@
       const useCountryAmount = selectedCountryMetric === 'monto';
       ventasFil.forEach(v => {
         const country = String(v.pais_cliente || '').trim() || 'Sin país';
-        const countryValue = useCountryAmount ? parseFloat(v.monto_total || 0) : 1;
+        const countryValue = useCountryAmount ? toNumber(v.monto_total || 0) : 1;
         countryMap.set(country, (countryMap.get(country) || 0) + countryValue);
 
         const medio = v.medio_label || medioLabel(v.medio);
-        const medioValue = useMediumAmount ? parseFloat(v.monto_total || 0) : 1;
+        const medioValue = useMediumAmount ? toNumber(v.monto_total || 0) : 1;
         mediumMap.set(medio, (mediumMap.get(medio) || 0) + medioValue);
       });
 
@@ -2329,7 +2421,7 @@
         const pos = cuotaIndexMap.get(Number(c.estado));
         if (pos === undefined) return;
         if (useCuotasAmount) {
-          const amount = parseFloat(c.monto_total || 0);
+          const amount = toNumber(c.monto_total || 0);
           cuotasValues[pos] += Number.isFinite(amount) ? amount : 0;
           return;
         }
@@ -2349,7 +2441,7 @@
         const useCantidad = selectedCategoriaMetric === 'cantidad';
         detallesFil.forEach(d => {
             const cat = d.producto__codigo_categoria__nombre_categoria || 'Otros';
-            const val = useCantidad ? parseFloat(d.cantidad || 0) : parseFloat(d.monto_usd || 0);
+            const val = useCantidad ? toNumber(d.cantidad || 0) : toNumber(d.monto_usd || 0);
             catMap.set(cat, (catMap.get(cat) || 0) + val);
         });
         
@@ -2382,7 +2474,7 @@
           if(!schoolMap.has(name)) schoolMap.set(name, { qty: 0, amount: 0 });
           const entry = schoolMap.get(name);
           entry.qty += parseInt(d.cantidad || 0);
-          entry.amount += parseFloat(d.monto_usd || 0);
+          entry.amount += toNumber(d.monto_usd || 0);
       });
       
       const schoolList = Array.from(schoolMap.entries())
@@ -2420,14 +2512,14 @@
             });
         }
         const entry = userMap.get(vendorKey);
-        const montoVenta = parseFloat(v.monto_total || 0);
+        const montoVenta = toNumber(v.monto_total || 0);
         entry.count += 1;
         entry.monto_total_usd += montoVenta;
         entry.amount = entry.monto_total_usd;
         
         // Use cuota data provided by the backend for exact amounts
-        entry.monto_pagado_usd += parseFloat(v.cuota_pagada_usd || 0);
-        entry.deuda_usd += parseFloat(v.cuota_pendiente_usd || 0);
+        entry.monto_pagado_usd += toNumber(v.cuota_pagada_usd || 0);
+        entry.deuda_usd += toNumber(v.cuota_pendiente_usd || 0);
       });
 
       const sortedVendors = Array.from(userMap.values())
@@ -2450,10 +2542,10 @@
         const fecha = new Date(v.fecha_venta);
         if (isNaN(fecha)) return;
         const keyMonth = getBucketKey(fecha, 'mes');
-        bucketAmountMonth.set(keyMonth, (bucketAmountMonth.get(keyMonth) || 0) + parseFloat(v.monto_total || 0));
+        bucketAmountMonth.set(keyMonth, (bucketAmountMonth.get(keyMonth) || 0) + toNumber(v.monto_total || 0));
         bucketCountMonth.set(keyMonth, (bucketCountMonth.get(keyMonth) || 0) + 1);
         const key = getBucketKey(fecha, chartInterval);
-        bucketAmount.set(key, (bucketAmount.get(key) || 0) + parseFloat(v.monto_total || 0));
+        bucketAmount.set(key, (bucketAmount.get(key) || 0) + toNumber(v.monto_total || 0));
         bucketCount.set(key, (bucketCount.get(key) || 0) + 1);
       });
       const useMonto = chartMode === 'monto';
@@ -2525,7 +2617,7 @@
         return true;
       });
       
-      const total = ventasFil.reduce((acc, v) => acc + parseFloat(v.monto_total), 0);
+      const total = ventasFil.reduce((acc, v) => acc + toNumber(v.monto_total), 0);
       document.getElementById('ventasFiltradas').innerText = ventasFil.length;
       document.getElementById('montoFiltrado').innerText = formatearMonto(total);
       // cache para exportación local
@@ -2546,7 +2638,7 @@
         if (!dt) return acc;
         if (dt.getFullYear() !== currentYear || dt.getMonth() !== currentMonth) return acc;
         monthlyCount += 1;
-        return acc + parseFloat(v.monto_total || 0);
+        return acc + toNumber(v.monto_total || 0);
       }, 0);
 
       const dailyTotal = (ventasDetalle || []).reduce((acc, v) => {
@@ -2558,7 +2650,7 @@
           dt.getDate() !== currentDay
         ) return acc;
         dailyCount += 1;
-        return acc + parseFloat(v.monto_total || 0);
+        return acc + toNumber(v.monto_total || 0);
       }, 0);
 
       const progress = Math.min((monthlyTotal / target) * 100, 100);
@@ -2607,7 +2699,7 @@
     function initCuotasPendientes(ventasLocales) {
       const cuotasFiltradas = buildCuotasFiltradas(ventasLocales || ventasDetalle);
       const pendientes = cuotasFiltradas.filter(c => c.estado === 2 || c.estado === 3);
-      const total = pendientes.reduce((acc, c) => acc + parseFloat(c.monto_total), 0);
+      const total = pendientes.reduce((acc, c) => acc + toNumber(c.monto_total), 0);
       document.getElementById('cuotasPendientes').innerText = `${pendientes.length} / ${formatearMonto(total)}`;
     }
 
@@ -2742,7 +2834,7 @@
     function chartSummary(chart) {
       if (!chart) return '';
       const data = chart.data.datasets?.[0]?.data || [];
-      const total = data.reduce((a,b)=>a + parseFloat(b || 0),0);
+      const total = data.reduce((a,b)=>a + toNumber(b || 0),0);
       if (chart.config.type === 'doughnut' || chart.config.type === 'pie') {
         const labels = chart.data.labels || [];
         return labels.map((l,i)=>`${l}: ${data[i] ?? 0}`).join(' | ');
@@ -2793,7 +2885,7 @@
 
         const ventasData = ventasFiltradasCache.length ? ventasFiltradasCache : ventasDetalle;
         const totalVentas = ventasData.length;
-        const totalMonto = ventasData.reduce((a, v) => a + parseFloat(v.monto_total || 0), 0);
+        const totalMonto = ventasData.reduce((a, v) => a + toNumber(v.monto_total || 0), 0);
 
         // Carátula (solo primera página)
         if (logoData) {
@@ -2966,6 +3058,8 @@
             cuotasEstadoDetalle = data.cuotas_estado_detalle || [];
             detallesCategoria = data.detalles_categoria || [];
             rebuildVentaProductosMap();
+            const montoTotalGeneral = (ventasDetalle || []).reduce((acc, v) => acc + toNumber(v.monto_total), 0);
+            setMontoVendidoTop(montoTotalGeneral);
       
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
