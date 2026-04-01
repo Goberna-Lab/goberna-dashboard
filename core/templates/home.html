@@ -608,7 +608,7 @@
         <div class="stat-card">
           <div>
             <div class="stat-value" id="montoMesActualTop">$ 0.00</div>
-            <div class="stat-label">Vendido este mes</div>
+            <div class="stat-label" id="montoMesActualLabel">Vendido este mes</div>
             <div class="stat-label" id="ventasMesActualTop">0 ventas este mes</div>
           </div>
           <span class="icon-badge"><i class="fas fa-calendar-days"></i></span>
@@ -640,13 +640,13 @@
         <div class="stat-card">
           <div style="width: 100%;">
             <div class="d-flex justify-content-between mb-1">
-               <span class="stat-label fw-bold text-primary" style="font-size: 13px;">META ($80k)</span>
+               <span class="stat-label fw-bold text-primary" id="metaGoalTitle" style="font-size: 13px;">META ($80k)</span>
                <span class="stat-label fw-bold text-dark" id="metaProgressText" style="font-size: 13px;">0%</span>
             </div>
             <div class="progress" style="height: 12px; background-color: #e2ebf3;">
                <div id="metaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; border-radius: 4px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
-             <div class="stat-label mt-1" style="font-size: 11px;">Progreso Mensual</div>
+             <div class="stat-label mt-1" id="metaProgressLabel" style="font-size: 11px;">Progreso Mensual</div>
              <div class="stat-label mt-1" id="metaProgressAmount" style="font-size: 12px; font-weight: 700;">$ 0.00 de $ 80,000.00</div>
           </div>
         </div>
@@ -1230,6 +1230,23 @@
       return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
     }
 
+    function capitalizeLabel(value) {
+      const text = String(value || '').trim();
+      if (!text) return '';
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    function formatMonthReference(dateObj) {
+      if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'Mes actual';
+      return capitalizeLabel(
+        new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' }).format(dateObj)
+      );
+    }
+
+    function getReferenceMonthDate(fechaInicio = '') {
+      return parseInputDate(fechaInicio) || new Date();
+    }
+
     function compareByOrder(a, b, order = 'desc') {
       const diff = Number(a || 0) - Number(b || 0);
       return order === 'asc' ? diff : -diff;
@@ -1254,6 +1271,88 @@
     function getDateKey(dateObj) {
       if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
       return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+    }
+
+    function ventaCoincideFiltros(v, {
+      fechaInicio = '',
+      fechaFin = '',
+      estado = '',
+      mediosSeleccionados = new Set(),
+      vendedoresSeleccionados = new Set(),
+      productosSeleccionados = new Set(),
+      texto = '',
+      ignorarFecha = false,
+    } = {}) {
+      const fecha = parseVentaDate(v?.fecha_venta);
+      const fechaDesdeKey = String(fechaInicio || '').trim();
+      const fechaHastaKey = String(fechaFin || '').trim();
+
+      if (!ignorarFecha && (fechaDesdeKey || fechaHastaKey)) {
+        if (!fecha) return false;
+        const fechaKey = getDateKey(fecha);
+        if (fechaDesdeKey && fechaKey < fechaDesdeKey) return false;
+        if (fechaHastaKey && fechaKey > fechaHastaKey) return false;
+      }
+
+      if (estado && String(v?.estado) !== String(estado)) return false;
+      if (mediosSeleccionados.size && !mediosSeleccionados.has(getMedioFilterValue(v?.medio))) return false;
+      if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v?.usuario__username || ''))) return false;
+
+      if (productosSeleccionados.size) {
+        const productosVenta = ventaProductosMap.get(String(v?.id || ''));
+        if (!productosVenta) return false;
+        let hasAnyProduct = false;
+        for (const producto of productosSeleccionados) {
+          if (productosVenta.has(producto)) {
+            hasAnyProduct = true;
+            break;
+          }
+        }
+        if (!hasAnyProduct) return false;
+      }
+
+      const folio = String(v?.folio_venta || '').toLowerCase();
+      if (texto && !folio.includes(String(texto).toLowerCase())) return false;
+
+      return true;
+    }
+
+    function buildReferenceMonthMetrics(ventasSource, referenceDate) {
+      const referenceMonthKey = getMonthKey(referenceDate);
+      const monthLabel = formatMonthReference(referenceDate);
+      const initial = {
+        monthKey: referenceMonthKey,
+        monthLabel,
+        total: 0,
+        count: 0,
+      };
+
+      if (!referenceMonthKey) return initial;
+
+      return (ventasSource || []).reduce((acc, venta) => {
+        const ventaDate = parseVentaDate(venta?.fecha_venta);
+        if (!ventaDate || getMonthKey(ventaDate) !== referenceMonthKey) return acc;
+        acc.total += toNumber(venta?.monto_total || 0);
+        acc.count += 1;
+        return acc;
+      }, initial);
+    }
+
+    function generateLegendLabelsWithPercentages(chart) {
+      const defaultGenerator =
+        Chart.overrides?.doughnut?.plugins?.legend?.labels?.generateLabels
+        || Chart.defaults.plugins.legend.labels.generateLabels;
+      const labels = defaultGenerator(chart);
+      const percentages = chart?.data?.datasets?.[0]?.percentages || [];
+
+      return labels.map((item, index) => {
+        const percentage = Number(percentages[index] || 0);
+        if (!Number.isFinite(percentage) || percentage <= 0 || !item?.text || item.text === 'Sin datos') return item;
+        return {
+          ...item,
+          text: `${item.text} (${percentage.toFixed(1)}%)`,
+        };
+      });
     }
 
     const MAIN_APP_BASE = String(MAIN_APP_URL || '').trim().replace(/\/+$/, '');
@@ -1701,18 +1800,35 @@
           datasets: [{
             label: 'Ventas',
             data: mediumData.length ? mediumData : [0],
-            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b']
+            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'],
+            counts: [],
+            amounts: [],
+            percentages: [],
           }]
         },
         options: {
           plugins: {
-            legend: legendDots,
+            legend: {
+              ...legendDots,
+              labels: {
+                ...(legendDots.labels || {}),
+                generateLabels: generateLegendLabelsWithPercentages,
+              }
+            },
             tooltip: {
               callbacks: {
                 label: (ctx) => {
-                  const value = Number(ctx.parsed || 0);
-                  if (selectedMedioMetric === 'monto') return `${ctx.label}: ${formatearMonto(value)}`;
-                  return `${ctx.label}: ${Math.round(value)}`;
+                  const dataset = ctx.dataset || {};
+                  const index = Number(ctx.dataIndex || 0);
+                  const count = Number(dataset.counts?.[index] || 0);
+                  const amount = Number(dataset.amounts?.[index] || 0);
+                  const percentage = Number(dataset.percentages?.[index] || 0);
+                  return [
+                    `${ctx.label}`,
+                    `Cantidad: ${formatearTickCantidad(count)}`,
+                    `Monto: ${formatearMonto(amount)}`,
+                    `${selectedMedioMetric === 'monto' ? 'Porcentaje por monto' : 'Porcentaje por cantidad'}: ${percentage.toFixed(1)}%`,
+                  ];
                 }
               }
             }
@@ -2377,7 +2493,7 @@
       }
 
       const countryMap = new Map();
-      const mediumMap = new Map();
+      const mediumStatsMap = new Map();
       const useMediumAmount = selectedMedioMetric === 'monto';
       const useCountryAmount = selectedCountryMetric === 'monto';
       ventasFil.forEach(v => {
@@ -2386,8 +2502,10 @@
         countryMap.set(country, (countryMap.get(country) || 0) + countryValue);
 
         const medio = v.medio_label || medioLabel(v.medio);
-        const medioValue = useMediumAmount ? toNumber(v.monto_total || 0) : 1;
-        mediumMap.set(medio, (mediumMap.get(medio) || 0) + medioValue);
+        const mediumStats = mediumStatsMap.get(medio) || { amount: 0, count: 0 };
+        mediumStats.amount += toNumber(v.monto_total || 0);
+        mediumStats.count += 1;
+        mediumStatsMap.set(medio, mediumStats);
       });
 
       if (chartCountryInst) {
@@ -2402,12 +2520,24 @@
       }
 
       if (chartMediumInst) {
-        const sortedMedia = Array.from(mediumMap.entries())
-          .sort((a, b) => b[1] - a[1]);
+        const sortedMedia = Array.from(mediumStatsMap.entries())
+          .sort((a, b) => {
+            const valueA = useMediumAmount ? a[1].amount : a[1].count;
+            const valueB = useMediumAmount ? b[1].amount : b[1].count;
+            return valueB - valueA;
+          });
+        const chartValues = sortedMedia.map(([, stats]) => useMediumAmount ? stats.amount : stats.count);
+        const chartTotal = chartValues.reduce((acc, value) => acc + toNumber(value || 0), 0);
+        const chartPercentages = chartValues.map((value) => (
+          chartTotal > 0 ? (toNumber(value || 0) / chartTotal) * 100 : 0
+        ));
 
         chartMediumInst.data.datasets[0].label = useMediumAmount ? 'Monto (USD)' : 'Ventas';
         chartMediumInst.data.labels = sortedMedia.length ? sortedMedia.map(x => x[0]) : ['Sin datos'];
-        chartMediumInst.data.datasets[0].data = sortedMedia.length ? sortedMedia.map(x => x[1]) : [0];
+        chartMediumInst.data.datasets[0].data = sortedMedia.length ? chartValues : [0];
+        chartMediumInst.data.datasets[0].counts = sortedMedia.length ? sortedMedia.map(([, stats]) => stats.count) : [0];
+        chartMediumInst.data.datasets[0].amounts = sortedMedia.length ? sortedMedia.map(([, stats]) => stats.amount) : [0];
+        chartMediumInst.data.datasets[0].percentages = sortedMedia.length ? chartPercentages : [0];
         chartMediumInst.update();
       }
 
@@ -2590,32 +2720,23 @@
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       const fechaDesdeKey = String(desde || '').trim();
       const fechaHastaKey = String(hasta || '').trim();
+      const filtrosComunes = {
+        estado,
+        mediosSeleccionados,
+        vendedoresSeleccionados,
+        productosSeleccionados,
+        texto,
+      };
 
-      const ventasFil = ventasDetalle.filter(v => {
-        const fecha = parseVentaDate(v.fecha_venta);
-        if ((fechaDesdeKey || fechaHastaKey) && !fecha) return false;
-        const fechaKey = getDateKey(fecha);
-        if (fechaDesdeKey && fechaKey < fechaDesdeKey) return false;
-        if (fechaHastaKey && fechaKey > fechaHastaKey) return false;
-        if (estado && String(v.estado) !== estado) return false;
-        if (mediosSeleccionados.size && !mediosSeleccionados.has(getMedioFilterValue(v.medio))) return false;
-        if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v.usuario__username || ''))) return false;
-        if (productosSeleccionados.size) {
-          const productosVenta = ventaProductosMap.get(String(v.id || ''));
-          if (!productosVenta) return false;
-          let hasAnyProduct = false;
-          for (const producto of productosSeleccionados) {
-            if (productosVenta.has(producto)) {
-              hasAnyProduct = true;
-              break;
-            }
-          }
-          if (!hasAnyProduct) return false;
-        }
-        const folio = String(v.folio_venta || '').toLowerCase();
-        if (texto && !folio.includes(texto)) return false;
-        return true;
-      });
+      const ventasFil = ventasDetalle.filter(v => ventaCoincideFiltros(v, {
+        ...filtrosComunes,
+        fechaInicio: fechaDesdeKey,
+        fechaFin: fechaHastaKey,
+      }));
+      const ventasBaseMensual = ventasDetalle.filter(v => ventaCoincideFiltros(v, {
+        ...filtrosComunes,
+        ignorarFecha: true,
+      }));
       
       const total = ventasFil.reduce((acc, v) => acc + toNumber(v.monto_total), 0);
       document.getElementById('ventasFiltradas').innerText = ventasFil.length;
@@ -2626,22 +2747,18 @@
       
       // Update Monthly Goal Progress (Target: 80,000) - siempre mensual
       const target = 80000;
+      const referenceMonthDate = getReferenceMonthDate(fechaDesdeKey);
+      const referenceMonthLabel = formatMonthReference(referenceMonthDate);
+      const referenceMonthMetrics = buildReferenceMonthMetrics(ventasBaseMensual, referenceMonthDate);
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
       const currentDay = now.getDate();
-      let monthlyCount = 0;
       let dailyCount = 0;
+      const monthlyTotal = referenceMonthMetrics.total;
+      const monthlyCount = referenceMonthMetrics.count;
 
-      const monthlyTotal = (ventasDetalle || []).reduce((acc, v) => {
-        const dt = parseVentaDate(v.fecha_venta);
-        if (!dt) return acc;
-        if (dt.getFullYear() !== currentYear || dt.getMonth() !== currentMonth) return acc;
-        monthlyCount += 1;
-        return acc + toNumber(v.monto_total || 0);
-      }, 0);
-
-      const dailyTotal = (ventasDetalle || []).reduce((acc, v) => {
+      const dailyTotal = (ventasFil || []).reduce((acc, v) => {
         const dt = parseVentaDate(v.fecha_venta);
         if (!dt) return acc;
         if (
@@ -2657,6 +2774,8 @@
       const progressBar = document.getElementById('metaProgressBar');
       const progressText = document.getElementById('metaProgressText');
       const progressAmount = document.getElementById('metaProgressAmount');
+      const metaGoalTitle = document.getElementById('metaGoalTitle');
+      const metaProgressLabel = document.getElementById('metaProgressLabel');
       
       if (progressBar && progressText) {
         progressBar.style.width = `${progress}%`;
@@ -2667,17 +2786,25 @@
         else if (progress < 70) progressBar.className = 'progress-bar bg-warning';
         else progressBar.className = 'progress-bar bg-success';
       }
+      if (metaGoalTitle) {
+        metaGoalTitle.innerText = `META ($80k) · ${referenceMonthLabel}`;
+      }
+      if (metaProgressLabel) {
+        metaProgressLabel.innerText = `Progreso mensual · ${referenceMonthLabel}`;
+      }
       if (progressAmount) {
-        progressAmount.innerText = `${formatearMonto(monthlyTotal)} de ${formatearMonto(target)}`;
+        progressAmount.innerText = `${formatearMonto(monthlyTotal)} de ${formatearMonto(target)} en ${referenceMonthLabel}`;
       }
 
       const montoMesTop = document.getElementById('montoMesActualTop');
+      const montoMesLabel = document.getElementById('montoMesActualLabel');
       const ventasMesTop = document.getElementById('ventasMesActualTop');
       const montoHoyTop = document.getElementById('montoHoyTop');
       const ventasHoyTop = document.getElementById('ventasHoyTop');
 
+      if (montoMesLabel) montoMesLabel.innerText = `Vendido en ${referenceMonthLabel}`;
       if (montoMesTop) montoMesTop.innerText = formatearMonto(monthlyTotal);
-      if (ventasMesTop) ventasMesTop.innerText = `${monthlyCount} ventas este mes`;
+      if (ventasMesTop) ventasMesTop.innerText = `${monthlyCount} ventas en ${referenceMonthLabel}`;
       if (montoHoyTop) montoHoyTop.innerText = formatearMonto(dailyTotal);
       if (ventasHoyTop) ventasHoyTop.innerText = `${dailyCount} ventas hoy`;
 
