@@ -207,3 +207,33 @@ class DetalleVenta(models.Model):
     class Meta:
         managed = False
         db_table = 'tb_detalleVenta'
+
+
+class LibroEnPack(models.Model):
+    id = models.AutoField(primary_key=True, db_column='codigo_libro_en_pack')
+
+    detalle_venta = models.ForeignKey(
+        DetalleVenta,
+        on_delete=models.DO_NOTHING,
+        db_column='codigo_detalle_venta',
+        related_name='libros_en_pack',
+    )
+
+    libro = models.ForeignKey(
+        Producto,
+        on_delete=models.DO_NOTHING,
+        db_column='codigo_libro',
+        related_name='pack_items_satelite',
+    )
+
+    cantidad = models.PositiveIntegerField(db_column='cantidad', default=1)
+    precio_unitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        db_column='precio_unitario',
+        default=0,
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'tb_libros_en_pack'

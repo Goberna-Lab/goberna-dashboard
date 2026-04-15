@@ -934,6 +934,25 @@
           </div>
         </div>
 
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Libros vendidos dentro de packs</span>
+          </div>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0" id="tablePackBooks">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Pack</th>
+                  <th>Libro dentro del pack</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">Monto (USD)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-piggy-bank text-primary"></i> Cuotas por estado</span>
@@ -1056,6 +1075,7 @@
     let ventasEstadoDetalle = [];
     let cuotasEstadoDetalle = [];
     let detallesCategoria = [];
+    let librosEnPackDetalle = [];
     
     // Variables de charts
     const ventasPorEstado = {{ chart_ventas_estado|default:"[]"|safe }};
@@ -2175,6 +2195,72 @@
         });
     }
 
+    function renderPackBooksTable(data) {
+        const tbody = document.querySelector('#tablePackBooks tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!data || !data.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>';
+            return;
+        }
+
+        data.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small class="fw-bold text-dark">${d.pack_name}</small></td>
+                <td><small class="text-dark">${d.book_name}</small></td>
+                <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
+                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updatePackBooksTable(ventaIds, productosSeleccionados) {
+        const packRows = (librosEnPackDetalle || []).filter(row => {
+            if (!ventaIds || !ventaIds.has(Number(row.venta_id || 0))) return false;
+            if (productosSeleccionados && productosSeleccionados.size > 0) {
+                const packName = String(row.pack_producto_nombre || '').trim();
+                if (!packName || !productosSeleccionados.has(packName)) return false;
+            }
+            return true;
+        });
+
+        const packMap = new Map();
+        packRows.forEach(row => {
+            const packName = String(row.pack_producto_nombre || 'Pack sin nombre').trim() || 'Pack sin nombre';
+            const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
+            const qty = toNumber(row.cantidad || 0);
+            const amount = qty * toNumber(row.precio_unitario_usd || 0);
+            const key = `${packName}||${bookName}`;
+
+            if (!packMap.has(key)) {
+                packMap.set(key, {
+                    pack_name: packName,
+                    book_name: bookName,
+                    qty: 0,
+                    amount: 0,
+                });
+            }
+            const entry = packMap.get(key);
+            entry.qty += qty;
+            entry.amount += amount;
+        });
+
+        const packList = Array.from(packMap.values()).sort((a, b) => {
+            const byQty = compareByOrder(a.qty, b.qty, 'desc');
+            if (byQty !== 0) return byQty;
+            const byAmount = compareByOrder(a.amount, b.amount, 'desc');
+            if (byAmount !== 0) return byAmount;
+            const byPack = String(a.pack_name || '').localeCompare(String(b.pack_name || ''), 'es', { sensitivity: 'base' });
+            if (byPack !== 0) return byPack;
+            return String(a.book_name || '').localeCompare(String(b.book_name || ''), 'es', { sensitivity: 'base' });
+        });
+
+        renderPackBooksTable(packList);
+    }
+
     function updateBooksChart(ventaIds, productosSeleccionados) {
         if (!chartBooksInst) return;
         const detallesLibros = detallesCategoria.filter(d => {
@@ -2621,7 +2707,9 @@
 
       // Update Books Table con filtros superiores
       updateBooksTable(ventaIds, productosSeleccionados);
-      // EL QUE LE ESTO ES GAY
+      // Update Pack Books Table con filtros superiores
+      updatePackBooksTable(ventaIds, productosSeleccionados);
+
       // Update Vendors Table
       const userMap = new Map();
       ventasFil.forEach(v => {
@@ -3184,6 +3272,7 @@
             ventasEstadoDetalle = data.ventas_estado_detalle || [];
             cuotasEstadoDetalle = data.cuotas_estado_detalle || [];
             detallesCategoria = data.detalles_categoria || [];
+            librosEnPackDetalle = data.libros_en_pack_detalle || [];
             rebuildVentaProductosMap();
             const montoTotalGeneral = (ventasDetalle || []).reduce((acc, v) => acc + toNumber(v.monto_total), 0);
             setMontoVendidoTop(montoTotalGeneral);

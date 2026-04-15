@@ -25,7 +25,7 @@ from django.conf import settings
 from django.core.cache import cache
 import hashlib
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, LibroEnPack
 
 try:
     import openpyxl
@@ -425,7 +425,7 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v10_pending_paid_{request.user.id}_{is_admin}"
+        list_cache_key = f"dash_list_v11_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -512,12 +512,61 @@ def home_dashboard(request):
             "cantidad"
         )
 
+        libros_en_pack_export = (
+            LibroEnPack.objects.filter(detalle_venta__venta__in=ventas_qs)
+            .select_related(
+                "detalle_venta",
+                "detalle_venta__venta",
+                "detalle_venta__venta__moneda",
+                "detalle_venta__producto",
+                "libro",
+            )
+            .annotate(
+                tasa_cambio=Coalesce(
+                    "detalle_venta__venta__radio_multiplicador_usado",
+                    "detalle_venta__venta__moneda__radioMultiplicador",
+                    1,
+                    output_field=DecimalField(),
+                )
+            )
+            .annotate(
+                tasa_final=Case(
+                    When(tasa_cambio=0, then=Value(1)),
+                    default=F("tasa_cambio"),
+                    output_field=DecimalField(),
+                )
+            )
+            .annotate(
+                precio_unitario_usd=ExpressionWrapper(
+                    F("precio_unitario") / F("tasa_final"),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                venta_id=F("detalle_venta__venta_id"),
+                folio_venta=F("detalle_venta__venta__folio_venta"),
+                pack_producto_id=F("detalle_venta__producto__codigo_producto"),
+                pack_producto_nombre=F("detalle_venta__producto__nombre_producto"),
+                libro_nombre=F("libro__nombre_producto"),
+            )
+            .values(
+                "detalle_venta_id",
+                "venta_id",
+                "folio_venta",
+                "pack_producto_id",
+                "pack_producto_nombre",
+                "libro_id",
+                "libro_nombre",
+                "cantidad",
+                "precio_unitario_usd",
+            )
+        )
+
         response_data = {
             "ventas_detalle": ventas_detalle,
             "cuotas_detalle": cuotas_detalle,
             "ventas_estado_detalle": list(ventas_scope.values("estado")),
             "cuotas_estado_detalle": list(cuotas_scope.values("estado")),
             "detalles_categoria": list(detalles_export), 
+            "libros_en_pack_detalle": list(libros_en_pack_export),
         }
         cache.set(list_cache_key, response_data, 300)
         return JsonResponse(response_data, encoder=DjangoJSONEncoder)
