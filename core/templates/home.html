@@ -20,7 +20,7 @@
     }
 
     /* Opcional: Si el usuario quiere que el contenido se empuje al abrir sidebar (estilo main app css provided) */
-    /* Para detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
+    /* Para estar seguro de detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
     /* La estructura actual es: inside body -> .page -> include sidebar, div.content */
     /* Así que .sidebar:hover ~ .content funciona si son hermanos directos. */
     /* En home.html están dentro de .page.. */
