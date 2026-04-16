@@ -923,6 +923,13 @@
                 </tr>
               </thead>
               <tbody></tbody>
+              <tfoot class="table-light fw-bold" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2;">
+                <tr>
+                  <td class="text-uppercase small text-secondary">Total</td>
+                  <td class="text-end" id="tableSchoolTotalQty">0</td>
+                  <td class="text-end text-success" id="tableSchoolTotalAmount">$0</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -977,6 +984,13 @@
                 </tr>
               </thead>
               <tbody></tbody>
+              <tfoot class="table-light fw-bold" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2;">
+                <tr>
+                  <td colspan="2" class="text-uppercase small text-secondary">Total</td>
+                  <td class="text-end" id="tablePackBooksTotalQty">0</td>
+                  <td class="text-end text-success" id="tablePackBooksTotalAmount">$0</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -2263,15 +2277,23 @@
 
     function renderSchoolTable(data) {
         const tbody = document.querySelector('#tableSchool tbody');
+        const totalQtyEl = document.getElementById('tableSchoolTotalQty');
+        const totalAmountEl = document.getElementById('tableSchoolTotalAmount');
         if(!tbody) return;
         tbody.innerHTML = '';
-        
+
         if(!data || !data.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalQtyEl) totalQtyEl.textContent = '0';
+            if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
             return;
         }
 
+        let totalQty = 0;
+        let totalAmount = 0;
         data.forEach(d => {
+            totalQty += toNumber(d.qty || 0);
+            totalAmount += toNumber(d.amount || 0);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><small class="fw-bold text-dark">${d.name}</small></td>
@@ -2280,6 +2302,9 @@
             `;
             tbody.appendChild(tr);
         });
+
+        if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
+        if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
     function renderBooksTable(data) {
@@ -2316,15 +2341,23 @@
 
     function renderPackBooksTable(data) {
         const tbody = document.querySelector('#tablePackBooks tbody');
+        const totalQtyEl = document.getElementById('tablePackBooksTotalQty');
+        const totalAmountEl = document.getElementById('tablePackBooksTotalAmount');
         if (!tbody) return;
         tbody.innerHTML = '';
 
         if (!data || !data.length) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalQtyEl) totalQtyEl.textContent = '0';
+            if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
             return;
         }
 
+        let totalQty = 0;
+        let totalAmount = 0;
         data.forEach(d => {
+            totalQty += toNumber(d.qty || 0);
+            totalAmount += toNumber(d.amount || 0);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><small class="fw-bold text-dark">${d.pack_name}</small></td>
@@ -2334,6 +2367,9 @@
             `;
             tbody.appendChild(tr);
         });
+
+        if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
+        if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
     function updatePackBooksTable(ventaIds, productosSeleccionados) {
