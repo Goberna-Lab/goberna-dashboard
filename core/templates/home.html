@@ -1023,8 +1023,11 @@
                 <option value="dia">Diario</option>
               </select>
             </div>
+            <span class="text-muted small ms-auto" style="font-style: italic;">
+              <i class="fas fa-arrows-left-right"></i> Arrastrá sobre el gráfico para filtrar por rango
+            </span>
           </div>
-          <canvas id="chartVentasSerie" height="70"></canvas>
+          <canvas id="chartVentasSerie" height="70" title="Arrastrá para seleccionar un rango y filtrar el dashboard"></canvas>
         </div>
 
         <div class="table-card" style="grid-column: 1 / -1;">
@@ -1285,6 +1288,36 @@
       if (interval === 'dia') return `${y}-${m}-${d}`;
       if (interval === 'semana') return getWeekKey(date);
       return `${y}-${m}`;
+    }
+
+    function bucketKeyToDateRange(key, interval) {
+      const k = String(key || '').trim();
+      if (!k) return null;
+      const fmt = (dt) => `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+
+      if (interval === 'dia') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return null;
+        return { start: k, end: k };
+      }
+      if (interval === 'semana') {
+        const m = k.match(/^(\d{4})-W(\d{2})$/);
+        if (!m) return null;
+        const year = Number(m[1]);
+        const week = Number(m[2]);
+        const jan4 = new Date(year, 0, 4);
+        const jan4Day = jan4.getDay() || 7;
+        const monday = new Date(year, 0, 4 - jan4Day + 1 + (week - 1) * 7);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return { start: fmt(monday), end: fmt(sunday) };
+      }
+      const m = k.match(/^(\d{4})-(\d{2})$/);
+      if (!m) return null;
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+      return { start: fmt(start), end: fmt(end) };
     }
 
     function getMonthKey(date) {
@@ -1858,6 +1891,102 @@
       return (cuotasDetalle || []).filter(c => setFolios.has(String(c.venta__folio_venta || '')));
     }
 
+    const serieBrushState = { active: false, startX: null, currentX: null };
+    const serieBrushPlugin = {
+      id: 'serieBrushSelection',
+      afterDraw(chart) {
+        if (!serieBrushState.active || serieBrushState.startX == null || serieBrushState.currentX == null) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const x1 = Math.min(serieBrushState.startX, serieBrushState.currentX);
+        const x2 = Math.max(serieBrushState.startX, serieBrushState.currentX);
+        const left = Math.max(x1, chartArea.left);
+        const right = Math.min(x2, chartArea.right);
+        if (right <= left) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(13, 110, 253, 0.18)';
+        ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+        ctx.strokeStyle = 'rgba(13, 110, 253, 0.85)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left + 0.5, chartArea.top + 0.5, right - left - 1, chartArea.bottom - chartArea.top - 1);
+        ctx.restore();
+      }
+    };
+
+    function setupSerieBrushSelection() {
+      const chart = chartVentasSerieInst;
+      if (!chart || !chart.canvas) return;
+      const canvas = chart.canvas;
+      canvas.style.cursor = 'crosshair';
+
+      const getCanvasX = (evt) => {
+        const rect = canvas.getBoundingClientRect();
+        return evt.clientX - rect.left;
+      };
+
+      const resetBrush = () => {
+        serieBrushState.active = false;
+        serieBrushState.startX = null;
+        serieBrushState.currentX = null;
+        chart.draw();
+      };
+
+      canvas.addEventListener('pointerdown', (evt) => {
+        if (evt.button !== 0) return;
+        const area = chart.chartArea;
+        if (!area) return;
+        const x = getCanvasX(evt);
+        if (x < area.left || x > area.right) return;
+        serieBrushState.active = true;
+        serieBrushState.startX = x;
+        serieBrushState.currentX = x;
+        try { canvas.setPointerCapture(evt.pointerId); } catch (_) {}
+        evt.preventDefault();
+        chart.draw();
+      });
+
+      canvas.addEventListener('pointermove', (evt) => {
+        if (!serieBrushState.active) return;
+        serieBrushState.currentX = getCanvasX(evt);
+        chart.draw();
+      });
+
+      const finalize = (evt) => {
+        if (!serieBrushState.active) return;
+        try { if (evt?.pointerId != null) canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
+        const labels = chart.data?.labels || [];
+        const xScale = chart.scales?.x;
+        const x1 = Math.min(serieBrushState.startX, serieBrushState.currentX);
+        const x2 = Math.max(serieBrushState.startX, serieBrushState.currentX);
+        if (!xScale || !labels.length || (x2 - x1) < 4) {
+          resetBrush();
+          return;
+        }
+        let i1 = Math.round(xScale.getValueForPixel(x1));
+        let i2 = Math.round(xScale.getValueForPixel(x2));
+        i1 = Math.max(0, Math.min(labels.length - 1, i1));
+        i2 = Math.max(0, Math.min(labels.length - 1, i2));
+        if (i1 > i2) [i1, i2] = [i2, i1];
+        const startRange = bucketKeyToDateRange(labels[i1], chartInterval);
+        const endRange = bucketKeyToDateRange(labels[i2], chartInterval);
+        resetBrush();
+        if (!startRange || !endRange) return;
+        const desdeInput = document.getElementById('filtroDesde');
+        const hastaInput = document.getElementById('filtroHasta');
+        if (!desdeInput || !hastaInput) return;
+        desdeInput.value = startRange.start;
+        hastaInput.value = endRange.end;
+        aplicarFiltros();
+      };
+
+      canvas.addEventListener('pointerup', finalize);
+      canvas.addEventListener('pointercancel', () => resetBrush());
+
+      document.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Escape' && serieBrushState.active) resetBrush();
+      });
+    }
+
     function initCharts() {
       const legendDots = { 
         position: 'bottom',
@@ -2120,7 +2249,8 @@
               }
             }
           }
-        }
+        },
+        plugins: [serieBrushPlugin]
       });
 
       const catColors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'];
@@ -3704,6 +3834,7 @@
     });
 
     initCharts();
+    setupSerieBrushSelection();
     loadData();
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
