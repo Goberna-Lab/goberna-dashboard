@@ -3691,6 +3691,18 @@
       });
     });
 
+    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .estado-chip, .summary-chip, .filter-chip';
+    document.addEventListener('dblclick', (evt) => {
+      const target = evt.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(DBLCLICK_SAFE_SELECTOR)) return;
+      const limpiarBtn = document.getElementById('btnLimpiarFiltros');
+      if (!limpiarBtn) return;
+      const selection = window.getSelection?.();
+      if (selection && selection.toString().length) selection.removeAllRanges();
+      limpiarBtn.click();
+    });
+
     initCharts();
     loadData();
     // Mantener encabezado de impresión actualizado al cargar
