@@ -121,9 +121,15 @@
     .flatpickr-calendar.with-presets {
       display: flex !important;
       flex-direction: row;
+      align-items: stretch;
       width: auto !important;
       max-width: none !important;
       overflow: visible;
+    }
+    .flatpickr-calendar.with-presets .flatpickr-native {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
     }
     .flatpickr-presets {
       display: flex;
@@ -1988,11 +1994,16 @@
         dateFormat: 'Y-m-d',
         altInput: true,
         altFormat: 'd M Y',
-        locale: flatpickr.l10ns?.es || 'default',
+        locale: flatpickr.l10ns?.es,
         showMonths: 2,
         onReady: (_sel, _str, instance) => {
-          instance.calendarContainer.classList.add('with-presets');
-          instance.calendarContainer.prepend(presetsWrap);
+          const cal = instance.calendarContainer;
+          cal.classList.add('with-presets');
+          const nativeWrap = document.createElement('div');
+          nativeWrap.className = 'flatpickr-native';
+          while (cal.firstChild) nativeWrap.appendChild(cal.firstChild);
+          cal.appendChild(presetsWrap);
+          cal.appendChild(nativeWrap);
         },
         onChange: (dates) => {
           presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach((b) => b.classList.remove('active'));
