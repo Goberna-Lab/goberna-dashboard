@@ -6,6 +6,7 @@
   <title>Inicio | Goberna</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <style>
     body { margin: 0; background: #f3f6fb; color: #0f172a; font-family: "Montserrat", "Inter", sans-serif; overflow-x: hidden; }
     
@@ -115,6 +116,57 @@
     .table-card table { margin: 0; }
     .filters-card { padding: 18px 20px; }
     .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; align-items: stretch; }
+
+    /* Flatpickr range picker con sidebar de presets */
+    .flatpickr-calendar.with-presets {
+      display: flex !important;
+      flex-direction: row;
+      width: auto !important;
+      max-width: none !important;
+      overflow: visible;
+    }
+    .flatpickr-presets {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 8px;
+      background: #f8fafc;
+      border-right: 1px solid #e2e8f0;
+      min-width: 150px;
+      border-radius: 5px 0 0 5px;
+    }
+    .flatpickr-presets-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 4px 8px 6px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .flatpickr-preset-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      text-align: left;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #1e293b;
+      font-weight: 500;
+      transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .flatpickr-preset-btn:hover {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+    }
+    .flatpickr-preset-btn.active {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #fff;
+    }
     .filter-chip {
       background: #f8fafc;
       border-radius: 12px;
@@ -779,18 +831,13 @@
                 </details>
               </div>
             </div>
-            <div class="filter-chip">
-              <i class="fas fa-calendar-day"></i>
+            <div class="filter-chip" style="grid-column: span 2;">
+              <i class="fas fa-calendar"></i>
               <div class="filter-body">
-                <span class="filter-label">Desde</span>
-                <input type="date" id="filtroDesde">
-              </div>
-            </div>
-            <div class="filter-chip">
-              <i class="fas fa-calendar-check"></i>
-              <div class="filter-body">
-                <span class="filter-label">Hasta</span>
-                <input type="date" id="filtroHasta">
+                <span class="filter-label">Rango de fechas</span>
+                <input type="text" id="filtroRango" placeholder="Selecciona un rango..." readonly autocomplete="off">
+                <input type="hidden" id="filtroDesde">
+                <input type="hidden" id="filtroHasta">
               </div>
             </div>
           </div>
@@ -1110,6 +1157,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
@@ -1900,6 +1949,95 @@
       return (cuotasDetalle || []).filter(c => setFolios.has(String(c.venta__folio_venta || '')));
     }
 
+    let rangeDatePickerInst = null;
+    const RANGE_PRESETS = [
+      { key: 'hoy', label: 'Hoy', getRange: () => { const t = new Date(); return [t, new Date(t)]; } },
+      { key: 'ayer', label: 'Ayer', getRange: () => { const d = new Date(); d.setDate(d.getDate() - 1); return [d, new Date(d)]; } },
+      { key: '7d', label: 'Últimos 7 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 6); return [s, e]; } },
+      { key: '15d', label: 'Últimos 15 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 14); return [s, e]; } },
+      { key: '30d', label: 'Últimos 30 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 29); return [s, e]; } },
+      { key: '90d', label: 'Últimos 90 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 89); return [s, e]; } },
+      { key: 'mesActual', label: 'Este mes', getRange: () => { const t = new Date(); return [new Date(t.getFullYear(), t.getMonth(), 1), t]; } },
+      { key: 'mesAnterior', label: 'Mes anterior', getRange: () => { const t = new Date(); const s = new Date(t.getFullYear(), t.getMonth() - 1, 1); const e = new Date(t.getFullYear(), t.getMonth(), 0); return [s, e]; } },
+      { key: 'anioActual', label: 'Este año', getRange: () => { const t = new Date(); return [new Date(t.getFullYear(), 0, 1), t]; } },
+      { key: 'anioAnterior', label: 'Año anterior', getRange: () => { const t = new Date(); return [new Date(t.getFullYear() - 1, 0, 1), new Date(t.getFullYear() - 1, 11, 31)]; } },
+      { key: '12m', label: 'Últimos 12 meses', getRange: () => { const e = new Date(); const s = new Date(e); s.setFullYear(s.getFullYear() - 1); s.setDate(s.getDate() + 1); return [s, e]; } },
+    ];
+
+    function formatRangeDate(d) {
+      if (!(d instanceof Date) || isNaN(d)) return '';
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    }
+
+    function setupRangeDatePicker() {
+      if (typeof flatpickr === 'undefined') return;
+      const input = document.getElementById('filtroRango');
+      const desdeHidden = document.getElementById('filtroDesde');
+      const hastaHidden = document.getElementById('filtroHasta');
+      if (!input || !desdeHidden || !hastaHidden) return;
+
+      const presetsWrap = document.createElement('div');
+      presetsWrap.className = 'flatpickr-presets';
+      const presetsTitle = document.createElement('div');
+      presetsTitle.className = 'flatpickr-presets-title';
+      presetsTitle.textContent = 'Atajos';
+      presetsWrap.appendChild(presetsTitle);
+
+      rangeDatePickerInst = flatpickr(input, {
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd M Y',
+        locale: flatpickr.l10ns?.es || 'default',
+        showMonths: 2,
+        onReady: (_sel, _str, instance) => {
+          instance.calendarContainer.classList.add('with-presets');
+          instance.calendarContainer.prepend(presetsWrap);
+        },
+        onChange: (dates) => {
+          presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach((b) => b.classList.remove('active'));
+          if (!dates.length) {
+            desdeHidden.value = '';
+            hastaHidden.value = '';
+            if (typeof aplicarFiltros === 'function') aplicarFiltros();
+            return;
+          }
+          if (dates.length === 2) {
+            desdeHidden.value = formatRangeDate(dates[0]);
+            hastaHidden.value = formatRangeDate(dates[1]);
+            if (typeof aplicarFiltros === 'function') aplicarFiltros();
+          }
+        },
+      });
+
+      RANGE_PRESETS.forEach((preset) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'flatpickr-preset-btn';
+        btn.dataset.presetKey = preset.key;
+        btn.textContent = preset.label;
+        btn.addEventListener('click', () => {
+          const [start, end] = preset.getRange();
+          presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          rangeDatePickerInst.setDate([start, end], true);
+          rangeDatePickerInst.close();
+        });
+        presetsWrap.appendChild(btn);
+      });
+    }
+
+    function syncRangeDatePicker(desde, hasta) {
+      if (!rangeDatePickerInst) return;
+      if (!desde && !hasta) {
+        rangeDatePickerInst.clear();
+        return;
+      }
+      const start = desde ? new Date(`${desde}T00:00:00`) : null;
+      const end = hasta ? new Date(`${hasta}T00:00:00`) : start;
+      if (start && end) rangeDatePickerInst.setDate([start, end], false);
+    }
+
     const serieBrushState = { active: false, startX: null, currentX: null };
     const serieBrushPlugin = {
       id: 'serieBrushSelection',
@@ -1985,6 +2123,7 @@
         if (!desdeInput || !hastaInput) return;
         desdeInput.value = startRange.start;
         hastaInput.value = endRange.end;
+        syncRangeDatePicker(startRange.start, endRange.end);
         aplicarFiltros();
       };
 
@@ -3725,6 +3864,7 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
+      syncRangeDatePicker('', '');
       const medioAll = document.getElementById('filtroMedioAll');
       if (medioAll) medioAll.checked = true;
       document.querySelectorAll('#filtroMedioOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -3852,7 +3992,7 @@
       });
     });
 
-    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .estado-chip, .summary-chip, .filter-chip';
+    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .estado-chip, .summary-chip, .filter-chip, .flatpickr-calendar';
     document.addEventListener('dblclick', (evt) => {
       const target = evt.target;
       if (!(target instanceof Element)) return;
@@ -3866,6 +4006,7 @@
 
     initCharts();
     setupSerieBrushSelection();
+    setupRangeDatePicker();
     loadData();
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
