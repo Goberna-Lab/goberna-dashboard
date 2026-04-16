@@ -759,6 +759,27 @@
               </div>
             </div>
             <div class="filter-chip">
+              <i class="fas fa-earth-americas"></i>
+              <div class="filter-body">
+                <span class="filter-label">País</span>
+                <details class="multi-check" id="filtroPaisDropdown">
+                  <summary id="filtroPaisSummary">Todos los países</summary>
+                  <div class="multi-check-menu">
+                    <div class="multi-check-search">
+                      <i class="fas fa-search icon"></i>
+                      <input type="text" id="filtroPaisBuscar" placeholder="Buscar país...">
+                    </div>
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroPaisAll" checked>
+                      <span>Todos los países</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroPaisOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div class="filter-chip">
               <i class="fas fa-calendar-day"></i>
               <div class="filter-body">
                 <span class="filter-label">Desde</span>
@@ -930,6 +951,13 @@
                 </tr>
               </thead>
               <tbody></tbody>
+              <tfoot class="table-light fw-bold" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2;">
+                <tr>
+                  <td class="text-uppercase small text-secondary">Total</td>
+                  <td class="text-end" id="tableBooksTotalQty">0</td>
+                  <td class="text-end text-success" id="tableBooksTotalAmount">$0</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -1300,6 +1328,7 @@
       mediosSeleccionados = new Set(),
       vendedoresSeleccionados = new Set(),
       productosSeleccionados = new Set(),
+      paisesSeleccionados = new Set(),
       texto = '',
       ignorarFecha = false,
     } = {}) {
@@ -1317,6 +1346,10 @@
       if (estado && String(v?.estado) !== String(estado)) return false;
       if (mediosSeleccionados.size && !mediosSeleccionados.has(getMedioFilterValue(v?.medio))) return false;
       if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v?.usuario__username || ''))) return false;
+      if (paisesSeleccionados.size) {
+        const paisVenta = String(v?.pais_cliente || '').trim() || 'Sin país';
+        if (!paisesSeleccionados.has(paisVenta)) return false;
+      }
 
       if (productosSeleccionados.size) {
         const productosVenta = ventaProductosMap.get(String(v?.id || ''));
@@ -1701,6 +1734,68 @@
       applyMultiSearchFilter('filtroProductoBuscar', 'filtroProductoOptions');
     }
 
+    function populateCountryFilter(data = ventasDetalle) {
+      const optionsContainer = document.getElementById('filtroPaisOptions');
+      const allCheckbox = document.getElementById('filtroPaisAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const previousSelected = getCheckedValues('filtroPaisOptions');
+      const paises = new Set();
+      (data || []).forEach((venta) => {
+        const pais = String(venta?.pais_cliente || '').trim() || 'Sin país';
+        paises.add(pais);
+      });
+
+      const sorted = Array.from(paises).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      optionsContainer.innerHTML = '';
+      sorted.forEach((pais) => {
+        const row = document.createElement('label');
+        row.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = pais;
+        input.dataset.label = pais;
+        input.checked = previousSelected.has(pais);
+        const span = document.createElement('span');
+        span.textContent = pais;
+        row.appendChild(input);
+        row.appendChild(span);
+        optionsContainer.appendChild(row);
+      });
+
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
+      applyMultiSearchFilter('filtroPaisBuscar', 'filtroPaisOptions');
+    }
+
+    function seleccionarPaisesEnFiltro(paisValues) {
+      const optionsContainer = document.getElementById('filtroPaisOptions');
+      const allCheckbox = document.getElementById('filtroPaisAll');
+      if (!optionsContainer) return;
+
+      const targetValues = new Set(
+        Array.from(paisValues || [])
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+      );
+
+      let hasAnySelected = false;
+      optionsContainer.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        const checked = targetValues.has(String(cb.value || '').trim());
+        cb.checked = checked;
+        if (checked) hasAnySelected = true;
+      });
+
+      if (allCheckbox) {
+        allCheckbox.checked = !hasAnySelected;
+      }
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
+    }
+
     function populateMediumFilter(data = ventasDetalle) {
       const optionsContainer = document.getElementById('filtroMedioOptions');
       const allCheckbox = document.getElementById('filtroMedioAll');
@@ -1809,7 +1904,20 @@
                 }
               }
             }
-          }
+          },
+          onClick: (_event, elements) => {
+            if (!elements || !elements.length) return;
+            const idx = elements[0].index;
+            const label = chartCountryInst?.data?.labels?.[idx];
+            if (!label || label === 'Sin datos') return;
+            seleccionarPaisesEnFiltro([label]);
+            aplicarFiltros();
+          },
+          onHover: (event, elements) => {
+            const canvas = event?.native?.target || chartCountryInst?.canvas;
+            if (!canvas) return;
+            canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+          },
         }
       });
 
@@ -2176,15 +2284,23 @@
 
     function renderBooksTable(data) {
         const tbody = document.querySelector('#tableBooks tbody');
+        const totalQtyEl = document.getElementById('tableBooksTotalQty');
+        const totalAmountEl = document.getElementById('tableBooksTotalAmount');
         if(!tbody) return;
         tbody.innerHTML = '';
-        
+
         if(!data || !data.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalQtyEl) totalQtyEl.textContent = '0';
+            if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
             return;
         }
 
+        let totalQty = 0;
+        let totalAmount = 0;
         data.forEach(d => {
+            totalQty += toNumber(d.qty || 0);
+            totalAmount += toNumber(d.amount || 0);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><small class="fw-bold text-dark">${d.name}</small></td>
@@ -2193,6 +2309,9 @@
             `;
             tbody.appendChild(tr);
         });
+
+        if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
+        if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
     function renderPackBooksTable(data) {
@@ -2805,6 +2924,7 @@
       const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
       const mediosSeleccionados = getCheckedValues('filtroMedioOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
+      const paisesSeleccionados = getCheckedValues('filtroPaisOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       const fechaDesdeKey = String(desde || '').trim();
       const fechaHastaKey = String(hasta || '').trim();
@@ -2813,6 +2933,7 @@
         mediosSeleccionados,
         vendedoresSeleccionados,
         productosSeleccionados,
+        paisesSeleccionados,
         texto,
       };
 
@@ -2903,8 +3024,9 @@
       const vendedoresLabel = summarizeMultiSelection(getCheckedLabels('filtroVendedorOptions'), '');
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
       const medioLabel = summarizeMultiSelection(getCheckedLabels('filtroMedioOptions'), '');
-      
-      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel });
+      const paisLabel = summarizeMultiSelection(getCheckedLabels('filtroPaisOptions'), '');
+
+      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel });
       updateCharts(ventasFil, productosSeleccionados);
       initCuotasPendientes(ventasFil);
       renderTabla(ventasFil);
@@ -3280,6 +3402,7 @@
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
             populateMediumFilter(ventasDetalle);
+            populateCountryFilter(ventasDetalle);
             initCuotasPendientes(ventasDetalle);
             renderHeatmap(document.getElementById('heatmapVendedor')?.value || '');
             renderVendorLineChart();
@@ -3417,6 +3540,10 @@
       if (productoAll) productoAll.checked = true;
       document.querySelectorAll('#filtroProductoOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
       updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
+      const paisAll = document.getElementById('filtroPaisAll');
+      if (paisAll) paisAll.checked = true;
+      document.querySelectorAll('#filtroPaisOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
       setEstadoChip('');
       aplicarFiltros();
     });
@@ -3444,6 +3571,7 @@
       if (filters.medio) chips.push(`<span class="summary-chip"><i class="fas fa-bullhorn"></i> Medio: ${filters.medio}</span>`);
       if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
+      if (filters.pais) chips.push(`<span class="summary-chip"><i class="fas fa-earth-americas"></i> País: ${filters.pais}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
       if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
@@ -3495,10 +3623,36 @@
       summaryId: 'filtroMedioSummary',
       defaultText: 'Todos los medios',
     });
+    wireMultiFilterDropdown({
+      allId: 'filtroPaisAll',
+      optionsId: 'filtroPaisOptions',
+      summaryId: 'filtroPaisSummary',
+      defaultText: 'Todos los países',
+    });
     wireMultiSearch({
       inputId: 'filtroProductoBuscar',
       optionsId: 'filtroProductoOptions',
       dropdownId: 'filtroProductoDropdown',
+    });
+    wireMultiSearch({
+      inputId: 'filtroPaisBuscar',
+      optionsId: 'filtroPaisOptions',
+      dropdownId: 'filtroPaisDropdown',
+    });
+
+    document.addEventListener('click', (evt) => {
+      const target = evt.target;
+      if (!(target instanceof Node)) return;
+      document.querySelectorAll('details.multi-check[open]').forEach((details) => {
+        if (!details.contains(target)) details.open = false;
+      });
+    });
+
+    document.addEventListener('keydown', (evt) => {
+      if (evt.key !== 'Escape') return;
+      document.querySelectorAll('details.multi-check[open]').forEach((details) => {
+        details.open = false;
+      });
     });
 
     initCharts();
