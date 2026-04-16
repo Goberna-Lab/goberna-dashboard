@@ -895,6 +895,15 @@
                 </tr>
               </thead>
               <tbody></tbody>
+              <tfoot class="table-light fw-bold" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2;">
+                <tr>
+                  <td class="text-uppercase small text-secondary">Total</td>
+                  <td class="text-end" id="tableVendorsTotalCount">0</td>
+                  <td class="text-end" id="tableVendorsTotalDeuda">$0</td>
+                  <td class="text-end" id="tableVendorsTotalPagado">$0</td>
+                  <td class="text-end text-success" id="tableVendorsTotalMonto">$0</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -2349,16 +2358,29 @@
 
     function renderVendorTable(data) {
         const tbody = document.querySelector('#tableVendors tbody');
+        const totalCountEl = document.getElementById('tableVendorsTotalCount');
+        const totalDeudaEl = document.getElementById('tableVendorsTotalDeuda');
+        const totalPagadoEl = document.getElementById('tableVendorsTotalPagado');
+        const totalMontoEl = document.getElementById('tableVendorsTotalMonto');
         if(!tbody) return;
         tbody.innerHTML = '';
-        
+
         if(!data || !data.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalCountEl) totalCountEl.textContent = '0';
+            if (totalDeudaEl) totalDeudaEl.textContent = formatearMonto(0);
+            if (totalPagadoEl) totalPagadoEl.textContent = formatearMonto(0);
+            if (totalMontoEl) totalMontoEl.textContent = formatearMonto(0);
             return;
         }
 
         // Find Max for Heatmap calculation
         const maxSales = Math.max(...data.map(d => Number(d.count || 0))) || 1;
+
+        let totalCount = 0;
+        let totalDeuda = 0;
+        let totalPagado = 0;
+        let totalMonto = 0;
 
         data.forEach(d => {
             const tr = document.createElement('tr');
@@ -2367,6 +2389,11 @@
             const deudaUsd = Number(d.deuda_usd ?? 0);
             const montoPagadoUsd = Number(d.monto_pagado_usd ?? 0);
             const montoTotalUsd = Number(d.monto_total_usd ?? d.amount ?? 0);
+
+            totalCount += salesCount;
+            totalDeuda += deudaUsd;
+            totalPagado += montoPagadoUsd;
+            totalMonto += montoTotalUsd;
             
             // Heatmap logic: 0% = blue/white, 100% = red/orange
             // We'll use HSL for simpler gradient. 
@@ -2403,6 +2430,10 @@
             tbody.appendChild(tr);
         });
 
+        if (totalCountEl) totalCountEl.textContent = formatearTickCantidad(totalCount);
+        if (totalDeudaEl) totalDeudaEl.textContent = formatearMonto(totalDeuda);
+        if (totalPagadoEl) totalPagadoEl.textContent = formatearMonto(totalPagado);
+        if (totalMontoEl) totalMontoEl.textContent = formatearMonto(totalMonto);
     }
 
     function renderSchoolTable(data) {
