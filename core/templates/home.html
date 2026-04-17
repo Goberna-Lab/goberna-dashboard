@@ -1071,8 +1071,12 @@
 
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-boxes-stacked text-primary"></i> Libros dentro de packs (top 10)</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-boxes-stacked text-primary"></i> <span id="chartPackBooksTitle">Libros dentro de packs (top 10)</span></span>
             <div class="d-flex gap-2">
+              <select id="filtroPackBooksDim" class="form-select form-select-sm" style="max-width: 140px;">
+                <option value="libro" selected>Por libro</option>
+                <option value="pack">Por pack</option>
+              </select>
               <select id="filtroPackBooksMetric" class="form-select form-select-sm" style="max-width: 140px;">
                 <option value="cantidad" selected>Cantidad</option>
                 <option value="monto">Monto</option>
@@ -1359,6 +1363,7 @@
     let selectedCoursesChartMetric = 'cantidad'; // 'cantidad' | 'monto'
     let selectedPackBooksMetric = 'cantidad'; // 'cantidad' | 'monto'
     let selectedPackBooksSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedPackBooksDim = 'libro'; // 'libro' | 'pack'
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
     const MEDIO_EMPTY_VALUE = '__sin_medio__';
@@ -3171,18 +3176,43 @@
         });
 
         const useMonto = selectedPackBooksMetric === 'monto';
-        const booksMap = new Map();
-        packRows.forEach(row => {
-            const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
-            const qty = toNumber(row.cantidad || 0);
-            const amount = qty * toNumber(row.precio_unitario_usd || 0);
-            if (!booksMap.has(bookName)) booksMap.set(bookName, { qty: 0, amount: 0 });
-            const entry = booksMap.get(bookName);
-            entry.qty += qty;
-            entry.amount += amount;
-        });
+        const byPack = selectedPackBooksDim === 'pack';
+        const groupMap = new Map();
 
-        const sortedBooks = Array.from(booksMap.entries())
+        if (byPack) {
+            // Para contar PACKS vendidos: tomamos una sola fila por (detalle_venta, pack)
+            // porque cada pack contiene N libros y el mismo detalle_venta genera N filas.
+            const seenDetalle = new Set();
+            packRows.forEach(row => {
+                const packName = String(row.pack_producto_nombre || 'Pack sin nombre').trim() || 'Pack sin nombre';
+                const detalleId = Number(row.detalle_venta_id || 0);
+                if (!groupMap.has(packName)) groupMap.set(packName, { qty: 0, amount: 0 });
+                const entry = groupMap.get(packName);
+
+                // Monto: sumamos todos los libros del pack (monto real del pack)
+                const lineAmount = toNumber(row.cantidad || 0) * toNumber(row.precio_unitario_usd || 0);
+                entry.amount += lineAmount;
+
+                // Cantidad de packs: una sola vez por detalle_venta_id
+                const seenKey = `${detalleId}||${packName}`;
+                if (!seenDetalle.has(seenKey)) {
+                    seenDetalle.add(seenKey);
+                    entry.qty += toNumber(row.cantidad || 0);
+                }
+            });
+        } else {
+            packRows.forEach(row => {
+                const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
+                const qty = toNumber(row.cantidad || 0);
+                const amount = qty * toNumber(row.precio_unitario_usd || 0);
+                if (!groupMap.has(bookName)) groupMap.set(bookName, { qty: 0, amount: 0 });
+                const entry = groupMap.get(bookName);
+                entry.qty += qty;
+                entry.amount += amount;
+            });
+        }
+
+        const sorted = Array.from(groupMap.entries())
           .sort((a, b) => {
             const valA = useMonto ? a[1].amount : a[1].qty;
             const valB = useMonto ? b[1].amount : b[1].qty;
@@ -3192,13 +3222,24 @@
           })
           .slice(0, 10);
 
-        const labels = sortedBooks.map(x => x[0]);
-        const data = sortedBooks.map(x => useMonto ? x[1].amount : x[1].qty);
+        const labels = sorted.map(x => x[0]);
+        const data = sorted.map(x => useMonto ? x[1].amount : x[1].qty);
+
+        const dsLabel = useMonto
+            ? 'Monto (USD)'
+            : (byPack ? 'Packs vendidos' : 'Libros en packs');
 
         chartPackBooksInst.data.labels = labels.length ? labels : ['Sin datos'];
         chartPackBooksInst.data.datasets[0].data = data.length ? data : [0];
-        chartPackBooksInst.data.datasets[0].label = useMonto ? 'Monto (USD)' : 'Libros en packs';
+        chartPackBooksInst.data.datasets[0].label = dsLabel;
+        chartPackBooksInst.data.datasets[0].backgroundColor = byPack ? '#fd7e14' : '#6f42c1';
+        chartPackBooksInst.data.datasets[0].borderColor = byPack ? '#e66a05' : '#5a31a8';
         chartPackBooksInst.update();
+
+        const titleEl = document.getElementById('chartPackBooksTitle');
+        if (titleEl) {
+            titleEl.textContent = byPack ? 'Packs vendidos (top 10)' : 'Libros dentro de packs (top 10)';
+        }
     }
 
     function updateCharts(ventasFil, productosSeleccionados = getCheckedValues('filtroProductoOptions')) {
@@ -4028,6 +4069,12 @@
     const filtroPackBooksMetric = document.getElementById('filtroPackBooksMetric');
     filtroPackBooksMetric?.addEventListener('change', () => {
       selectedPackBooksMetric = filtroPackBooksMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroPackBooksDim = document.getElementById('filtroPackBooksDim');
+    filtroPackBooksDim?.addEventListener('change', () => {
+      selectedPackBooksDim = filtroPackBooksDim.value === 'pack' ? 'pack' : 'libro';
       aplicarFiltros();
     });
 
