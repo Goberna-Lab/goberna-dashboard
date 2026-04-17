@@ -890,10 +890,16 @@
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
-            <select id="filtroOrdenBooksChartDir" class="form-select form-select-sm" style="max-width: 180px;">
-              <option value="desc" selected>Descendente</option>
-              <option value="asc">Ascendente</option>
-            </select>
+            <div class="d-flex gap-2">
+              <select id="filtroBooksChartMetric" class="form-select form-select-sm" style="max-width: 140px;">
+                <option value="cantidad" selected>Cantidad</option>
+                <option value="monto">Monto</option>
+              </select>
+              <select id="filtroOrdenBooksChartDir" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
           </div>
           <canvas id="chartBooks" height="180"></canvas>
         </div>
@@ -901,10 +907,16 @@
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</span>
-            <select id="filtroOrdenCursosDir" class="form-select form-select-sm" style="max-width: 180px;">
-              <option value="desc" selected>Descendente</option>
-              <option value="asc">Ascendente</option>
-            </select>
+            <div class="d-flex gap-2">
+              <select id="filtroCursosChartMetric" class="form-select form-select-sm" style="max-width: 140px;">
+                <option value="cantidad" selected>Cantidad</option>
+                <option value="monto">Monto</option>
+              </select>
+              <select id="filtroOrdenCursosDir" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
           </div>
           <canvas id="chartCourses" height="180"></canvas>
         </div>
@@ -1055,6 +1067,23 @@
               </tfoot>
             </table>
           </div>
+        </div>
+
+        <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-boxes-stacked text-primary"></i> Libros dentro de packs (top 10)</span>
+            <div class="d-flex gap-2">
+              <select id="filtroPackBooksMetric" class="form-select form-select-sm" style="max-width: 140px;">
+                <option value="cantidad" selected>Cantidad</option>
+                <option value="monto">Monto</option>
+              </select>
+              <select id="filtroOrdenPackBooksDir" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
+          </div>
+          <canvas id="chartPackBooks" height="180"></canvas>
         </div>
 
         <div class="chart-card">
@@ -1307,6 +1336,7 @@
     let chartCategoriasInst = null;
     let chartBooksInst = null;
     let chartCoursesInst = null;
+    let chartPackBooksInst = null;
     let chartVentasMesInst = null;
     let chartVentasSerieInst = null;
     let chartVendorLineInst = null;
@@ -1325,6 +1355,10 @@
     let selectedBooksSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedCoursesSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedBooksChartSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedBooksChartMetric = 'cantidad'; // 'cantidad' | 'monto'
+    let selectedCoursesChartMetric = 'cantidad'; // 'cantidad' | 'monto'
+    let selectedPackBooksMetric = 'cantidad'; // 'cantidad' | 'monto'
+    let selectedPackBooksSortOrder = 'desc'; // 'asc' | 'desc'
     const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
     const MEDIO_EMPTY_VALUE = '__sin_medio__';
@@ -2429,18 +2463,38 @@
         type: 'bar',
         data: {
           labels: booksLabels,
-          datasets: [{ 
+          datasets: [{
             label: 'Unidades Vendidas',
-            data: booksData, 
+            data: booksData,
             backgroundColor: '#ffc107',
             borderColor: '#ffca2c',
             borderWidth: 1
           }]
         },
-        options: { 
+        options: {
             indexAxis: 'y',
-            scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => selectedBooksChartMetric === 'monto'
+                    ? formatearTickMonto(value)
+                    : formatearTickCantidad(value),
+                }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const value = Number(ctx.parsed?.x ?? ctx.parsed ?? 0);
+                    if (selectedBooksChartMetric === 'monto') return `${ctx.dataset.label}: ${formatearMonto(value)}`;
+                    return `${ctx.dataset.label}: ${formatearTickCantidad(value)}`;
+                  }
+                }
+              }
+            },
             onClick: (_event, elements) => {
               if (!elements || !elements.length) return;
               const idx = elements[0].index;
@@ -2462,18 +2516,38 @@
         type: 'bar',
         data: {
           labels: coursesLabels,
-          datasets: [{ 
+          datasets: [{
             label: 'Unidades Vendidas',
-            data: coursesData, 
+            data: coursesData,
             backgroundColor: '#0dcaf0',
             borderColor: '#0aa2c0',
             borderWidth: 1
           }]
         },
-        options: { 
+        options: {
             indexAxis: 'y',
-            scales: { x: { beginAtZero: true } },
-            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => selectedCoursesChartMetric === 'monto'
+                    ? formatearTickMonto(value)
+                    : formatearTickCantidad(value),
+                }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const value = Number(ctx.parsed?.x ?? ctx.parsed ?? 0);
+                    if (selectedCoursesChartMetric === 'monto') return `${ctx.dataset.label}: ${formatearMonto(value)}`;
+                    return `${ctx.dataset.label}: ${formatearTickCantidad(value)}`;
+                  }
+                }
+              }
+            },
             onClick: (_event, elements) => {
               if (!elements || !elements.length) return;
               const idx = elements[0].index;
@@ -2484,6 +2558,50 @@
             },
             onHover: (event, elements) => {
               const canvas = event?.native?.target || chartCoursesInst?.canvas;
+              if (!canvas) return;
+              canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+            },
+        }
+      });
+
+      chartPackBooksInst = new Chart(document.getElementById('chartPackBooks'), {
+        type: 'bar',
+        data: {
+          labels: ['Sin datos'],
+          datasets: [{
+            label: 'Libros en packs',
+            data: [0],
+            backgroundColor: '#6f42c1',
+            borderColor: '#5a31a8',
+            borderWidth: 1
+          }]
+        },
+        options: {
+            indexAxis: 'y',
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => selectedPackBooksMetric === 'monto'
+                    ? formatearTickMonto(value)
+                    : formatearTickCantidad(value),
+                }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const value = Number(ctx.parsed?.x ?? ctx.parsed ?? 0);
+                    if (selectedPackBooksMetric === 'monto') return `${ctx.dataset.label}: ${formatearMonto(value)}`;
+                    return `${ctx.dataset.label}: ${formatearTickCantidad(value)}`;
+                  }
+                }
+              }
+            },
+            onHover: (event, elements) => {
+              const canvas = event?.native?.target || chartPackBooksInst?.canvas;
               if (!canvas) return;
               canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
             },
@@ -2740,26 +2858,34 @@
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
             return true;
         });
-        
+
+        const useMonto = selectedBooksChartMetric === 'monto';
         const booksMap = new Map();
         detallesLibros.forEach(d => {
             const name = d.producto__nombre_producto || 'Desconocido';
             const qty = parseInt(d.cantidad || 0);
-            booksMap.set(name, (booksMap.get(name) || 0) + qty);
+            const amount = toNumber(d.monto_usd || 0);
+            if (!booksMap.has(name)) booksMap.set(name, { qty: 0, amount: 0 });
+            const entry = booksMap.get(name);
+            entry.qty += qty;
+            entry.amount += amount;
         });
 
         const sortedBooks = Array.from(booksMap.entries())
           .sort((a, b) => {
-            const cmp = compareByOrder(a[1], b[1], selectedBooksChartSortOrder);
+            const valA = useMonto ? a[1].amount : a[1].qty;
+            const valB = useMonto ? b[1].amount : b[1].qty;
+            const cmp = compareByOrder(valA, valB, selectedBooksChartSortOrder);
             if (cmp !== 0) return cmp;
             return String(a[0] || '').localeCompare(String(b[0] || ''), 'es', { sensitivity: 'base' });
           })
           .slice(0, 10);
         const bookLabels = sortedBooks.map(x => x[0]);
-        const bookData = sortedBooks.map(x => x[1]);
+        const bookData = sortedBooks.map(x => useMonto ? x[1].amount : x[1].qty);
 
         chartBooksInst.data.labels = bookLabels.length ? bookLabels : ['Sin datos'];
         chartBooksInst.data.datasets[0].data = bookData.length ? bookData : [0];
+        chartBooksInst.data.datasets[0].label = useMonto ? 'Monto (USD)' : 'Unidades Vendidas';
         chartBooksInst.update();
     }
 
@@ -3002,27 +3128,77 @@
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
         });
-        
+
+        const useMonto = selectedCoursesChartMetric === 'monto';
         const coursesMap = new Map();
         detallesFil.forEach(d => {
             const name = d.producto__nombre_producto || 'Desconocido';
             const qty = parseInt(d.cantidad || 0);
-            coursesMap.set(name, (coursesMap.get(name) || 0) + qty);
+            const amount = toNumber(d.monto_usd || 0);
+            if (!coursesMap.has(name)) coursesMap.set(name, { qty: 0, amount: 0 });
+            const entry = coursesMap.get(name);
+            entry.qty += qty;
+            entry.amount += amount;
         });
 
         const sortedCourses = Array.from(coursesMap.entries())
           .sort((a, b) => {
-            const cmp = compareByOrder(a[1], b[1], selectedCoursesSortOrder);
+            const valA = useMonto ? a[1].amount : a[1].qty;
+            const valB = useMonto ? b[1].amount : b[1].qty;
+            const cmp = compareByOrder(valA, valB, selectedCoursesSortOrder);
             if (cmp !== 0) return cmp;
             return String(a[0] || '').localeCompare(String(b[0] || ''), 'es', { sensitivity: 'base' });
           })
           .slice(0, 10);
         const courseLabels = sortedCourses.map(x => x[0]);
-        const courseData = sortedCourses.map(x => x[1]);
+        const courseData = sortedCourses.map(x => useMonto ? x[1].amount : x[1].qty);
 
         chartCoursesInst.data.labels = courseLabels.length ? courseLabels : ['Sin datos'];
         chartCoursesInst.data.datasets[0].data = courseData.length ? courseData : [0];
+        chartCoursesInst.data.datasets[0].label = useMonto ? 'Monto (USD)' : 'Unidades Vendidas';
         chartCoursesInst.update();
+    }
+
+    function updatePackBooksChart(ventaIds, productosSeleccionados) {
+        if (!chartPackBooksInst) return;
+        const packRows = (librosEnPackDetalle || []).filter(row => {
+            if (!ventaIds || !ventaIds.has(Number(row.venta_id || 0))) return false;
+            if (productosSeleccionados && productosSeleccionados.size > 0) {
+                const packName = String(row.pack_producto_nombre || '').trim();
+                if (!packName || !productosSeleccionados.has(packName)) return false;
+            }
+            return true;
+        });
+
+        const useMonto = selectedPackBooksMetric === 'monto';
+        const booksMap = new Map();
+        packRows.forEach(row => {
+            const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
+            const qty = toNumber(row.cantidad || 0);
+            const amount = qty * toNumber(row.precio_unitario_usd || 0);
+            if (!booksMap.has(bookName)) booksMap.set(bookName, { qty: 0, amount: 0 });
+            const entry = booksMap.get(bookName);
+            entry.qty += qty;
+            entry.amount += amount;
+        });
+
+        const sortedBooks = Array.from(booksMap.entries())
+          .sort((a, b) => {
+            const valA = useMonto ? a[1].amount : a[1].qty;
+            const valB = useMonto ? b[1].amount : b[1].qty;
+            const cmp = compareByOrder(valA, valB, selectedPackBooksSortOrder);
+            if (cmp !== 0) return cmp;
+            return String(a[0] || '').localeCompare(String(b[0] || ''), 'es', { sensitivity: 'base' });
+          })
+          .slice(0, 10);
+
+        const labels = sortedBooks.map(x => x[0]);
+        const data = sortedBooks.map(x => useMonto ? x[1].amount : x[1].qty);
+
+        chartPackBooksInst.data.labels = labels.length ? labels : ['Sin datos'];
+        chartPackBooksInst.data.datasets[0].data = data.length ? data : [0];
+        chartPackBooksInst.data.datasets[0].label = useMonto ? 'Monto (USD)' : 'Libros en packs';
+        chartPackBooksInst.update();
     }
 
     function updateCharts(ventasFil, productosSeleccionados = getCheckedValues('filtroProductoOptions')) {
@@ -3175,6 +3351,8 @@
       updateBooksTable(ventaIds, productosSeleccionados);
       // Update Pack Books Table con filtros superiores
       updatePackBooksTable(ventaIds, productosSeleccionados);
+      // Update Pack Books Chart (top 10 libros dentro de packs)
+      updatePackBooksChart(ventaIds, productosSeleccionados);
 
       // Update Vendors Table
       const userMap = new Map();
@@ -3639,6 +3817,7 @@
         { title:'Ventas por categoría', inst: chartCategoriasInst, summary: chartSummary(chartCategoriasInst) },
         { title:'Libros más vendidos',  inst: chartBooksInst,      summary: chartSummary(chartBooksInst) },
         { title:'Cursos más vendidos',  inst: chartCoursesInst,    summary: chartSummary(chartCoursesInst) },
+        { title:'Libros dentro de packs', inst: chartPackBooksInst, summary: chartSummary(chartPackBooksInst) },
       ];
 
         for (const block of chartBlocks) {
@@ -3688,7 +3867,7 @@
 
     // Cambiar tema de charts para fullscreen claro/oscuro
     function setChartsTheme(isDark) {
-      const charts = [chartEstadoInst, chartCountryInst, chartMediumInst, chartCuotasInst, chartCategoriasInst, chartBooksInst, chartCoursesInst, chartVentasMesInst, chartVentasSerieInst];
+      const charts = [chartEstadoInst, chartCountryInst, chartMediumInst, chartCuotasInst, chartCategoriasInst, chartBooksInst, chartCoursesInst, chartPackBooksInst, chartVentasMesInst, chartVentasSerieInst];
       charts.forEach(ch => {
         if (!ch) return;
         const opts = ch.options || {};
@@ -3831,6 +4010,30 @@
     const filtroOrdenBooksChartDir = document.getElementById('filtroOrdenBooksChartDir');
     filtroOrdenBooksChartDir?.addEventListener('change', () => {
       selectedBooksChartSortOrder = filtroOrdenBooksChartDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
+
+    const filtroBooksChartMetric = document.getElementById('filtroBooksChartMetric');
+    filtroBooksChartMetric?.addEventListener('change', () => {
+      selectedBooksChartMetric = filtroBooksChartMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroCursosChartMetric = document.getElementById('filtroCursosChartMetric');
+    filtroCursosChartMetric?.addEventListener('change', () => {
+      selectedCoursesChartMetric = filtroCursosChartMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroPackBooksMetric = document.getElementById('filtroPackBooksMetric');
+    filtroPackBooksMetric?.addEventListener('change', () => {
+      selectedPackBooksMetric = filtroPackBooksMetric.value === 'monto' ? 'monto' : 'cantidad';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenPackBooksDir = document.getElementById('filtroOrdenPackBooksDir');
+    filtroOrdenPackBooksDir?.addEventListener('change', () => {
+      selectedPackBooksSortOrder = filtroOrdenPackBooksDir.value === 'asc' ? 'asc' : 'desc';
       aplicarFiltros();
     });
 
