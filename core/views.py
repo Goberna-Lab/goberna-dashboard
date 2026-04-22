@@ -425,7 +425,8 @@ def home_dashboard(request):
 
     # API Carga Asíncrona
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        list_cache_key = f"dash_list_v11_pending_paid_{request.user.id}_{is_admin}"
+        # v12: incluye detalle_venta_monto_usd para prorrateo correcto de packs en frontend
+        list_cache_key = f"dash_list_v12_pending_paid_{request.user.id}_{is_admin}"
         cached_lists = cache.get(list_cache_key)
         
         if cached_lists:
@@ -541,6 +542,10 @@ def home_dashboard(request):
                     F("precio_unitario") / F("tasa_final"),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 ),
+                detalle_venta_monto_usd=ExpressionWrapper(
+                    F("detalle_venta__precio_total") / F("tasa_final"),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
                 venta_id=F("detalle_venta__venta_id"),
                 folio_venta=F("detalle_venta__venta__folio_venta"),
                 pack_producto_id=F("detalle_venta__producto__codigo_producto"),
@@ -557,6 +562,7 @@ def home_dashboard(request):
                 "libro_nombre",
                 "cantidad",
                 "precio_unitario_usd",
+                "detalle_venta_monto_usd",
             )
         )
 

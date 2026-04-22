@@ -2806,8 +2806,8 @@
         if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
-    function updatePackBooksTable(ventaIds, productosSeleccionados) {
-        const packRows = (librosEnPackDetalle || []).filter(row => {
+    function filterPackRowsByCurrentScope(ventaIds, productosSeleccionados) {
+        return (librosEnPackDetalle || []).filter(row => {
             if (!ventaIds || !ventaIds.has(Number(row.venta_id || 0))) return false;
             if (productosSeleccionados && productosSeleccionados.size > 0) {
                 const packName = String(row.pack_producto_nombre || '').trim();
@@ -2815,13 +2815,57 @@
             }
             return true;
         });
+    }
+
+    function getPackDetalleKey(row) {
+        const detalleId = Number(row?.detalle_venta_id || 0);
+        const packIdOrName = String(row?.pack_producto_id || row?.pack_producto_nombre || '').trim();
+        return `${detalleId}||${packIdOrName}`;
+    }
+
+    function buildPackDetalleMeta(packRows) {
+        const detalleMeta = new Map();
+        (packRows || []).forEach(row => {
+            const key = getPackDetalleKey(row);
+            const qty = toNumber(row?.cantidad || 0);
+            const detailAmount = toNumber(row?.detalle_venta_monto_usd || 0);
+            if (!detalleMeta.has(key)) {
+                detalleMeta.set(key, {
+                    total_qty: 0,
+                    detail_amount_usd: detailAmount,
+                });
+            }
+            const entry = detalleMeta.get(key);
+            entry.total_qty += qty;
+            if (!entry.detail_amount_usd && detailAmount) entry.detail_amount_usd = detailAmount;
+        });
+        return detalleMeta;
+    }
+
+    function getPackRowAmount(row, detalleMeta) {
+        const qty = toNumber(row?.cantidad || 0);
+        const meta = detalleMeta.get(getPackDetalleKey(row));
+        const detailAmount = toNumber(row?.detalle_venta_monto_usd || meta?.detail_amount_usd || 0);
+        const totalQty = toNumber(meta?.total_qty || 0);
+
+        // Evita sobrecontar el mismo pack por cada libro del pack:
+        // prorratea el monto real del detalle entre los libros asociados.
+        if (detailAmount > 0 && totalQty > 0) {
+            return detailAmount * (qty / totalQty);
+        }
+        return qty * toNumber(row?.precio_unitario_usd || 0);
+    }
+
+    function updatePackBooksTable(ventaIds, productosSeleccionados) {
+        const packRows = filterPackRowsByCurrentScope(ventaIds, productosSeleccionados);
+        const detalleMeta = buildPackDetalleMeta(packRows);
 
         const packMap = new Map();
         packRows.forEach(row => {
             const packName = String(row.pack_producto_nombre || 'Pack sin nombre').trim() || 'Pack sin nombre';
             const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
             const qty = toNumber(row.cantidad || 0);
-            const amount = qty * toNumber(row.precio_unitario_usd || 0);
+            const amount = getPackRowAmount(row, detalleMeta);
             const key = `${packName}||${bookName}`;
 
             if (!packMap.has(key)) {
@@ -3166,14 +3210,8 @@
 
     function updatePackBooksChart(ventaIds, productosSeleccionados) {
         if (!chartPackBooksInst) return;
-        const packRows = (librosEnPackDetalle || []).filter(row => {
-            if (!ventaIds || !ventaIds.has(Number(row.venta_id || 0))) return false;
-            if (productosSeleccionados && productosSeleccionados.size > 0) {
-                const packName = String(row.pack_producto_nombre || '').trim();
-                if (!packName || !productosSeleccionados.has(packName)) return false;
-            }
-            return true;
-        });
+        const packRows = filterPackRowsByCurrentScope(ventaIds, productosSeleccionados);
+        const detalleMeta = buildPackDetalleMeta(packRows);
 
         const useMonto = selectedPackBooksMetric === 'monto';
         const byPack = selectedPackBooksDim === 'pack';
@@ -3189,8 +3227,7 @@
                 if (!groupMap.has(packName)) groupMap.set(packName, { qty: 0, amount: 0 });
                 const entry = groupMap.get(packName);
 
-                // Monto: sumamos todos los libros del pack (monto real del pack)
-                const lineAmount = toNumber(row.cantidad || 0) * toNumber(row.precio_unitario_usd || 0);
+                const lineAmount = getPackRowAmount(row, detalleMeta);
                 entry.amount += lineAmount;
 
                 // Cantidad de packs: una sola vez por detalle_venta_id
@@ -3204,7 +3241,7 @@
             packRows.forEach(row => {
                 const bookName = String(row.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
                 const qty = toNumber(row.cantidad || 0);
-                const amount = qty * toNumber(row.precio_unitario_usd || 0);
+                const amount = getPackRowAmount(row, detalleMeta);
                 if (!groupMap.has(bookName)) groupMap.set(bookName, { qty: 0, amount: 0 });
                 const entry = groupMap.get(bookName);
                 entry.qty += qty;
@@ -3242,10 +3279,29 @@
         }
     }
 
+    function buildVentaMontoFiltradoMap(ventaIds, productosSeleccionados) {
+      const montoMap = new Map();
+      if (!ventaIds || !ventaIds.size || !productosSeleccionados || !productosSeleccionados.size) {
+        return montoMap;
+      }
+
+      (detallesCategoria || []).forEach((detalle) => {
+        const ventaId = Number(detalle?.venta_id || 0);
+        if (!ventaIds.has(ventaId)) return;
+        if (!detalleCoincideProductoSeleccionado(detalle, productosSeleccionados)) return;
+        const montoDetalle = toNumber(detalle?.monto_usd || 0);
+        montoMap.set(ventaId, (montoMap.get(ventaId) || 0) + montoDetalle);
+      });
+
+      return montoMap;
+    }
+
     function updateCharts(ventasFil, productosSeleccionados = getCheckedValues('filtroProductoOptions')) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
       const ventaIds = new Set(ventasFil.map(v => v.id));
+      const ventaMontoFiltradoMap = buildVentaMontoFiltradoMap(ventaIds, productosSeleccionados);
+      const usarMontoPorProducto = Boolean(productosSeleccionados && productosSeleccionados.size);
 
       const estadoKeys = Object.keys(estadoLabels).map(Number);
       const estadoIndexMap = new Map(estadoKeys.map((k, idx) => [k, idx]));
@@ -3415,7 +3471,9 @@
             });
         }
         const entry = userMap.get(vendorKey);
-        const montoVenta = toNumber(v.monto_total || 0);
+        const montoVenta = usarMontoPorProducto
+          ? toNumber(ventaMontoFiltradoMap.get(Number(v.id)) || 0)
+          : toNumber(v.monto_total || 0);
         entry.count += 1;
         entry.monto_total_usd += montoVenta;
         entry.amount = entry.monto_total_usd;
