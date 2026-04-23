@@ -1,4 +1,4 @@
-# Guía de Despliegue en Vercel - Dashboard Satélite - v0.1.1
+# Guía de Despliegue en Vercel - Dashboard Satélite - v0.1.2
 
 Esta carpeta contiene una "Mini App Django" diseñada para ejecutarse en Vercel y conectarse a tu base de datos MySQL existente.
 
