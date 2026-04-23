@@ -1070,6 +1070,31 @@
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
+          <div class="section-title d-flex align-items-center gap-2">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop text-primary"></i> Packs de Cursos vendidos</span>
+          </div>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0" id="tablePackCourses">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Pack de Curso</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">Monto (USD)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot class="table-light fw-bold small" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2; font-size: 0.78rem;">
+                <tr>
+                  <td class="text-uppercase text-secondary">Total</td>
+                  <td class="text-end"><span class="badge bg-light text-dark border" id="tablePackCoursesTotalQty">0</span></td>
+                  <td class="text-end text-success" id="tablePackCoursesTotalAmount">$0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-boxes-stacked text-primary"></i> <span id="chartPackBooksTitle">Libros dentro de packs (top 10)</span></span>
             <div class="d-flex gap-2">
@@ -2806,6 +2831,73 @@
         if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
+    function renderPackCoursesTable(data) {
+        const tbody = document.querySelector('#tablePackCourses tbody');
+        const totalQtyEl = document.getElementById('tablePackCoursesTotalQty');
+        const totalAmountEl = document.getElementById('tablePackCoursesTotalAmount');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!data || !data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalQtyEl) totalQtyEl.textContent = '0';
+            if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
+            return;
+        }
+
+        let totalQty = 0;
+        let totalAmount = 0;
+        data.forEach(d => {
+            totalQty += toNumber(d.qty || 0);
+            totalAmount += toNumber(d.amount || 0);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small class="fw-bold text-dark">${d.name}</small></td>
+                <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
+                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
+        if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
+    }
+
+    function isPackCursoCategory(categoryName) {
+        const normalized = normalizeSearchTerm(categoryName || '');
+        if (!normalized) return false;
+        if (normalized.includes('pack de curso')) return true;
+        if (normalized.includes('pack curso')) return true;
+        return normalized.includes('pack') && normalized.includes('curso');
+    }
+
+    function updatePackCoursesTable(ventaIds, productosSeleccionados) {
+        const packCourseDetails = (detallesCategoria || []).filter((d) => {
+            if (!ventaIds || !ventaIds.has(Number(d?.venta_id || 0))) return false;
+            if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
+            return isPackCursoCategory(d?.producto__codigo_categoria__nombre_categoria);
+        });
+
+        const packCourseMap = new Map();
+        packCourseDetails.forEach((d) => {
+            const name = String(d?.producto__nombre_producto || 'Pack de Curso sin nombre').trim() || 'Pack de Curso sin nombre';
+            if (!packCourseMap.has(name)) packCourseMap.set(name, { name, qty: 0, amount: 0 });
+            const entry = packCourseMap.get(name);
+            entry.qty += toNumber(d?.cantidad || 0);
+            entry.amount += toNumber(d?.monto_usd || 0);
+        });
+
+        const packCourseList = Array.from(packCourseMap.values()).sort((a, b) => {
+            const byQty = compareByOrder(a.qty, b.qty, 'desc');
+            if (byQty !== 0) return byQty;
+            const byAmount = compareByOrder(a.amount, b.amount, 'desc');
+            if (byAmount !== 0) return byAmount;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+        });
+
+        renderPackCoursesTable(packCourseList);
+    }
+
     function filterPackRowsByCurrentScope(ventaIds, productosSeleccionados) {
         return (librosEnPackDetalle || []).filter(row => {
             if (!ventaIds || !ventaIds.has(Number(row.venta_id || 0))) return false;
@@ -3448,6 +3540,8 @@
       updateBooksTable(ventaIds, productosSeleccionados);
       // Update Pack Books Table con filtros superiores
       updatePackBooksTable(ventaIds, productosSeleccionados);
+      // Update Pack Courses Table con filtros superiores
+      updatePackCoursesTable(ventaIds, productosSeleccionados);
       // Update Pack Books Chart (top 10 libros dentro de packs)
       updatePackBooksChart(ventaIds, productosSeleccionados);
 
