@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+from urllib.parse import urljoin
 
 class PerfilUsuario(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="perfil_satelite")
@@ -170,10 +171,28 @@ class Negocio(models.Model):
         managed = False
         db_table = 'tb_negocio'
 
+class Division(models.Model):
+    codigo_division = models.AutoField(primary_key=True)
+    nombre_division = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'tb_division'
+
 class Producto(models.Model):
+    ESTADO_CHOICES = (
+        (1, "Disponible"),
+        (2, "No Disponible"),
+    )
+
     codigo_producto = models.AutoField(primary_key=True)
     sku_producto = models.CharField(max_length=50, unique=True)
     nombre_producto = models.CharField(max_length=200)
+    precio_normal = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    precio_promocion = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # En la BD principal esta columna guarda la ruta, por ejemplo: productos/default.png
+    imagen_producto = models.CharField(max_length=255, null=True, blank=True, db_column='imagen_producto')
+    estado = models.IntegerField(choices=ESTADO_CHOICES, default=1, db_column='estado')
     
     codigo_categoria = models.ForeignKey(
         Categoria, on_delete=models.DO_NOTHING,
@@ -183,6 +202,45 @@ class Producto(models.Model):
         Negocio, on_delete=models.DO_NOTHING,
         db_column='codigo_negocio', related_name='productos'
     )
+    codigo_division = models.ForeignKey(
+        Division, on_delete=models.DO_NOTHING,
+        db_column='codigo_division', related_name='productos',
+        null=True, blank=True
+    )
+
+    fecha_registro = models.DateField(null=True, blank=True, db_column='fecha_registro')
+    fecha_edicion = models.DateTimeField(null=True, blank=True, db_column='fecha_edicion')
+
+    def __str__(self):
+        return f"{self.sku_producto} - {self.nombre_producto}"
+
+    @property
+    def imagen_producto_url(self):
+        ruta = (self.imagen_producto or "").strip()
+        if not ruta:
+            ruta = "productos/default.png"
+
+        if ruta.startswith(("http://", "https://")):
+            return ruta
+
+        main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.pe").rstrip("/") + "/"
+        media_url = getattr(settings, "MEDIA_URL", "/media/")
+
+        # Si viene como /media/... se respeta esa ruta en el dominio principal
+        if ruta.startswith("/"):
+            return urljoin(main_app_url, ruta.lstrip("/"))
+
+        if isinstance(media_url, str) and media_url.startswith(("http://", "https://")):
+            media_base = media_url if media_url.endswith("/") else f"{media_url}/"
+        else:
+            media_path = media_url or "/media/"
+            if not media_path.startswith("/"):
+                media_path = f"/{media_path}"
+            media_base = f"{main_app_url.rstrip('/')}{media_path}"
+            if not media_base.endswith("/"):
+                media_base = f"{media_base}/"
+
+        return urljoin(media_base, ruta.lstrip("/"))
 
     class Meta:
         managed = False
