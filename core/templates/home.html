@@ -10,7 +10,7 @@
   <style>
     body { margin: 0; background: #f3f6fb; color: #0f172a; font-family: "Montserrat", "Inter", sans-serif; overflow-x: hidden; }
     
-    /* Layout adaptaciÃ³n a Sidebar Fijo al vvito */
+    /* Layout adaptación a Sidebar Fijo al vvito */
     .page > .content {
       margin-left: 80px; /* Ancho colapsado */
       padding: 24px 24px 40px;
@@ -23,15 +23,15 @@
     /* Opcional: Si el usuario quiere que el contenido se empuje al abrir sidebar (estilo main app css provided) */
     /* Para estar seguro de detectar hover en sidebar desde CSS hermano, sidebar debe estar antes de content en DOM. */
     /* La estructura actual es: inside body -> .page -> include sidebar, div.content */
-    /* AsÃ­ que .sidebar:hover ~ .content funciona si son hermanos directos. */
-    /* En home.html estÃ¡n dentro de .page.. */
+    /* Así que .sidebar:hover ~ .content funciona si son hermanos directos. */
+    /* En home.html están dentro de .page.. */
     
     .page { display: block; } /* Reset flex */
     
     /* Cuando el sidebar (que es fixed) hace hover, empujamos contenido? 
-       El CSS del usuario decÃ­a: .sidebar:hover ~ .main-content { margin-left: 240px; }
-       PERO el sidebar estÃ¡ dentro de un 'include', asÃ­ que tÃ©cnicamente es hermano de .content en el renderizado final.
-       Vamos a asumir que sÃ­. 
+       El CSS del usuario decía: .sidebar:hover ~ .main-content { margin-left: 240px; }
+       PERO el sidebar está dentro de un 'include', así que técnicamente es hermano de .content en el renderizado final.
+       Vamos a asumir que sí. 
     */
 
     .grid {
@@ -482,7 +482,7 @@
     .pill-danger { background: #fee2e2; color: #b91c1c; }
     .content .btn-primary { background: #193b59 !important; border-color: #193b59 !important; color: #fff; }
     .content .btn-primary:hover { background: #122b40 !important; border-color: #122b40 !important; color: #fff; }
-    /* BotÃ³n export (texto + icon slide) */
+    /* Botón export (texto + icon slide) */
     .button-export {
       border-radius: 20px;
       position: relative;
@@ -765,7 +765,7 @@
             <div class="d-flex align-items-center gap-3 mb-2">
               <h2 style="margin:0;">Bienvenido, {{ username }} </h2>
             </div>
-            <p>Resumen de tus ventas y cuotas al dÃ­a.</p>
+            <p>Resumen de tus ventas y cuotas al día.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="button-export" type="button" onclick="preparePrintAndDownload()" title="Descargar PDF">
@@ -951,17 +951,17 @@
             <div class="filter-chip">
               <i class="fas fa-earth-americas"></i>
               <div class="filter-body">
-                <span class="filter-label">PaÃ­s</span>
+                <span class="filter-label">País</span>
                 <details class="multi-check" id="filtroPaisDropdown">
-                  <summary id="filtroPaisSummary">Todos los paÃ­ses</summary>
+                  <summary id="filtroPaisSummary">Todos los países</summary>
                   <div class="multi-check-menu">
                     <div class="multi-check-search">
                       <i class="fas fa-search icon"></i>
-                      <input type="text" id="filtroPaisBuscar" placeholder="Buscar paÃ­s...">
+                      <input type="text" id="filtroPaisBuscar" placeholder="Buscar país...">
                     </div>
                     <label class="multi-check-row">
                       <input type="checkbox" id="filtroPaisAll" checked>
-                      <span>Todos los paÃ­ses</span>
+                      <span>Todos los países</span>
                     </label>
                     <div class="multi-check-divider"></div>
                     <div id="filtroPaisOptions" class="multi-check-list"></div>
@@ -999,7 +999,7 @@
 
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-earth-americas text-primary"></i> Ventas por paÃ­s (cliente)</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-earth-americas text-primary"></i> Ventas por país (cliente)</span>
             <select id="filtroPaisMetric" class="form-select form-select-sm" style="max-width: 180px;">
               <option value="cantidad" selected>Cantidad</option>
               <option value="monto">Monto</option>
@@ -1021,7 +1021,7 @@
 
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros mÃ¡s vendidos (Editorial)</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Libros más vendidos (Editorial)</span>
             <div class="d-flex gap-2">
               <select id="filtroBooksChartMetric" class="form-select form-select-sm" style="max-width: 140px;">
                 <option value="cantidad" selected>Cantidad</option>
@@ -1038,7 +1038,7 @@
 
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online mÃ¡s vendidos</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-laptop-code text-primary"></i> Cursos Online más vendidos</span>
             <div class="d-flex gap-2">
               <select id="filtroCursosChartMetric" class="form-select form-select-sm" style="max-width: 140px;">
                 <option value="cantidad" selected>Cantidad</option>
@@ -1055,7 +1055,7 @@
 
         <div class="chart-card" style="grid-column: span 1;">
           <div class="section-title d-flex align-items-center gap-2">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por CategorÃ­a</span>
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-chart-pie text-primary"></i> Ventas por Categoría</span>
           </div>
           <div class="d-flex justify-content-end mb-2">
             <select id="filtroCategoriaMetric" class="form-select form-select-sm" style="max-width: 180px;">
@@ -1254,7 +1254,7 @@
           <canvas id="chartCuotas" height="180"></canvas>
         </div>
 
-        <!-- Serie temporal full width, justo antes de ÃƒÅ¡ltimas ventas -->
+        <!-- Serie temporal full width, justo antes de Últimas ventas -->
         <div class="chart-card compact-serie" style="grid-column: 1 / -1;">
           <div class="d-flex align-items-center gap-2">
             <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-chart-area text-primary"></i> Serie temporal (ventas por mes)</div>
@@ -1272,15 +1272,15 @@
               </select>
             </div>
             <span class="text-muted small ms-auto" style="font-style: italic;">
-              <i class="fas fa-arrows-left-right"></i> ArrastrÃ¡ sobre el grÃ¡fico para filtrar por rango
+              <i class="fas fa-arrows-left-right"></i> Arrastrá sobre el gráfico para filtrar por rango
             </span>
           </div>
-          <canvas id="chartVentasSerie" height="70" title="ArrastrÃ¡ para seleccionar un rango y filtrar el dashboard"></canvas>
+          <canvas id="chartVentasSerie" height="70" title="Arrastrá para seleccionar un rango y filtrar el dashboard"></canvas>
         </div>
 
         <div class="table-card" style="grid-column: 1 / -1;">
           <div class="p-3 d-flex justify-content-between align-items-center">
-            <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> ÃƒÅ¡ltimas ventas</div>
+            <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
             <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
           </div>
           <div class="px-3 pb-2">
@@ -1311,12 +1311,12 @@
           <div class="heatmap-card">
             <div class="heatmap-header">
               <div>
-                <div class="section-title mb-1">Actividad de vendedores (Ãºltimos 12 meses)</div>
+                <div class="section-title mb-1">Actividad de vendedores (últimos 12 meses)</div>
                 <div class="heatmap-meta" id="heatmapMeta">Cargando...</div>
               </div>
               <div class="d-flex gap-2">
                 <select id="heatmapYear" class="form-select form-select-sm heatmap-select">
-                  <option value="">AÃ±o actual</option>
+                  <option value="">Año actual</option>
                 </select>
                 <select id="heatmapVendedor" class="form-select form-select-sm heatmap-select">
                   <option value="">Todos los vendedores</option>
@@ -1334,12 +1334,12 @@
               <span class="box" style="background:#4ade80;"></span>
               <span class="box" style="background:#22c55e;"></span>
               <span class="box" style="background:#15803d;"></span>
-              <span>MÃ¡s</span>
+              <span>Más</span>
             </div>
             <div id="heatmapTooltip" class="heatmap-tooltip"></div>
           </div>
           <div class="chart-card chart-line-card">
-            <div class="section-title d-flex align-items-center gap-2 mb-2"><i class="fas fa-chart-line text-primary"></i> Mejores vendedores (Ãºltimos 12 meses)</div>
+            <div class="section-title d-flex align-items-center gap-2 mb-2"><i class="fas fa-chart-line text-primary"></i> Mejores vendedores (últimos 12 meses)</div>
             <canvas id="chartVendorLine" height="180"></canvas>
             <div class="stat-label mt-2" id="vendorLineMeta"></div>
           </div>
@@ -1357,14 +1357,14 @@
   <script defer src="/_vercel/speed-insights/script.js"></script>
   <script>
     // Variable global para links externos a la app principal
-    // Si MAIN_APP_URL estÃ¡ vacÃ­o, los links serÃ¡n relativos (fallarÃ¡n en Vercel si no hay ruta)
+    // Si MAIN_APP_URL está vacío, los links serán relativos (fallarán en Vercel si no hay ruta)
     // Se recomienda setear "MAIN_APP_URL" en el contexto de la vista
     const MAIN_APP_URL = "{{ MAIN_APP_URL|default:'' }}";
     // Intentamos logo local; si no existe, usamos el de postimg proporcionado.
     const LOGO_URL_PRIMARY = "{% static 'img/logo-goberna.png' %}";
     const LOGO_URL_FALLBACK = "https://i.postimg.cc/rFxsm3xS/icono-goberna.png";
 
-    // Variables de inicializaciÃ³n
+    // Variables de inicialización
     let ventasDetalle = [];
     let cuotasDetalle = [];
     let ventasEstadoDetalle = [];
@@ -1394,7 +1394,7 @@
       2: "Pendiente",
       3: "No validado",
       4: "Anulado",
-      5: "CotizaciÃ³n",
+      5: "Cotización",
       6: "Preventa",
       7: "Retirado",
     };
@@ -1459,7 +1459,7 @@
       const key = String(value || '').trim().toLowerCase();
       if (!key) return 'Sin medio';
       const labels = {
-        organico: 'OrgÃ¡nico',
+        organico: 'Orgánico',
         pagado: 'Pagado',
         referente: 'Referente',
         remarketing: 'Remarketing',
@@ -1517,7 +1517,7 @@
     let selectedPackBooksMetric = 'cantidad'; // 'cantidad' | 'monto'
     let selectedPackBooksSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedPackBooksDim = 'libro'; // 'libro' | 'pack'
-    const HEATMAP_DAYS = 365; // legacy, ya no se usa para aÃ±o fijo
+    const HEATMAP_DAYS = 365; // legacy, ya no se usa para año fijo
     let selectedYear = new Date().getFullYear();
     const MEDIO_EMPTY_VALUE = '__sin_medio__';
     const medioLabelToValueMap = new Map();
@@ -1663,7 +1663,7 @@
       if (mediosSeleccionados.size && !mediosSeleccionados.has(getMedioFilterValue(v?.medio))) return false;
       if (vendedoresSeleccionados.size && !vendedoresSeleccionados.has(String(v?.usuario__username || ''))) return false;
       if (paisesSeleccionados.size) {
-        const paisVenta = String(v?.pais_cliente || '').trim() || 'Sin paÃ­s';
+        const paisVenta = String(v?.pais_cliente || '').trim() || 'Sin país';
         if (!paisesSeleccionados.has(paisVenta)) return false;
       }
 
@@ -2113,7 +2113,7 @@
       const previousSelected = getCheckedValues('filtroPaisOptions');
       const paises = new Set();
       (data || []).forEach((venta) => {
-        const pais = String(venta?.pais_cliente || '').trim() || 'Sin paÃ­s';
+        const pais = String(venta?.pais_cliente || '').trim() || 'Sin país';
         paises.add(pais);
       });
 
@@ -2139,7 +2139,7 @@
 
       const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
       allCheckbox.checked = !hasAnySelected;
-      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los paÃ­ses');
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
       applyMultiSearchFilter('filtroPaisBuscar', 'filtroPaisOptions');
     }
 
@@ -2164,7 +2164,7 @@
       if (allCheckbox) {
         allCheckbox.checked = !hasAnySelected;
       }
-      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los paÃ­ses');
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
     }
 
     function populateMediumFilter(data = ventasDetalle) {
@@ -2219,15 +2219,15 @@
     const RANGE_PRESETS = [
       { key: 'hoy', label: 'Hoy', getRange: () => { const t = new Date(); return [t, new Date(t)]; } },
       { key: 'ayer', label: 'Ayer', getRange: () => { const d = new Date(); d.setDate(d.getDate() - 1); return [d, new Date(d)]; } },
-      { key: '7d', label: 'ÃƒÅ¡ltimos 7 dÃƒÂ­as', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 6); return [s, e]; } },
-      { key: '15d', label: 'ÃƒÅ¡ltimos 15 dÃƒÂ­as', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 14); return [s, e]; } },
-      { key: '30d', label: 'ÃƒÅ¡ltimos 30 dÃƒÂ­as', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 29); return [s, e]; } },
-      { key: '90d', label: 'ÃƒÅ¡ltimos 90 dÃƒÂ­as', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 89); return [s, e]; } },
+      { key: '7d', label: 'Últimos 7 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 6); return [s, e]; } },
+      { key: '15d', label: 'Últimos 15 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 14); return [s, e]; } },
+      { key: '30d', label: 'Últimos 30 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 29); return [s, e]; } },
+      { key: '90d', label: 'Últimos 90 días', getRange: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 89); return [s, e]; } },
       { key: 'mesActual', label: 'Este mes', getRange: () => { const t = new Date(); return [new Date(t.getFullYear(), t.getMonth(), 1), t]; } },
       { key: 'mesAnterior', label: 'Mes anterior', getRange: () => { const t = new Date(); const s = new Date(t.getFullYear(), t.getMonth() - 1, 1); const e = new Date(t.getFullYear(), t.getMonth(), 0); return [s, e]; } },
-      { key: 'anioActual', label: 'Este aÃ±o', getRange: () => { const t = new Date(); return [new Date(t.getFullYear(), 0, 1), t]; } },
-      { key: 'anioAnterior', label: 'AÃ±o anterior', getRange: () => { const t = new Date(); return [new Date(t.getFullYear() - 1, 0, 1), new Date(t.getFullYear() - 1, 11, 31)]; } },
-      { key: '12m', label: 'ÃƒÅ¡ltimos 12 meses', getRange: () => { const e = new Date(); const s = new Date(e); s.setFullYear(s.getFullYear() - 1); s.setDate(s.getDate() + 1); return [s, e]; } },
+      { key: 'anioActual', label: 'Este año', getRange: () => { const t = new Date(); return [new Date(t.getFullYear(), 0, 1), t]; } },
+      { key: 'anioAnterior', label: 'Año anterior', getRange: () => { const t = new Date(); return [new Date(t.getFullYear() - 1, 0, 1), new Date(t.getFullYear() - 1, 11, 31)]; } },
+      { key: '12m', label: 'Últimos 12 meses', getRange: () => { const e = new Date(); const s = new Date(e); s.setFullYear(s.getFullYear() - 1); s.setDate(s.getDate() + 1); return [s, e]; } },
     ];
 
     function formatRangeDate(d) {
@@ -3170,7 +3170,7 @@
       return toNumber(dayData.amount || 0);
     }
 
-    // Vista de prueba compacta: tendencia de packs tipo campaÃ±a con sparkline diario.
+    // Vista de prueba compacta: tendencia de packs tipo campaña con sparkline diario.
     function renderPackTrendsTest(packRows, detalleMeta) {
       const container = document.getElementById('packTrendsList');
       const summaryEl = document.getElementById('packTrendsSummary');
@@ -3382,7 +3382,7 @@
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
             const negocio = (d.producto__codigo_negocio__nombre_negocio || '').toLowerCase();
             const esEditorial = negocio.includes('editorial');
-            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('fÃ­sico') || catName.includes('preventa');
+            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
@@ -3425,7 +3425,7 @@
             const catName = (d.producto__codigo_categoria__nombre_categoria || '').toLowerCase();
             const negocio = (d.producto__codigo_negocio__nombre_negocio || '').toLowerCase();
             const esEditorial = negocio.includes('editorial');
-            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('fÃ­sico') || catName.includes('preventa');
+            const esLibro = catId === 1 || catId === 15 || catName.includes('fisico') || catName.includes('físico') || catName.includes('preventa');
             if (!esLibro || !esEditorial) return false;
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
@@ -3800,7 +3800,7 @@
       const estadoKeys = Object.keys(estadoLabels).map(Number);
       const estadoIndexMap = new Map(estadoKeys.map((k, idx) => [k, idx]));
       const estadoCounts = Array(estadoKeys.length).fill(0);
-      // El grÃ¡fico de estado sigue el mismo conjunto filtrado (incluye rango de fechas).
+      // El gráfico de estado sigue el mismo conjunto filtrado (incluye rango de fechas).
       const estadoSource = ventasFil;
       (estadoSource || []).forEach(v => {
         const pos = estadoIndexMap.get(Number(v.estado));
@@ -3816,7 +3816,7 @@
       const useMediumAmount = selectedMedioMetric === 'monto';
       const useCountryAmount = selectedCountryMetric === 'monto';
       ventasFil.forEach(v => {
-        const country = String(v.pais_cliente || '').trim() || 'Sin paÃ­s';
+        const country = String(v.pais_cliente || '').trim() || 'Sin país';
         const montoVentaScope = getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
         const countryValue = useCountryAmount ? montoVentaScope : 1;
         countryMap.set(country, (countryMap.get(country) || 0) + countryValue);
@@ -3974,7 +3974,7 @@
               deuda_usd: 0,
               monto_pagado_usd: 0,
               monto_total_usd: 0,
-              amount: 0, // compatibilidad con lÃƒÆ’Ã‚Â³gica anterior
+              amount: 0, // compatibilidad con lógica anterior
             });
         }
         const entry = userMap.get(vendorKey);
@@ -3986,7 +3986,7 @@
         const deudaScope = toNumber(v.cuota_pendiente_usd || 0) * cuotaRatio;
         let montoPagadoScope = toNumber(v.cuota_pagada_usd || 0) * cuotaRatio;
 
-        // Si el filtro es por producto y la venta estÃ¡ pagada sin deuda en el scope,
+        // Si el filtro es por producto y la venta está pagada sin deuda en el scope,
         // usamos el mismo monto base que "monto vendido" para evitar desfases por cuotas.
         if (usarMontoPorProducto && Number(v.estado) === 1 && deudaScope <= 0.01) {
           montoPagadoScope = montoVenta;
@@ -4014,8 +4014,8 @@
 
       const bucketAmountMonth = new Map(); // suma de montos (siempre mensual)
       const bucketCountMonth = new Map();  // cantidad de ventas (siempre mensual)
-      const bucketAmount = new Map();     // suma de montos (segÃºn intervalo)
-      const bucketCount = new Map(); // cantidad de ventas (segÃºn intervalo)
+      const bucketAmount = new Map();     // suma de montos (según intervalo)
+      const bucketCount = new Map(); // cantidad de ventas (según intervalo)
       ventasFil.forEach(v => {
         const fecha = new Date(v.fecha_venta);
         if (isNaN(fecha)) return;
@@ -4102,7 +4102,7 @@
       );
       document.getElementById('ventasFiltradas').innerText = ventasFil.length;
       document.getElementById('montoFiltrado').innerText = formatearMonto(total);
-      // cache para exportaciÃ³n local
+      // cache para exportación local
       ventasFiltradasCache = ventasFil.slice();
       cuotasFiltradasCache = buildCuotasFiltradas(ventasFil);
       
@@ -4153,10 +4153,10 @@
         else progressBar.className = 'progress-bar bg-success';
       }
       if (metaGoalTitle) {
-        metaGoalTitle.innerText = `META ($80k) Â· ${referenceMonthLabel}`;
+        metaGoalTitle.innerText = `META ($80k) · ${referenceMonthLabel}`;
       }
       if (metaProgressLabel) {
-        metaProgressLabel.innerText = `Progreso mensual Â· ${referenceMonthLabel}`;
+        metaProgressLabel.innerText = `Progreso mensual · ${referenceMonthLabel}`;
       }
       if (progressAmount) {
         progressAmount.innerText = `${formatearMonto(monthlyTotal)} de ${formatearMonto(target)} en ${referenceMonthLabel}`;
@@ -4303,7 +4303,7 @@
       if (userEl) userEl.textContent = `Generado por: {{ username }}`;
       if (dateEl) {
         const now = new Date();
-        dateEl.textContent = `Fecha de emisiÃ³n: ${now.toLocaleString('es-PE')}`;
+        dateEl.textContent = `Fecha de emisión: ${now.toLocaleString('es-PE')}`;
       }
     }
 
@@ -4350,7 +4350,7 @@
         updatePrintHeader();
         const jsPDFLib = window.jspdf?.jsPDF;
         if (!jsPDFLib) {
-          alert('No pudimos cargar la librerÃ­a de PDF. Revisa tu conexiÃ³n o el bloqueo de scripts externos.');
+          alert('No pudimos cargar la librería de PDF. Revisa tu conexión o el bloqueo de scripts externos.');
           return;
         }
         const pdf = new jsPDFLib('p', 'mm', 'a4');
@@ -4361,7 +4361,7 @@
         const centerX = pageWidth / 2;
 
         const { data: logoData } = await loadFirstAvailable([LOGO_URL_PRIMARY, LOGO_URL_FALLBACK]);
-        const logoTargetW = 28; // mm un poco mÃ¡s grande para la carÃ¡tula
+        const logoTargetW = 28; // mm un poco más grande para la carátula
 
         const addFooter = (pageNum) => {
           const footerY = pageHeight - 16;
@@ -4369,7 +4369,7 @@
           pdf.setFont(undefined, 'normal');
           const footText = 'Aviso de privacidad: uso interno. Generado por Goberna System.';
           pdf.text(footText, centerX, footerY, { align: 'center' });
-          pdf.text(`PÃ¡gina ${pageNum}`, centerX, footerY + 5, { align: 'center' });
+          pdf.text(`Página ${pageNum}`, centerX, footerY + 5, { align: 'center' });
         };
 
         // Datos base
@@ -4397,7 +4397,7 @@
           0
         );
 
-        // CarÃ¡tula (solo primera pÃ¡gina)
+        // Carátula (solo primera página)
         if (logoData) {
           const props = pdf.getImageProperties(logoData);
           const logoH = logoTargetW * (props.height / props.width);
@@ -4411,9 +4411,9 @@
         pdf.setFontSize(11);
         pdf.setFont(undefined, 'normal');
         pdf.text(`Generado por: ${userName}`, centerX, y, { align: 'center' }); y += 6;
-        pdf.text(`Fecha de emisiÃ³n: ${now}`, centerX, y, { align: 'center' }); y += 6;
-        pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | BÃºsqueda: ${searchTxt || '---'}`, centerX, y, { align: 'center' });
-        // Termina carÃ¡tula en esta pÃ¡gina
+        pdf.text(`Fecha de emisión: ${now}`, centerX, y, { align: 'center' }); y += 6;
+        pdf.text(`Filtros -> Estado: ${estadoTxt} | Desde: ${desde} | Hasta: ${hasta} | Búsqueda: ${searchTxt || '---'}`, centerX, y, { align: 'center' });
+        // Termina carátula en esta página
         addFooter(pdf.internal.getNumberOfPages());
         pdf.addPage();
         y = 18;
@@ -4458,17 +4458,17 @@
           y += 8;
         }
 
-        // SecciÃ³n de grÃ¡ficos
+        // Sección de gráficos
       const chartBlocks = [
         { title:'Ventas por mes',     inst: chartVentasMesInst,    summary: chartSummary(chartVentasMesInst) },
         { title:'Serie temporal',     inst: chartVentasSerieInst,  summary: chartSummary(chartVentasSerieInst) },
         { title:'Ventas por estado',  inst: chartEstadoInst,       summary: chartSummary(chartEstadoInst) },
-        { title:'Ventas por paÃ­s',    inst: chartCountryInst,      summary: chartSummary(chartCountryInst) },
+        { title:'Ventas por país',    inst: chartCountryInst,      summary: chartSummary(chartCountryInst) },
         { title:'Ventas por medio',   inst: chartMediumInst,       summary: chartSummary(chartMediumInst) },
         { title:'Cuotas por estado',  inst: chartCuotasInst,       summary: chartSummary(chartCuotasInst) },
-        { title:'Ventas por categorÃ­a', inst: chartCategoriasInst, summary: chartSummary(chartCategoriasInst) },
-        { title:'Libros mÃ¡s vendidos',  inst: chartBooksInst,      summary: chartSummary(chartBooksInst) },
-        { title:'Cursos mÃ¡s vendidos',  inst: chartCoursesInst,    summary: chartSummary(chartCoursesInst) },
+        { title:'Ventas por categoría', inst: chartCategoriasInst, summary: chartSummary(chartCategoriasInst) },
+        { title:'Libros más vendidos',  inst: chartBooksInst,      summary: chartSummary(chartBooksInst) },
+        { title:'Cursos más vendidos',  inst: chartCoursesInst,    summary: chartSummary(chartCoursesInst) },
         { title:'Libros dentro de packs', inst: chartPackBooksInst, summary: chartSummary(chartPackBooksInst) },
       ];
 
@@ -4478,7 +4478,7 @@
           try {
             img = block.inst.toBase64Image(); // Chart.js helper (base64 PNG)
           } catch (e) {
-            console.warn('No se pudo exportar grÃ¡fico', block.title, e);
+            console.warn('No se pudo exportar gráfico', block.title, e);
             continue;
           }
           if (!img) continue;
@@ -4486,7 +4486,7 @@
           pdf.setFont(undefined, 'bold');
           pdf.text(block.title, marginX, y); y += 5;
           const props = pdf.getImageProperties(img);
-          let imgW = 110; // mÃ¡s compacto
+          let imgW = 110; // más compacto
           let imgH = imgW * (props.height / props.width);
           // Limitar altura para que no se "estiren"
           const maxH = 55;
@@ -4498,7 +4498,7 @@
           try {
             pdf.addImage(img, 'PNG', imgX, y, imgW, imgH);
           } catch (imgErr) {
-            console.warn('No se pudo incrustar el grÃ¡fico', block.title, imgErr);
+            console.warn('No se pudo incrustar el gráfico', block.title, imgErr);
             continue;
           }
           y += imgH + 3;
@@ -4513,7 +4513,7 @@
         pdf.save(vendorVal ? `dashboard-${vendorVal}.pdf` : 'dashboard-ventas.pdf');
       } catch (error) {
         console.error('Error generando PDF', error);
-        alert('No pudimos generar el PDF. Revisa la consola para mÃ¡s detalles.');
+        alert('No pudimos generar el PDF. Revisa la consola para más detalles.');
       }
     }
 
@@ -4559,7 +4559,7 @@
                 return;
             }
 
-            // Validar que el backend devolviÃ³ JSON; si redirige al login o lanza error HTML, avisamos.
+            // Validar que el backend devolvió JSON; si redirige al login o lanza error HTML, avisamos.
             const contentType = response.headers.get('Content-Type') || '';
             if (!contentType.includes('application/json')) {
                 const text = await response.text();
@@ -4594,7 +4594,7 @@
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       aplicarFiltros();
     });
-    // botÃ³n fullscreen eliminado
+    // botón fullscreen eliminado
 
     const chartModeSelect = document.getElementById('chartMode');
     chartModeSelect?.addEventListener('change', () => {
@@ -4760,7 +4760,7 @@
       const paisAll = document.getElementById('filtroPaisAll');
       if (paisAll) paisAll.checked = true;
       document.querySelectorAll('#filtroPaisOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los paÃ­ses');
+      updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
       setEstadoChip('');
       aplicarFiltros();
     });
@@ -4788,10 +4788,10 @@
       if (filters.medio) chips.push(`<span class="summary-chip"><i class="fas fa-bullhorn"></i> Medio: ${filters.medio}</span>`);
       if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
-      if (filters.pais) chips.push(`<span class="summary-chip"><i class="fas fa-earth-americas"></i> PaÃ­s: ${filters.pais}</span>`);
+      if (filters.pais) chips.push(`<span class="summary-chip"><i class="fas fa-earth-americas"></i> País: ${filters.pais}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
-      if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> BÃºsqueda: ${filters.texto}</span>`);
+      if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
       cont.innerHTML = chips.join('') || '<span class="stat-label">Sin filtros aplicados</span>';
     }
 
@@ -4844,7 +4844,7 @@
       allId: 'filtroPaisAll',
       optionsId: 'filtroPaisOptions',
       summaryId: 'filtroPaisSummary',
-      defaultText: 'Todos los paÃ­ses',
+      defaultText: 'Todos los países',
     });
     wireMultiSearch({
       inputId: 'filtroProductoBuscar',
@@ -4888,7 +4888,7 @@
     setupSerieBrushSelection();
     setupRangeDatePicker();
     loadData();
-    // Mantener encabezado de impresiÃ³n actualizado al cargar
+    // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
 </script>
 </body>
