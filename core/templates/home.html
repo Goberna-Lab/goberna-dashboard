@@ -76,7 +76,14 @@
     .chart-card { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
     .pack-trends-card { padding: 16px 18px; }
     .pack-trends-subtitle { color: #64748b; font-size: 13px; }
-    .pack-trends-list { display: grid; gap: 10px; margin-top: 8px; }
+    .pack-trends-summary {
+      margin-top: 6px;
+      margin-bottom: 10px;
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .pack-trends-list { display: grid; gap: 12px; margin-top: 8px; }
     .pack-trend-empty {
       text-align: center;
       color: #64748b;
@@ -87,14 +94,16 @@
       background: #f8fafc;
     }
     .pack-trend-row {
-      display: grid;
-      grid-template-columns: minmax(220px, 1.5fr) minmax(180px, 1fr) minmax(120px, auto) minmax(150px, 1fr) 24px;
-      gap: 14px;
-      align-items: center;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 12px;
       background: #fff;
+    }
+    .pack-trend-top {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.3fr) minmax(210px, 1fr);
+      gap: 14px;
+      align-items: center;
     }
     .pack-trend-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .pack-trend-thumb {
@@ -130,33 +139,55 @@
     .pack-trend-metric-label { color: #64748b; font-size: 12px; }
     .pack-trend-metric-value { color: #0f172a; font-size: 22px; font-weight: 800; line-height: 1.1; }
     .pack-trend-meta { color: #64748b; font-size: 12px; margin-top: 2px; }
-    .pack-trend-delta {
-      font-size: 13px;
+    .pack-trend-books {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #dbe4ee;
+    }
+    .pack-trend-books-title {
+      color: #334155;
+      font-size: 12px;
       font-weight: 700;
-      white-space: nowrap;
+      margin-bottom: 6px;
     }
-    .pack-trend-delta.up { color: #198754; }
-    .pack-trend-delta.down { color: #dc3545; }
-    .pack-trend-delta.flat { color: #64748b; }
-    .pack-trend-spark {
-      display: flex;
-      align-items: flex-end;
+    .pack-trend-books-list {
+      margin: 0;
+      padding-left: 16px;
+      display: grid;
       gap: 4px;
-      height: 38px;
-      padding: 2px 0;
     }
-    .pack-trend-spark-bar {
-      width: 10px;
-      border-radius: 4px 4px 2px 2px;
-      background: #cbd5e1;
-      min-height: 4px;
-      transition: height 0.2s ease;
+    .pack-trend-book-item {
+      color: #0f172a;
+      font-size: 13px;
+      line-height: 1.35;
     }
-    .pack-trend-spark-bar.highlight { background: #7aa8e6; }
-    .pack-trend-icon {
+    .pack-trend-book-qty {
       color: #475569;
-      font-size: 14px;
-      text-align: center;
+      font-weight: 700;
+    }
+    .pack-books-table-wrap {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    #tablePackBooks {
+      min-width: 100%;
+      table-layout: fixed;
+    }
+    #tablePackBooks th:nth-child(1) { width: 24%; }
+    #tablePackBooks th:nth-child(2) { width: 42%; }
+    #tablePackBooks th:nth-child(3) { width: 12%; }
+    #tablePackBooks th:nth-child(4) { width: 22%; min-width: 160px; }
+    #tablePackBooks th,
+    #tablePackBooks td { vertical-align: top; }
+    #tablePackBooks td:nth-child(1),
+    #tablePackBooks td:nth-child(2) {
+      white-space: normal;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    #tablePackBooks td:nth-child(4),
+    #tablePackBooks th:nth-child(4) {
+      white-space: nowrap;
     }
     .compact-chart { padding: 12px 14px; }
     .compact-chart .section-title { margin-bottom: 6px; }
@@ -677,8 +708,11 @@
     body.fullscreen-dash .pack-trend-metric-value { color: #e5e7eb; }
     body.fullscreen-dash .pack-trend-meta,
     body.fullscreen-dash .pack-trend-metric-label,
+    body.fullscreen-dash .pack-trend-books-title,
+    body.fullscreen-dash .pack-trend-book-qty,
     body.fullscreen-dash .pack-trends-subtitle,
-    body.fullscreen-dash .pack-trend-icon { color: #94a3b8; }
+    body.fullscreen-dash .pack-trends-summary { color: #94a3b8; }
+    body.fullscreen-dash .pack-trend-book-item { color: #e5e7eb; }
     body.fullscreen-dash .pack-trend-empty {
       background: #0f172a;
       border-color: #334155;
@@ -712,11 +746,7 @@
       .page > .content { padding: 16px 14px 28px; }
       .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
       .status-pills { flex-wrap: wrap; overflow-x: visible; }
-      .pack-trend-row {
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-      .pack-trend-spark { justify-content: flex-start; }
+      .pack-trend-top { grid-template-columns: 1fr; gap: 10px; }
     }
   </style>
 </head>
@@ -1153,14 +1183,14 @@
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Libros vendidos dentro de packs</span>
           </div>
           <div class="text-muted small mb-2">Monto prorrateado: distribuye el monto real del pack entre los libros internos.</div>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+          <div class="table-responsive pack-books-table-wrap">
             <table class="table table-sm table-hover mb-0" id="tablePackBooks">
               <thead class="text-secondary small-header">
                 <tr>
                   <th>Pack</th>
                   <th>Libro dentro del pack</th>
                   <th class="text-end">Cant.</th>
-                  <th class="text-end">Monto prorrateado (USD)</th>
+                  <th class="text-end">Monto prorrateado USD</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -1181,8 +1211,9 @@
               <i class="fas fa-bullhorn text-primary"></i>
               Tendencias de packs de libros
             </div>
-            <div class="pack-trends-subtitle">Últimos 7 días</div>
+            <div class="pack-trends-subtitle">Segun filtros activos</div>
           </div>
+          <div id="packTrendsSummary" class="pack-trends-summary">Resumen: 0 packs activos - 0 libros - $ 0.00 USD</div>
           <div id="packTrendsList" class="pack-trends-list">
             <div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>
           </div>
@@ -1526,8 +1557,6 @@
       'Pack de 07 Libros Goberna',
       'Pack de 08 Libros Goberna',
     ]);
-    const PACK_TRENDS_WINDOW_DAYS = 7;
-    const PACK_TRENDS_TOTAL_WINDOW_DAYS = 14;
 
     const pad2 = (n) => String(n).padStart(2, '0');
     function getWeekKey(date) {
@@ -2999,15 +3028,23 @@
 
         let totalQty = 0;
         let totalAmount = 0;
+        let prevPackName = null;
         data.forEach(d => {
             totalQty += toNumber(d.qty || 0);
             totalAmount += toNumber(d.amount || 0);
+            const packName = String(d.pack_name || 'Pack sin nombre').trim() || 'Pack sin nombre';
+            const packChanged = packName !== prevPackName;
+            prevPackName = packName;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><small class="fw-bold text-dark">${d.pack_name}</small></td>
-                <td><small class="text-dark">${d.book_name}</small></td>
-                <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
-                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
+                <td>
+                  ${packChanged
+                    ? `<div class="fw-semibold text-dark small">${packName}</div>`
+                    : '<div class="text-muted small">↳</div>'}
+                </td>
+                <td><div class="text-dark small">${d.book_name}</div></td>
+                <td class="text-end"><span class="badge bg-light text-dark border px-2">${formatearTickCantidad(d.qty)}</span></td>
+                <td class="text-end text-success fw-semibold">${formatearMonto(d.amount)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -3132,48 +3169,19 @@
         }
         return qty * toNumber(row?.precio_unitario_usd || 0);
     }
-
-    function getPackTrendAnchorDate(packRows, ventaDateById) {
-      let anchorDate = null;
-      (packRows || []).forEach((row) => {
-        const ventaId = Number(row?.venta_id || 0);
-        const rowDate = parseVentaDate(row?.venta_fecha) || ventaDateById.get(ventaId) || null;
-        if (!rowDate) return;
-        if (!anchorDate || rowDate > anchorDate) anchorDate = rowDate;
-      });
-      return anchorDate || new Date();
-    }
-
-    function buildRecentDayKeys(anchorDate, totalDays = 14) {
-      const keys = [];
-      const base = new Date(anchorDate);
-      base.setHours(0, 0, 0, 0);
-      for (let offset = totalDays - 1; offset >= 0; offset -= 1) {
-        const day = new Date(base);
-        day.setDate(base.getDate() - offset);
-        keys.push(getDateKey(day));
-      }
-      return keys;
-    }
-
-    // Vista de prueba: replica la lógica de packs prorrateados en formato "tendencias de campaña".
+    // Vista de prueba: packs + resumen + libros internos, usando mismo prorrateo actual.
     function renderPackTrendsTest(packRows, detalleMeta) {
       const container = document.getElementById('packTrendsList');
+      const summaryEl = document.getElementById('packTrendsSummary');
       if (!container) return;
       container.innerHTML = '';
 
       if (!packRows || !packRows.length) {
+        if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
         container.innerHTML = '<div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>';
         return;
       }
 
-      const ventaDateById = new Map(
-        (ventasDetalle || []).map((v) => [Number(v?.id || 0), parseVentaDate(v?.fecha_venta)])
-      );
-      const anchorDate = getPackTrendAnchorDate(packRows, ventaDateById);
-      const windowKeys = buildRecentDayKeys(anchorDate, PACK_TRENDS_TOTAL_WINDOW_DAYS);
-      const previousKeys = windowKeys.slice(0, PACK_TRENDS_WINDOW_DAYS);
-      const currentKeys = windowKeys.slice(PACK_TRENDS_WINDOW_DAYS);
       const fallbackImage = `${MAIN_APP_URL ? MAIN_APP_URL.replace(/\/$/, '') : ''}/media/productos/default.png`;
 
       const trendsByPack = new Map();
@@ -3188,7 +3196,7 @@
             qty: 0,
             amount: 0,
             ventas: new Set(),
-            dailyAmount: new Map(),
+            books: new Map(),
           });
         }
 
@@ -3196,8 +3204,7 @@
         const qty = toNumber(row?.cantidad || 0);
         const amount = getPackRowAmount(row, detalleMeta);
         const ventaId = Number(row?.venta_id || 0);
-        const rowDate = parseVentaDate(row?.venta_fecha) || ventaDateById.get(ventaId) || null;
-        const dateKey = rowDate ? getDateKey(rowDate) : '';
+        const bookName = String(row?.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
 
         if (!entry.pack_imagen_url) {
           entry.pack_imagen_url = String(row?.pack_imagen_url || '').trim();
@@ -3206,24 +3213,23 @@
         entry.qty += qty;
         entry.amount += amount;
         if (ventaId) entry.ventas.add(ventaId);
-        if (dateKey) {
-          entry.dailyAmount.set(dateKey, (entry.dailyAmount.get(dateKey) || 0) + amount);
-        }
+        entry.books.set(bookName, (entry.books.get(bookName) || 0) + qty);
       });
 
       const trendRows = Array.from(trendsByPack.values())
         .map((entry) => {
-          const prev = previousKeys.reduce((acc, key) => acc + toNumber(entry.dailyAmount.get(key) || 0), 0);
-          const currentSeries = currentKeys.map((key) => toNumber(entry.dailyAmount.get(key) || 0));
-          const current = currentSeries.reduce((acc, value) => acc + value, 0);
-          const deltaPct = prev > 0 ? ((current - prev) / prev) * 100 : null;
+          const booksList = Array.from(entry.books.entries())
+            .map(([name, qty]) => ({ name, qty }))
+            .sort((a, b) => {
+              const byQty = compareByOrder(a.qty, b.qty, 'desc');
+              if (byQty !== 0) return byQty;
+              return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+            });
+
           return {
             ...entry,
             ventas_count: entry.ventas.size,
-            currentSeries,
-            prevAmount: prev,
-            currentAmount: current,
-            deltaPct,
+            booksList,
           };
         })
         .sort((a, b) => {
@@ -3233,13 +3239,23 @@
         });
 
       if (!trendRows.length) {
+        if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
         container.innerHTML = '<div class="pack-trend-empty">No hay packs de libros Goberna en el filtro actual.</div>';
         return;
+      }
+
+      const totalLibros = trendRows.reduce((acc, row) => acc + toNumber(row.qty || 0), 0);
+      const totalMonto = trendRows.reduce((acc, row) => acc + toNumber(row.amount || 0), 0);
+      if (summaryEl) {
+        summaryEl.textContent = `Resumen: ${trendRows.length} packs activos - ${formatearTickCantidad(totalLibros)} libros - ${formatearMonto(totalMonto)} USD`;
       }
 
       trendRows.forEach((row) => {
         const rowEl = document.createElement('div');
         rowEl.className = 'pack-trend-row';
+
+        const topEl = document.createElement('div');
+        topEl.className = 'pack-trend-top';
 
         const mainEl = document.createElement('div');
         mainEl.className = 'pack-trend-main';
@@ -3269,49 +3285,41 @@
         metricEl.innerHTML = `
           <div class="pack-trend-metric-label">Monto prorrateado (USD)</div>
           <div class="pack-trend-metric-value">${formatearMonto(row.amount)}</div>
-          <div class="pack-trend-meta">${formatearTickCantidad(row.qty)} libros · ${row.ventas_count} venta${row.ventas_count === 1 ? '' : 's'}</div>
+          <div class="pack-trend-meta">${formatearTickCantidad(row.qty)} libros - ${row.ventas_count} venta${row.ventas_count === 1 ? '' : 's'}</div>
         `;
 
-        const deltaEl = document.createElement('div');
-        let deltaClass = 'flat';
-        let deltaText = '0.0%';
-        if (row.deltaPct === null) {
-          deltaText = row.currentAmount > 0 ? 'Sin base' : '0.0%';
-        } else if (row.deltaPct > 0.1) {
-          deltaClass = 'up';
-          deltaText = `↑ ${Math.abs(row.deltaPct).toFixed(1)}%`;
-        } else if (row.deltaPct < -0.1) {
-          deltaClass = 'down';
-          deltaText = `↓ ${Math.abs(row.deltaPct).toFixed(1)}%`;
+        topEl.appendChild(mainEl);
+        topEl.appendChild(metricEl);
+        rowEl.appendChild(topEl);
+
+        const booksWrapEl = document.createElement('div');
+        booksWrapEl.className = 'pack-trend-books';
+        const booksTitleEl = document.createElement('div');
+        booksTitleEl.className = 'pack-trend-books-title';
+        booksTitleEl.textContent = 'Libros incluidos en este pack';
+        booksWrapEl.appendChild(booksTitleEl);
+
+        const booksListEl = document.createElement('ul');
+        booksListEl.className = 'pack-trend-books-list';
+        if (!row.booksList.length) {
+          const li = document.createElement('li');
+          li.className = 'pack-trend-book-item';
+          li.textContent = 'Sin detalle de libros para este pack.';
+          booksListEl.appendChild(li);
+        } else {
+          row.booksList.forEach((book) => {
+            const li = document.createElement('li');
+            li.className = 'pack-trend-book-item';
+            li.innerHTML = `${book.name} <span class="pack-trend-book-qty">- ${formatearTickCantidad(book.qty)} unidades</span>`;
+            booksListEl.appendChild(li);
+          });
         }
-        deltaEl.className = `pack-trend-delta ${deltaClass}`;
-        deltaEl.textContent = deltaText;
+        booksWrapEl.appendChild(booksListEl);
+        rowEl.appendChild(booksWrapEl);
 
-        const sparkEl = document.createElement('div');
-        sparkEl.className = 'pack-trend-spark';
-        const maxSeriesValue = Math.max(...row.currentSeries, 0);
-        row.currentSeries.forEach((value, idx) => {
-          const bar = document.createElement('span');
-          const ratio = maxSeriesValue > 0 ? value / maxSeriesValue : 0;
-          const height = 6 + Math.round(ratio * 28);
-          bar.className = `pack-trend-spark-bar ${idx >= row.currentSeries.length - 2 ? 'highlight' : ''}`;
-          bar.style.height = `${height}px`;
-          sparkEl.appendChild(bar);
-        });
-
-        const iconEl = document.createElement('div');
-        iconEl.className = 'pack-trend-icon';
-        iconEl.innerHTML = '<i class="fas fa-chart-column"></i>';
-
-        rowEl.appendChild(mainEl);
-        rowEl.appendChild(metricEl);
-        rowEl.appendChild(deltaEl);
-        rowEl.appendChild(sparkEl);
-        rowEl.appendChild(iconEl);
         container.appendChild(rowEl);
       });
     }
-
     function updatePackBooksTable(ventaIds, productosSeleccionados) {
         const packRows = filterPackRowsByCurrentScope(ventaIds, productosSeleccionados);
         const detalleMeta = buildPackDetalleMeta(packRows);
@@ -3338,12 +3346,12 @@
         });
 
         const packList = Array.from(packMap.values()).sort((a, b) => {
+            const byPack = String(a.pack_name || '').localeCompare(String(b.pack_name || ''), 'es', { sensitivity: 'base' });
+            if (byPack !== 0) return byPack;
             const byQty = compareByOrder(a.qty, b.qty, 'desc');
             if (byQty !== 0) return byQty;
             const byAmount = compareByOrder(a.amount, b.amount, 'desc');
             if (byAmount !== 0) return byAmount;
-            const byPack = String(a.pack_name || '').localeCompare(String(b.pack_name || ''), 'es', { sensitivity: 'base' });
-            if (byPack !== 0) return byPack;
             return String(a.book_name || '').localeCompare(String(b.book_name || ''), 'es', { sensitivity: 'base' });
         });
 
@@ -4858,6 +4866,6 @@
     loadData();
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
-  </script>
+</script>
 </body>
 </html>
