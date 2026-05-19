@@ -948,6 +948,7 @@
               </select>
             </div>
           </div>
+          <div class="text-muted small mb-2">Monto vendido sigue el scope filtrado; deuda y pagado se prorratean al filtrar por producto.</div>
           <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableVendors" style="min-width: 100%;">
               <thead class="text-secondary small-header">
@@ -956,7 +957,7 @@
                   <th class="text-end">Ventas</th>
                   <th class="text-end">Deuda (USD)</th>
                   <th class="text-end">Monto Pagado (USD)</th>
-                  <th class="text-end">Monto Total(USD)</th>
+                  <th class="text-end">Monto Vendido (USD)</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -1047,6 +1048,7 @@
           <div class="section-title d-flex align-items-center gap-2">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Libros vendidos dentro de packs</span>
           </div>
+          <div class="text-muted small mb-2">Monto prorrateado: distribuye el monto real del pack entre los libros internos.</div>
           <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tablePackBooks">
               <thead class="text-secondary small-header">
@@ -1054,7 +1056,7 @@
                   <th>Pack</th>
                   <th>Libro dentro del pack</th>
                   <th class="text-end">Cant.</th>
-                  <th class="text-end">Monto (USD)</th>
+                  <th class="text-end">Monto prorrateado (USD)</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -1545,7 +1547,62 @@
       return true;
     }
 
-    function buildReferenceMonthMetrics(ventasSource, referenceDate) {
+    function getVentaMontoForScope(venta, ventaMontoFiltradoMap = null, usarMontoPorProducto = false) {
+      const montoVentaTotal = toNumber(venta?.monto_total || 0);
+      if (!usarMontoPorProducto || !ventaMontoFiltradoMap || !ventaMontoFiltradoMap.size) {
+        return montoVentaTotal;
+      }
+      const ventaId = Number(venta?.id || 0);
+      return toNumber(ventaMontoFiltradoMap.get(ventaId) || 0);
+    }
+
+    function buildVentaScopeContext(ventasScope, ventaMontoFiltradoMap = null, usarMontoPorProducto = false) {
+      const byVentaId = new Map();
+      const byFolio = new Map();
+
+      (ventasScope || []).forEach((venta) => {
+        const ventaId = Number(venta?.id || 0);
+        const folio = String(venta?.folio_venta || '').trim();
+        const montoVentaTotal = toNumber(venta?.monto_total || 0);
+        const montoVentaScope = getVentaMontoForScope(venta, ventaMontoFiltradoMap, usarMontoPorProducto);
+        const rawRatio = montoVentaTotal > 0 ? (montoVentaScope / montoVentaTotal) : 0;
+        // Evita sobreasignar cuotas cuando el producto filtrado es un subconjunto de la venta.
+        const cuotaRatio = usarMontoPorProducto
+          ? Math.min(Math.max(rawRatio, 0), 1)
+          : 1;
+
+        const meta = {
+          venta_id: ventaId,
+          folio_venta: folio,
+          monto_venta_total_usd: montoVentaTotal,
+          monto_venta_scope_usd: montoVentaScope,
+          cuota_ratio: cuotaRatio,
+        };
+
+        byVentaId.set(ventaId, meta);
+        if (folio) byFolio.set(folio, meta);
+      });
+
+      return { byVentaId, byFolio };
+    }
+
+    function getCuotaMontoForScope(cuota, scopeByFolio = null, usarMontoPorProducto = false) {
+      const montoCuota = toNumber(cuota?.monto_total || 0);
+      if (!usarMontoPorProducto || !scopeByFolio || !scopeByFolio.size) {
+        return montoCuota;
+      }
+      const folio = String(cuota?.venta__folio_venta || '').trim();
+      const meta = scopeByFolio.get(folio);
+      const ratio = toNumber(meta?.cuota_ratio || 0);
+      return montoCuota * ratio;
+    }
+
+    function buildReferenceMonthMetrics(
+      ventasSource,
+      referenceDate,
+      ventaMontoFiltradoMap = null,
+      usarMontoPorProducto = false
+    ) {
       const referenceMonthKey = getMonthKey(referenceDate);
       const monthLabel = formatMonthReference(referenceDate);
       const initial = {
@@ -1560,7 +1617,7 @@
       return (ventasSource || []).reduce((acc, venta) => {
         const ventaDate = parseVentaDate(venta?.fecha_venta);
         if (!ventaDate || getMonthKey(ventaDate) !== referenceMonthKey) return acc;
-        acc.total += toNumber(venta?.monto_total || 0);
+        acc.total += getVentaMontoForScope(venta, ventaMontoFiltradoMap, usarMontoPorProducto);
         acc.count += 1;
         return acc;
       }, initial);
@@ -3355,7 +3412,7 @@
         const data = sorted.map(x => useMonto ? x[1].amount : x[1].qty);
 
         const dsLabel = useMonto
-            ? 'Monto (USD)'
+            ? 'Monto prorrateado (USD)'
             : (byPack ? 'Packs vendidos' : 'Libros en packs');
 
         chartPackBooksInst.data.labels = labels.length ? labels : ['Sin datos'];
@@ -3388,12 +3445,25 @@
       return montoMap;
     }
 
-    function updateCharts(ventasFil, productosSeleccionados = getCheckedValues('filtroProductoOptions')) {
+    function updateCharts(
+      ventasFil,
+      productosSeleccionados = getCheckedValues('filtroProductoOptions'),
+      ventaMontoFiltradoMapArg = null,
+      usarMontoPorProductoArg = null,
+      ventaScopeContextArg = null
+    ) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
       const ventaIds = new Set(ventasFil.map(v => v.id));
-      const ventaMontoFiltradoMap = buildVentaMontoFiltradoMap(ventaIds, productosSeleccionados);
-      const usarMontoPorProducto = Boolean(productosSeleccionados && productosSeleccionados.size);
+      const ventaMontoFiltradoMap = ventaMontoFiltradoMapArg || buildVentaMontoFiltradoMap(ventaIds, productosSeleccionados);
+      const usarMontoPorProducto = usarMontoPorProductoArg !== null
+        ? Boolean(usarMontoPorProductoArg)
+        : Boolean(productosSeleccionados && productosSeleccionados.size);
+      const ventaScopeContext = ventaScopeContextArg || buildVentaScopeContext(
+        ventasFil,
+        ventaMontoFiltradoMap,
+        usarMontoPorProducto
+      );
 
       const estadoKeys = Object.keys(estadoLabels).map(Number);
       const estadoIndexMap = new Map(estadoKeys.map((k, idx) => [k, idx]));
@@ -3415,12 +3485,13 @@
       const useCountryAmount = selectedCountryMetric === 'monto';
       ventasFil.forEach(v => {
         const country = String(v.pais_cliente || '').trim() || 'Sin país';
-        const countryValue = useCountryAmount ? toNumber(v.monto_total || 0) : 1;
+        const montoVentaScope = getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
+        const countryValue = useCountryAmount ? montoVentaScope : 1;
         countryMap.set(country, (countryMap.get(country) || 0) + countryValue);
 
         const medio = v.medio_label || medioLabel(v.medio);
         const mediumStats = mediumStatsMap.get(medio) || { amount: 0, count: 0 };
-        mediumStats.amount += toNumber(v.monto_total || 0);
+        mediumStats.amount += montoVentaScope;
         mediumStats.count += 1;
         mediumStatsMap.set(medio, mediumStats);
       });
@@ -3468,7 +3539,11 @@
         const pos = cuotaIndexMap.get(Number(c.estado));
         if (pos === undefined) return;
         if (useCuotasAmount) {
-          const amount = toNumber(c.monto_total || 0);
+          const amount = getCuotaMontoForScope(
+            c,
+            ventaScopeContext.byFolio,
+            usarMontoPorProducto
+          );
           cuotasValues[pos] += Number.isFinite(amount) ? amount : 0;
           return;
         }
@@ -3482,7 +3557,13 @@
 
       // Update Categorias Chart
       if (chartCategoriasInst) {
-        const detallesFil = detallesCategoria.filter(d => ventaIds.has(d.venta_id));
+        const detallesFil = detallesCategoria.filter(d => {
+          if (!ventaIds.has(d.venta_id)) return false;
+          if (productosSeleccionados && productosSeleccionados.size) {
+            return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
+          }
+          return true;
+        });
         
         const catMap = new Map();
         const useCantidad = selectedCategoriaMetric === 'cantidad';
@@ -3565,16 +3646,18 @@
             });
         }
         const entry = userMap.get(vendorKey);
-        const montoVenta = usarMontoPorProducto
-          ? toNumber(ventaMontoFiltradoMap.get(Number(v.id)) || 0)
-          : toNumber(v.monto_total || 0);
+        const scopeMeta = ventaScopeContext.byVentaId.get(Number(v.id || 0));
+        const montoVenta = scopeMeta
+          ? toNumber(scopeMeta.monto_venta_scope_usd || 0)
+          : getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
+        const cuotaRatio = scopeMeta ? toNumber(scopeMeta.cuota_ratio || 0) : (usarMontoPorProducto ? 0 : 1);
         entry.count += 1;
         entry.monto_total_usd += montoVenta;
         entry.amount = entry.monto_total_usd;
         
-        // Use cuota data provided by the backend for exact amounts
-        entry.monto_pagado_usd += toNumber(v.cuota_pagada_usd || 0);
-        entry.deuda_usd += toNumber(v.cuota_pendiente_usd || 0);
+        // Mantiene coherencia cuando filtramos por producto: cuotas prorrateadas al mismo scope.
+        entry.monto_pagado_usd += toNumber(v.cuota_pagada_usd || 0) * cuotaRatio;
+        entry.deuda_usd += toNumber(v.cuota_pendiente_usd || 0) * cuotaRatio;
       });
 
       const sortedVendors = Array.from(userMap.values())
@@ -3596,11 +3679,12 @@
       ventasFil.forEach(v => {
         const fecha = new Date(v.fecha_venta);
         if (isNaN(fecha)) return;
+        const montoVenta = getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
         const keyMonth = getBucketKey(fecha, 'mes');
-        bucketAmountMonth.set(keyMonth, (bucketAmountMonth.get(keyMonth) || 0) + toNumber(v.monto_total || 0));
+        bucketAmountMonth.set(keyMonth, (bucketAmountMonth.get(keyMonth) || 0) + montoVenta);
         bucketCountMonth.set(keyMonth, (bucketCountMonth.get(keyMonth) || 0) + 1);
         const key = getBucketKey(fecha, chartInterval);
-        bucketAmount.set(key, (bucketAmount.get(key) || 0) + toNumber(v.monto_total || 0));
+        bucketAmount.set(key, (bucketAmount.get(key) || 0) + montoVenta);
         bucketCount.set(key, (bucketCount.get(key) || 0) + 1);
       });
       const useMonto = chartMode === 'monto';
@@ -3664,8 +3748,18 @@
         ...filtrosComunes,
         ignorarFecha: true,
       }));
-      
-      const total = ventasFil.reduce((acc, v) => acc + toNumber(v.monto_total), 0);
+      const ventaIdsFiltradas = new Set((ventasFil || []).map(v => Number(v?.id || 0)));
+      const ventaIdsMensual = new Set((ventasBaseMensual || []).map(v => Number(v?.id || 0)));
+      const usarMontoPorProducto = Boolean(productosSeleccionados && productosSeleccionados.size);
+      const ventaMontoFiltradoMap = buildVentaMontoFiltradoMap(ventaIdsFiltradas, productosSeleccionados);
+      const ventaMontoMensualMap = buildVentaMontoFiltradoMap(ventaIdsMensual, productosSeleccionados);
+      const ventaScopeContext = buildVentaScopeContext(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
+
+      // Si hay filtro de producto, usamos monto por detalle (scope filtrado) para mantener coherencia.
+      const total = ventasFil.reduce(
+        (acc, v) => acc + getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto),
+        0
+      );
       document.getElementById('ventasFiltradas').innerText = ventasFil.length;
       document.getElementById('montoFiltrado').innerText = formatearMonto(total);
       // cache para exportación local
@@ -3676,7 +3770,12 @@
       const target = 80000;
       const referenceMonthDate = getReferenceMonthDate(fechaDesdeKey);
       const referenceMonthLabel = formatMonthReference(referenceMonthDate);
-      const referenceMonthMetrics = buildReferenceMonthMetrics(ventasBaseMensual, referenceMonthDate);
+      const referenceMonthMetrics = buildReferenceMonthMetrics(
+        ventasBaseMensual,
+        referenceMonthDate,
+        ventaMontoMensualMap,
+        usarMontoPorProducto
+      );
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
@@ -3694,7 +3793,7 @@
           dt.getDate() !== currentDay
         ) return acc;
         dailyCount += 1;
-        return acc + toNumber(v.monto_total || 0);
+        return acc + getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
       }, 0);
 
       const progress = Math.min((monthlyTotal / target) * 100, 100);
@@ -3745,16 +3844,25 @@
       const paisLabel = summarizeMultiSelection(getCheckedLabels('filtroPaisOptions'), '');
 
       renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel });
-      updateCharts(ventasFil, productosSeleccionados);
-      initCuotasPendientes(ventasFil);
-      renderTabla(ventasFil);
+      updateCharts(
+        ventasFil,
+        productosSeleccionados,
+        ventaMontoFiltradoMap,
+        usarMontoPorProducto,
+        ventaScopeContext
+      );
+      initCuotasPendientes(ventasFil, ventaScopeContext.byFolio, usarMontoPorProducto);
+      renderTabla(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
       updatePrintHeader();
     }
 
-    function initCuotasPendientes(ventasLocales) {
+    function initCuotasPendientes(ventasLocales, scopeByFolio = null, usarMontoPorProducto = false) {
       const cuotasFiltradas = buildCuotasFiltradas(ventasLocales || ventasDetalle);
       const pendientes = cuotasFiltradas.filter(c => c.estado === 2 || c.estado === 3);
-      const total = pendientes.reduce((acc, c) => acc + toNumber(c.monto_total), 0);
+      const total = pendientes.reduce(
+        (acc, c) => acc + getCuotaMontoForScope(c, scopeByFolio, usarMontoPorProducto),
+        0
+      );
       document.getElementById('cuotasPendientes').innerText = `${pendientes.length} / ${formatearMonto(total)}`;
     }
 
@@ -3940,7 +4048,14 @@
 
         const ventasData = ventasFiltradasCache.length ? ventasFiltradasCache : ventasDetalle;
         const totalVentas = ventasData.length;
-        const totalMonto = ventasData.reduce((a, v) => a + toNumber(v.monto_total || 0), 0);
+        const productosSeleccionadosPdf = getCheckedValues('filtroProductoOptions');
+        const usarMontoPorProductoPdf = Boolean(productosSeleccionadosPdf && productosSeleccionadosPdf.size);
+        const ventaIdsPdf = new Set((ventasData || []).map((v) => Number(v?.id || 0)));
+        const ventaMontoFiltradoMapPdf = buildVentaMontoFiltradoMap(ventaIdsPdf, productosSeleccionadosPdf);
+        const totalMonto = ventasData.reduce(
+          (a, v) => a + getVentaMontoForScope(v, ventaMontoFiltradoMapPdf, usarMontoPorProductoPdf),
+          0
+        );
 
         // Carátula (solo primera página)
         if (logoData) {
@@ -3988,7 +4103,11 @@
           const estado = estadoLabels[v.estado] || '---';
           pdf.text(String(v.folio_venta || ''), marginX, y);
           pdf.text(fecha, marginX + 40, y);
-          pdf.text(formatearMonto(v.monto_total || 0), marginX + 95, y);
+          pdf.text(
+            formatearMonto(getVentaMontoForScope(v, ventaMontoFiltradoMapPdf, usarMontoPorProductoPdf)),
+            marginX + 95,
+            y
+          );
           pdf.text(estado, marginX + 140, y);
           y += 5;
         });
@@ -4328,7 +4447,7 @@
       cont.innerHTML = chips.join('') || '<span class="stat-label">Sin filtros aplicados</span>';
     }
 
-    function renderTabla(ventasFil) {
+    function renderTabla(ventasFil, ventaMontoFiltradoMap = null, usarMontoPorProducto = false) {
       const tbody = document.getElementById('tablaVentas');
       if (!tbody) return;
       
@@ -4343,7 +4462,7 @@
           <tr>
             <td><a href="${urlVenta}" target="_blank" class="text-decoration-none fw-semibold">${v.folio_venta}</a></td>
             <td>${fecha}</td>
-            <td>${formatearMonto(v.monto_total)}</td>
+            <td>${formatearMonto(getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto))}</td>
             <td><span class="pill ${v.estado === 1 ? 'pill-success' : 'pill-danger'}">${estado}</span></td>
           </tr>
         `;
