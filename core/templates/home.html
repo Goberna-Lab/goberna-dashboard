@@ -75,23 +75,19 @@
     .section-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
     .chart-card { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
     .pack-trends-card { padding: 14px 16px; }
-    .pack-trends-subtitle { color: #64748b; font-size: 12px; }
+    .pack-trends-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .pack-trends-head-left { min-width: 220px; }
+    .pack-trends-subtitle { color: #64748b; font-size: 12px; margin-top: 2px; }
     .pack-trends-controls { display: inline-flex; align-items: center; gap: 8px; }
-    .pack-trends-controls .form-select { min-width: 120px; }
-    .pack-trends-summary {
-      margin-top: 6px;
-      margin-bottom: 4px;
-      color: #0f172a;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .pack-trends-total {
-      margin-bottom: 10px;
-      color: #1e3a5f;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .pack-trends-list { display: grid; gap: 8px; margin-top: 8px; }
+    .pack-trends-controls .form-select { min-width: 120px; max-width: 140px; }
+    .pack-trends-list { display: grid; gap: 8px; margin-top: 4px; }
     .pack-trend-empty {
       text-align: center;
       color: #64748b;
@@ -104,17 +100,18 @@
     .pack-trend-row {
       border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 8px 10px;
+      padding: 10px 14px;
       background: #fff;
       display: grid;
-      grid-template-columns: minmax(220px, 1.15fr) minmax(150px, auto) minmax(120px, 180px);
-      gap: 10px;
+      grid-template-columns: minmax(280px, 1fr) 220px 120px 24px;
+      gap: 16px;
       align-items: center;
+      min-height: 72px;
     }
     .pack-trend-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .pack-trend-thumb {
-      width: 46px;
-      height: 46px;
+      width: 48px;
+      height: 48px;
       border-radius: 8px;
       border: 1px solid #dbe4ee;
       object-fit: cover;
@@ -143,23 +140,41 @@
       border: 1px solid #cdeed8;
     }
     .pack-trend-metric-label { color: #64748b; font-size: 11px; }
-    .pack-trend-metric-value { color: #0f172a; font-size: 26px; font-weight: 800; line-height: 1.0; letter-spacing: -0.01em; }
-    .pack-trend-meta { color: #64748b; font-size: 11px; margin-top: 2px; }
+    .pack-trend-metric-value { color: #0a2142; font-size: 26px; font-weight: 800; line-height: 1.0; letter-spacing: -0.01em; }
+    .pack-trend-meta { color: #64748b; font-size: 12px; margin-top: 3px; }
     .pack-trend-spark {
-      height: 34px;
+      width: 120px;
+      height: 44px;
       display: flex;
       align-items: flex-end;
       justify-content: flex-end;
-      gap: 3px;
+      gap: 4px;
     }
     .pack-trend-spark-bar {
-      width: 7px;
+      width: 8px;
       border-radius: 4px 4px 2px 2px;
-      min-height: 5px;
-      background: #cbd5e1;
+      min-height: 8px;
+      background: #dbe3ef;
     }
-    .pack-trend-spark-bar.peak { background: #7aa8e6; }
-    .pack-trend-metric-cell { min-width: 140px; }
+    .pack-trend-spark-bar.is-value { background: #7ea9e8; }
+    .pack-trend-spark-bar.is-peak { background: #5d90de; }
+    .pack-trend-metric-cell { min-width: 0; }
+    .pack-trend-icon {
+      color: #1e3a5f;
+      font-size: 13px;
+      opacity: 0.85;
+      text-align: right;
+    }
+    .pack-trends-footer {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #dbe4ee;
+      background: #f8fafd;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 700;
+    }
     .pack-books-table-wrap {
       max-height: none;
       overflow: visible;
@@ -712,9 +727,11 @@
     body.fullscreen-dash .pack-trend-meta,
     body.fullscreen-dash .pack-trend-metric-label,
     body.fullscreen-dash .pack-trends-subtitle,
-    body.fullscreen-dash .pack-trends-summary { color: #94a3b8; }
+    body.fullscreen-dash .pack-trends-footer { color: #94a3b8; }
     body.fullscreen-dash .pack-trend-spark-bar { background: #475569; }
-    body.fullscreen-dash .pack-trend-spark-bar.peak { background: #60a5fa; }
+    body.fullscreen-dash .pack-trend-spark-bar.is-value { background: #5f86c0; }
+    body.fullscreen-dash .pack-trend-spark-bar.is-peak { background: #60a5fa; }
+    body.fullscreen-dash .pack-trend-icon { color: #94a3b8; }
     body.fullscreen-dash .pack-trend-empty {
       background: #0f172a;
       border-color: #334155;
@@ -748,9 +765,12 @@
       .page > .content { padding: 16px 14px 28px; }
       .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
       .status-pills { flex-wrap: wrap; overflow-x: visible; }
+      .pack-trends-head { align-items: flex-start; }
+      .pack-trends-controls { width: 100%; justify-content: flex-start; }
       .pack-trend-row { grid-template-columns: 1fr; gap: 8px; }
       .pack-trend-metric-cell { min-width: 0; }
       .pack-trend-spark { justify-content: flex-start; }
+      .pack-trend-icon { display: none; }
     }
   </style>
 </head>
@@ -1183,25 +1203,26 @@
         </div>
 
         <div class="chart-card pack-trends-card" style="grid-column: 1 / -1;">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="section-title mb-0 d-flex align-items-center gap-2">
-              <i class="fas fa-bullhorn text-primary"></i>
-              Tendencias de packs de libros
+          <div class="pack-trends-head">
+            <div class="pack-trends-head-left">
+              <div class="section-title mb-0 d-flex align-items-center gap-2">
+                <i class="fas fa-bullhorn text-primary"></i>
+                Tendencias de packs de libros
+              </div>
+              <div class="pack-trends-subtitle">Segun filtros activos</div>
             </div>
             <div class="pack-trends-controls">
-              <div class="pack-trends-subtitle">Segun filtros activos</div>
               <select id="packTrendsMetric" class="form-select form-select-sm">
                 <option value="monto" selected>Monto</option>
-                <option value="cantidad">Cantidad</option>
+                <option value="cantidad">Libros</option>
                 <option value="ventas">Ventas</option>
               </select>
             </div>
           </div>
-          <div id="packTrendsSummary" class="pack-trends-summary">Resumen: 0 packs activos - 0 libros - $ 0.00 USD</div>
-          <div id="packTrendsMetricTotal" class="pack-trends-total">Total Monto: $ 0.00 USD</div>
           <div id="packTrendsList" class="pack-trends-list">
             <div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>
           </div>
+          <div id="packTrendsFooter" class="pack-trends-footer">Total: 0 packs activos - 0 libros - $ 0.00 USD</div>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
@@ -3185,21 +3206,24 @@
         : Number.MAX_SAFE_INTEGER;
     }
 
-    function formatPackTrendTotalByMetric(metric, totalMetric) {
-      if (metric === 'cantidad') {
-        return `Total Cantidad: ${formatearTickCantidad(totalMetric)} libros`;
-      }
+    function formatPackTrendFooter(metric, totals) {
+      const packs = formatearTickCantidad(totals?.packs || 0);
+      const libros = formatearTickCantidad(totals?.libros || 0);
+      const monto = formatearMonto(totals?.monto || 0);
+      const ventas = formatearTickCantidad(totals?.ventas || 0);
       if (metric === 'ventas') {
-        return `Total Ventas: ${formatearTickCantidad(totalMetric)} ventas`;
+        return `Total: ${packs} packs activos - ${libros} libros - ${monto} USD - ${ventas} ventas`;
       }
-      return `Total Monto: ${formatearMonto(totalMetric)} USD`;
+      if (metric === 'cantidad') {
+        return `Total: ${packs} packs activos - ${libros} libros - ${monto} USD`;
+      }
+      return `Total: ${packs} packs activos - ${libros} libros - ${monto} USD`;
     }
 
     // Vista de prueba compacta: tendencia de packs tipo campaña con sparkline diario.
     function renderPackTrendsTest(packRows, detalleMeta) {
       const container = document.getElementById('packTrendsList');
-      const summaryEl = document.getElementById('packTrendsSummary');
-      const metricTotalEl = document.getElementById('packTrendsMetricTotal');
+      const footerEl = document.getElementById('packTrendsFooter');
       if (!container) return;
       container.innerHTML = '';
 
@@ -3208,8 +3232,14 @@
         : 'monto';
 
       if (!packRows || !packRows.length) {
-        if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
-        if (metricTotalEl) metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, 0);
+        if (footerEl) {
+          footerEl.textContent = formatPackTrendFooter(metric, {
+            packs: 0,
+            libros: 0,
+            monto: 0,
+            ventas: 0,
+          });
+        }
         container.innerHTML = '<div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>';
         return;
       }
@@ -3281,30 +3311,40 @@
           };
         })
         .sort((a, b) => {
+          const byMetric = compareByOrder(a.metric_value, b.metric_value, 'desc');
+          if (byMetric !== 0) return byMetric;
           const byPackOrder = compareByOrder(getPackTrendSortIndex(a.pack_name), getPackTrendSortIndex(b.pack_name), 'asc');
           if (byPackOrder !== 0) return byPackOrder;
           return String(a.pack_name || '').localeCompare(String(b.pack_name || ''), 'es', { sensitivity: 'base' });
         });
 
       if (!trendRows.length) {
-        if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
-        if (metricTotalEl) metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, 0);
+        if (footerEl) {
+          footerEl.textContent = formatPackTrendFooter(metric, {
+            packs: 0,
+            libros: 0,
+            monto: 0,
+            ventas: 0,
+          });
+        }
         container.innerHTML = '<div class="pack-trend-empty">No hay packs de libros Goberna en el filtro actual.</div>';
         return;
       }
 
       const totalLibros = trendRows.reduce((acc, row) => acc + toNumber(row.qty || 0), 0);
       const totalMonto = trendRows.reduce((acc, row) => acc + toNumber(row.amount || 0), 0);
-      const totalMetric = trendRows.reduce((acc, row) => acc + toNumber(row.metric_value || 0), 0);
-      if (summaryEl) {
-        summaryEl.textContent = `Resumen: ${trendRows.length} packs activos - ${formatearTickCantidad(totalLibros)} libros - ${formatearMonto(totalMonto)} USD`;
-      }
-      if (metricTotalEl) {
-        metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, totalMetric);
+      const totalVentas = trendRows.reduce((acc, row) => acc + toNumber(row.ventas_count || 0), 0);
+      if (footerEl) {
+        footerEl.textContent = formatPackTrendFooter(metric, {
+          packs: trendRows.length,
+          libros: totalLibros,
+          monto: totalMonto,
+          ventas: totalVentas,
+        });
       }
 
       const metricLabel = metric === 'cantidad'
-        ? 'Cantidad de libros'
+        ? 'Libros'
         : metric === 'ventas'
           ? 'Ventas'
           : 'Monto (USD)';
@@ -3351,17 +3391,30 @@
         const sparkEl = document.createElement('div');
         sparkEl.className = 'pack-trend-spark';
         const peak = Math.max(...row.day_series, 0);
+        const hasData = peak > 0;
         row.day_series.forEach((value) => {
           const bar = document.createElement('span');
-          bar.className = `pack-trend-spark-bar${peak > 0 && value === peak ? ' peak' : ''}`;
-          const ratio = peak > 0 ? (value / peak) : 0;
-          bar.style.height = `${4 + Math.round(ratio * 24)}px`;
+          bar.className = 'pack-trend-spark-bar';
+          if (hasData && value > 0) {
+            const ratio = value / peak;
+            const height = Math.max(8, Math.min(42, Math.round(8 + ratio * 34)));
+            bar.style.height = `${height}px`;
+            bar.classList.add('is-value');
+            if (value === peak) bar.classList.add('is-peak');
+          } else {
+            bar.style.height = '8px';
+          }
           sparkEl.appendChild(bar);
         });
+
+        const iconEl = document.createElement('div');
+        iconEl.className = 'pack-trend-icon';
+        iconEl.innerHTML = '<i class="fas fa-chart-column"></i>';
 
         rowEl.appendChild(mainEl);
         rowEl.appendChild(metricEl);
         rowEl.appendChild(sparkEl);
+        rowEl.appendChild(iconEl);
         container.appendChild(rowEl);
       });
     }
