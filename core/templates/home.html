@@ -155,12 +155,12 @@
     .pack-trend-spark-bar.peak { background: #7aa8e6; }
     .pack-trend-metric-cell { min-width: 140px; }
     .pack-books-table-wrap {
-      max-height: 265px;
-      overflow: auto;
+      max-height: none;
+      overflow: visible;
     }
     #tablePackBooks {
-      min-width: 760px;
-      table-layout: auto;
+      min-width: 100%;
+      table-layout: fixed;
     }
     #tablePackBooks th,
     #tablePackBooks td {
@@ -169,13 +169,13 @@
       padding-bottom: 0.52rem;
     }
     #tablePackBooks th:nth-child(1),
-    #tablePackBooks td:nth-child(1) { min-width: 160px; }
+    #tablePackBooks td:nth-child(1) { width: 26%; }
     #tablePackBooks th:nth-child(2),
-    #tablePackBooks td:nth-child(2) { min-width: 290px; }
+    #tablePackBooks td:nth-child(2) { width: 44%; }
     #tablePackBooks th:nth-child(3),
-    #tablePackBooks td:nth-child(3) { min-width: 85px; }
+    #tablePackBooks td:nth-child(3) { width: 12%; }
     #tablePackBooks th:nth-child(4),
-    #tablePackBooks td:nth-child(4) { min-width: 130px; }
+    #tablePackBooks td:nth-child(4) { width: 18%; }
     #tablePackBooks td:nth-child(1),
     #tablePackBooks td:nth-child(2) {
       white-space: normal;
