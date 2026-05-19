@@ -3,6 +3,7 @@ import json
 from decimal import Decimal
 from io import StringIO, BytesIO
 import datetime
+from urllib.parse import urljoin
 
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
@@ -61,6 +62,34 @@ def _medio_label(value: str) -> str:
     if not key:
         return "Sin medio"
     return MEDIO_LABELS.get(key, key.replace("_", " ").title())
+
+
+def _resolve_media_url(path_value: str) -> str:
+    """Normaliza rutas de media guardadas en la BD principal a una URL absoluta usable en Vercel."""
+    path = (path_value or "").strip()
+    if not path:
+        path = "productos/default.png"
+
+    if path.startswith(("http://", "https://")):
+        return path
+
+    main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.pe").rstrip("/") + "/"
+    media_url = getattr(settings, "MEDIA_URL", "/media/")
+
+    if path.startswith("/"):
+        return urljoin(main_app_url, path.lstrip("/"))
+
+    if isinstance(media_url, str) and media_url.startswith(("http://", "https://")):
+        media_base = media_url if media_url.endswith("/") else f"{media_url}/"
+    else:
+        media_path = str(media_url or "/media/")
+        if not media_path.startswith("/"):
+            media_path = f"/{media_path}"
+        media_base = f"{main_app_url.rstrip('/')}{media_path}"
+        if not media_base.endswith("/"):
+            media_base = f"{media_base}/"
+
+    return urljoin(media_base, path.lstrip("/"))
 
 @login_required
 def home_dashboard(request):
@@ -546,25 +575,40 @@ def home_dashboard(request):
                     F("detalle_venta__precio_total") / F("tasa_final"),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 ),
+                venta_fecha=Coalesce(
+                    "detalle_venta__venta__fecha_venta",
+                    "detalle_venta__venta__fecha_registro",
+                    output_field=DateTimeField(),
+                ),
                 venta_id=F("detalle_venta__venta_id"),
                 folio_venta=F("detalle_venta__venta__folio_venta"),
                 pack_producto_id=F("detalle_venta__producto__codigo_producto"),
                 pack_producto_nombre=F("detalle_venta__producto__nombre_producto"),
+                pack_imagen_path=F("detalle_venta__producto__imagen_producto"),
                 libro_nombre=F("libro__nombre_producto"),
+                libro_imagen_path=F("libro__imagen_producto"),
             )
             .values(
                 "detalle_venta_id",
                 "venta_id",
+                "venta_fecha",
                 "folio_venta",
                 "pack_producto_id",
                 "pack_producto_nombre",
+                "pack_imagen_path",
                 "libro_id",
                 "libro_nombre",
+                "libro_imagen_path",
                 "cantidad",
                 "precio_unitario_usd",
                 "detalle_venta_monto_usd",
             )
         )
+
+        libros_en_pack_export = list(libros_en_pack_export)
+        for row in libros_en_pack_export:
+            row["pack_imagen_url"] = _resolve_media_url(row.pop("pack_imagen_path", None))
+            row["libro_imagen_url"] = _resolve_media_url(row.pop("libro_imagen_path", None))
 
         response_data = {
             "ventas_detalle": ventas_detalle,
@@ -572,7 +616,7 @@ def home_dashboard(request):
             "ventas_estado_detalle": list(ventas_scope.values("estado")),
             "cuotas_estado_detalle": list(cuotas_scope.values("estado")),
             "detalles_categoria": list(detalles_export), 
-            "libros_en_pack_detalle": list(libros_en_pack_export),
+            "libros_en_pack_detalle": libros_en_pack_export,
         }
         cache.set(list_cache_key, response_data, 300)
         return JsonResponse(response_data, encoder=DjangoJSONEncoder)
