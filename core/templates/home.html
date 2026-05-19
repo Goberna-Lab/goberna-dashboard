@@ -3651,13 +3651,21 @@
           ? toNumber(scopeMeta.monto_venta_scope_usd || 0)
           : getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto);
         const cuotaRatio = scopeMeta ? toNumber(scopeMeta.cuota_ratio || 0) : (usarMontoPorProducto ? 0 : 1);
+        const deudaScope = toNumber(v.cuota_pendiente_usd || 0) * cuotaRatio;
+        let montoPagadoScope = toNumber(v.cuota_pagada_usd || 0) * cuotaRatio;
+
+        // Si el filtro es por producto y la venta está pagada sin deuda en el scope,
+        // usamos el mismo monto base que "monto vendido" para evitar desfases por cuotas.
+        if (usarMontoPorProducto && Number(v.estado) === 1 && deudaScope <= 0.01) {
+          montoPagadoScope = montoVenta;
+        }
         entry.count += 1;
         entry.monto_total_usd += montoVenta;
         entry.amount = entry.monto_total_usd;
         
         // Mantiene coherencia cuando filtramos por producto: cuotas prorrateadas al mismo scope.
-        entry.monto_pagado_usd += toNumber(v.cuota_pagada_usd || 0) * cuotaRatio;
-        entry.deuda_usd += toNumber(v.cuota_pendiente_usd || 0) * cuotaRatio;
+        entry.monto_pagado_usd += montoPagadoScope;
+        entry.deuda_usd += deudaScope;
       });
 
       const sortedVendors = Array.from(userMap.values())
