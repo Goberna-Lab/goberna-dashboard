@@ -80,9 +80,15 @@
     .pack-trends-controls .form-select { min-width: 120px; }
     .pack-trends-summary {
       margin-top: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
       color: #0f172a;
       font-size: 13px;
+      font-weight: 700;
+    }
+    .pack-trends-total {
+      margin-bottom: 10px;
+      color: #1e3a5f;
+      font-size: 12px;
       font-weight: 700;
     }
     .pack-trends-list { display: grid; gap: 8px; margin-top: 8px; }
@@ -1192,6 +1198,7 @@
             </div>
           </div>
           <div id="packTrendsSummary" class="pack-trends-summary">Resumen: 0 packs activos - 0 libros - $ 0.00 USD</div>
+          <div id="packTrendsMetricTotal" class="pack-trends-total">Total Monto: $ 0.00 USD</div>
           <div id="packTrendsList" class="pack-trends-list">
             <div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>
           </div>
@@ -1526,7 +1533,7 @@
     let cuotasFiltradasCache = [];
     const ventaProductosMap = new Map();
     const productNameToIdsMap = new Map();
-    const PACK_TRENDS_ALLOWED_NAMES = new Set([
+    const PACK_TRENDS_ORDER = [
       'Pack de 02 Libros Goberna',
       'Pack de 03 Libros Goberna',
       'Pack de 04 Libros Goberna',
@@ -1534,7 +1541,9 @@
       'Pack de 06 Libros Goberna',
       'Pack de 07 Libros Goberna',
       'Pack de 08 Libros Goberna',
-    ]);
+    ];
+    const PACK_TRENDS_ALLOWED_NAMES = new Set(PACK_TRENDS_ORDER);
+    const PACK_TRENDS_ORDER_INDEX = new Map(PACK_TRENDS_ORDER.map((name, index) => [name, index]));
     const PACK_TRENDS_DAYS = 7;
     let selectedPackTrendsMetric = 'monto';
     let packTrendsLastRows = [];
@@ -3170,10 +3179,27 @@
       return toNumber(dayData.amount || 0);
     }
 
+    function getPackTrendSortIndex(packName) {
+      return PACK_TRENDS_ORDER_INDEX.has(packName)
+        ? PACK_TRENDS_ORDER_INDEX.get(packName)
+        : Number.MAX_SAFE_INTEGER;
+    }
+
+    function formatPackTrendTotalByMetric(metric, totalMetric) {
+      if (metric === 'cantidad') {
+        return `Total Cantidad: ${formatearTickCantidad(totalMetric)} libros`;
+      }
+      if (metric === 'ventas') {
+        return `Total Ventas: ${formatearTickCantidad(totalMetric)} ventas`;
+      }
+      return `Total Monto: ${formatearMonto(totalMetric)} USD`;
+    }
+
     // Vista de prueba compacta: tendencia de packs tipo campaña con sparkline diario.
     function renderPackTrendsTest(packRows, detalleMeta) {
       const container = document.getElementById('packTrendsList');
       const summaryEl = document.getElementById('packTrendsSummary');
+      const metricTotalEl = document.getElementById('packTrendsMetricTotal');
       if (!container) return;
       container.innerHTML = '';
 
@@ -3183,6 +3209,7 @@
 
       if (!packRows || !packRows.length) {
         if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
+        if (metricTotalEl) metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, 0);
         container.innerHTML = '<div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>';
         return;
       }
@@ -3254,21 +3281,26 @@
           };
         })
         .sort((a, b) => {
-          const byMetric = compareByOrder(a.metric_value, b.metric_value, 'desc');
-          if (byMetric !== 0) return byMetric;
+          const byPackOrder = compareByOrder(getPackTrendSortIndex(a.pack_name), getPackTrendSortIndex(b.pack_name), 'asc');
+          if (byPackOrder !== 0) return byPackOrder;
           return String(a.pack_name || '').localeCompare(String(b.pack_name || ''), 'es', { sensitivity: 'base' });
         });
 
       if (!trendRows.length) {
         if (summaryEl) summaryEl.textContent = 'Resumen: 0 packs activos - 0 libros - $ 0.00 USD';
+        if (metricTotalEl) metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, 0);
         container.innerHTML = '<div class="pack-trend-empty">No hay packs de libros Goberna en el filtro actual.</div>';
         return;
       }
 
       const totalLibros = trendRows.reduce((acc, row) => acc + toNumber(row.qty || 0), 0);
       const totalMonto = trendRows.reduce((acc, row) => acc + toNumber(row.amount || 0), 0);
+      const totalMetric = trendRows.reduce((acc, row) => acc + toNumber(row.metric_value || 0), 0);
       if (summaryEl) {
         summaryEl.textContent = `Resumen: ${trendRows.length} packs activos - ${formatearTickCantidad(totalLibros)} libros - ${formatearMonto(totalMonto)} USD`;
+      }
+      if (metricTotalEl) {
+        metricTotalEl.textContent = formatPackTrendTotalByMetric(metric, totalMetric);
       }
 
       const metricLabel = metric === 'cantidad'
