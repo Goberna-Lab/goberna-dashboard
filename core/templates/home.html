@@ -3303,6 +3303,35 @@
         if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
+    function buildSchoolSalesList(ventaIds, productosSeleccionados) {
+      const schoolDetails = detallesCategoria.filter(d => {
+          const categoria = Number(d.producto__codigo_categoria);
+          const esCurso = categoria === 5 || categoria === 6;
+          if (!esCurso) return false;
+          if (ventaIds && !ventaIds.has(Number(d.venta_id || 0))) return false;
+          return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
+      });
+
+      const schoolMap = new Map();
+      schoolDetails.forEach(d => {
+          const name = d.producto__nombre_producto || 'Desconocido';
+          if(!schoolMap.has(name)) schoolMap.set(name, { qty: 0, amount: 0 });
+          const entry = schoolMap.get(name);
+          entry.qty += parseInt(d.cantidad || 0);
+          entry.amount += toNumber(d.monto_usd || 0);
+      });
+
+      return Array.from(schoolMap.entries())
+          .map(([name, val]) => ({ name, ...val }))
+          .sort((a,b) => {
+            const base = selectedSchoolSort === 'cantidad'
+              ? compareByOrder(a.qty, b.qty, selectedSchoolSortOrder)
+              : compareByOrder(a.amount, b.amount, selectedSchoolSortOrder);
+            if (base !== 0) return base;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+          });
+    }
+
     function renderBooksTable(data) {
         const tbody = document.querySelector('#tableBooks tbody');
         const totalQtyEl = document.getElementById('tableBooksTotalQty');
@@ -4715,33 +4744,7 @@
       updateCoursesChart(ventaIds, productosSeleccionados);
 
       // Update School Table (Categories 5 & 6)
-      const schoolDetails = detallesCategoria.filter(d => {
-          const categoria = Number(d.producto__codigo_categoria);
-          const esCurso = categoria === 5 || categoria === 6;
-          if (!esCurso) return false;
-          if (!ventaIds.has(d.venta_id)) return false;
-          return detalleCoincideProductoSeleccionado(d, productosSeleccionados);
-      });
-      
-      const schoolMap = new Map();
-      schoolDetails.forEach(d => {
-          const name = d.producto__nombre_producto || 'Desconocido';
-          if(!schoolMap.has(name)) schoolMap.set(name, { qty: 0, amount: 0 });
-          const entry = schoolMap.get(name);
-          entry.qty += parseInt(d.cantidad || 0);
-          entry.amount += toNumber(d.monto_usd || 0);
-      });
-      
-      const schoolList = Array.from(schoolMap.entries())
-          .map(([name, val]) => ({ name, ...val }))
-          .sort((a,b) => {
-            const base = selectedSchoolSort === 'cantidad'
-              ? compareByOrder(a.qty, b.qty, selectedSchoolSortOrder)
-              : compareByOrder(a.amount, b.amount, selectedSchoolSortOrder);
-            if (base !== 0) return base;
-            return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
-          });
-          
+      const schoolList = buildSchoolSalesList(ventaIds, productosSeleccionados);
       renderSchoolTable(schoolList);
 
       // Update Books Table con filtros superiores
@@ -5254,6 +5257,46 @@
         }
 
         // Sección de gráficos
+        const schoolPdfList = buildSchoolSalesList(ventaIdsPdf, productosSeleccionadosPdf);
+        if (schoolPdfList.length) {
+          if (y > pageHeight - 65) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+          const schoolTotalQty = schoolPdfList.reduce((acc, item) => acc + toNumber(item.qty || 0), 0);
+          const schoolTotalAmount = schoolPdfList.reduce((acc, item) => acc + toNumber(item.amount || 0), 0);
+          const schoolRows = schoolPdfList.slice(0, 15);
+
+          pdf.setFont(undefined, 'bold');
+          pdf.setFontSize(12);
+          pdf.text('Ventas de Escuela', marginX, y); y += 6;
+          pdf.setFont(undefined, 'normal');
+          pdf.setFontSize(9);
+          pdf.text(`Total: ${formatearTickCantidad(schoolTotalQty)} unidades - ${formatearMonto(schoolTotalAmount)} USD`, marginX, y); y += 6;
+
+          pdf.setFont(undefined, 'bold');
+          pdf.text('Producto', marginX, y);
+          pdf.text('Cant.', marginX + 125, y, { align: 'right' });
+          pdf.text('Ganancia (USD)', pageWidth - marginX, y, { align: 'right' });
+          y += 4;
+          pdf.setFont(undefined, 'normal');
+
+          schoolRows.forEach((item) => {
+            if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+            const productName = String(item.name || 'Desconocido');
+            const shortName = productName.length > 58 ? `${productName.slice(0, 55)}...` : productName;
+            pdf.text(shortName, marginX, y);
+            pdf.text(formatearTickCantidad(item.qty || 0), marginX + 125, y, { align: 'right' });
+            pdf.text(formatearMonto(item.amount || 0), pageWidth - marginX, y, { align: 'right' });
+            y += 5;
+          });
+
+          if (schoolPdfList.length > schoolRows.length) {
+            if (y > pageHeight - 20) { addFooter(pdf.internal.getNumberOfPages()); pdf.addPage(); y = 18; }
+            pdf.text(`... ${schoolPdfList.length - schoolRows.length} productos adicionales no listados`, marginX, y);
+            y += 5;
+          }
+          y += 4;
+          pdf.setFontSize(11);
+        }
+
       const chartBlocks = [
         { title:'Ventas por mes',     inst: chartVentasMesInst,    summary: chartSummary(chartVentasMesInst) },
         { title:'Serie temporal',     inst: chartVentasSerieInst,  summary: chartSummary(chartVentasSerieInst) },
