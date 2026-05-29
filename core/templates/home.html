@@ -268,6 +268,15 @@
       font-size: 12px;
       font-weight: 700;
     }
+    .pack-trend-chart-wrap {
+      height: min(46vh, 360px);
+      min-height: 260px;
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
     .pack-trend-daily-bars {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
@@ -1868,6 +1877,7 @@
     const PACK_TRENDS_DAYS = 7;
     let selectedPackTrendsMetric = 'monto';
     let selectedPackTrendName = '';
+    let packTrendGraphChartInst = null;
     let packTrendsLastRows = [];
     let packTrendsLastDetalleMeta = new Map();
 
@@ -3613,6 +3623,116 @@
       `;
     }
 
+    function getPackTrendMetricLabel(metric) {
+      if (metric === 'cantidad') return 'Libros';
+      if (metric === 'ventas') return 'Ventas';
+      return 'Monto (USD)';
+    }
+
+    function getPackTrendDisplayValue(value, metric) {
+      return metric === 'monto' ? formatearMonto(value) : formatearTickCantidad(value);
+    }
+
+    function showPackTrendGraphModal(trendRow, metric) {
+      const modalEl = document.getElementById('packTrendGraphModal');
+      const titleEl = document.getElementById('packTrendGraphModalTitle');
+      const bodyEl = document.getElementById('packTrendGraphModalBody');
+      if (!modalEl || !bodyEl || !trendRow) return;
+
+      const metricSafe = ['monto', 'cantidad', 'ventas'].includes(metric) ? metric : 'monto';
+      const metricLabel = getPackTrendMetricLabel(metricSafe);
+      const labels = (trendRow.day_keys || []).map(formatPackTrendDayLabel);
+      const data = (trendRow.day_series || []).map(toNumber);
+      const total = data.reduce((acc, value) => acc + toNumber(value), 0);
+      const peak = Math.max(...data, 0);
+
+      if (titleEl) {
+        titleEl.innerHTML = `<i class="fas fa-chart-line"></i> Actividad: ${escapeHtml(trendRow.pack_name || 'Pack')}`;
+      }
+
+      bodyEl.innerHTML = `
+        <div class="pack-trend-detail-head">
+          <div>
+            <div class="pack-trend-detail-title">Comportamiento del pack</div>
+            <div class="pack-trend-sale-meta">Vista basada en los dias con actividad dentro del filtro actual.</div>
+          </div>
+          <div class="pack-trend-detail-summary">
+            <span>${escapeHtml(metricLabel)}: ${escapeHtml(getPackTrendDisplayValue(total, metricSafe))}</span>
+            <span>Mejor dia: ${escapeHtml(getPackTrendDisplayValue(peak, metricSafe))}</span>
+            <span>${formatearTickCantidad(data.filter((value) => value > 0).length)} dias activos</span>
+          </div>
+        </div>
+        <div class="pack-trend-chart-wrap">
+          <canvas id="packTrendGraphCanvas"></canvas>
+        </div>
+        ${buildPackTrendDailyPanel(trendRow, metricSafe)}
+      `;
+
+      const modalInstance = typeof bootstrap !== 'undefined' && bootstrap.Modal
+        ? bootstrap.Modal.getOrCreateInstance(modalEl)
+        : null;
+
+      modalEl.addEventListener('shown.bs.modal', () => {
+        const canvas = document.getElementById('packTrendGraphCanvas');
+        if (!canvas || typeof Chart === 'undefined') return;
+        if (packTrendGraphChartInst) {
+          packTrendGraphChartInst.destroy();
+          packTrendGraphChartInst = null;
+        }
+        packTrendGraphChartInst = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: metricLabel,
+              data,
+              borderColor: '#2f80ed',
+              backgroundColor: 'rgba(47, 128, 237, 0.16)',
+              pointBackgroundColor: '#2f80ed',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              borderWidth: 2,
+              tension: 0.35,
+              fill: true,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${metricLabel}: ${getPackTrendDisplayValue(ctx.parsed.y, metricSafe)}`,
+                },
+              },
+            },
+            scales: {
+              x: { grid: { color: 'rgba(100, 116, 139, 0.16)' } },
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(100, 116, 139, 0.16)' },
+                ticks: {
+                  callback: (value) => metricSafe === 'monto' ? formatearTickMonto(value) : formatearTickCantidad(value),
+                },
+              },
+            },
+          },
+        });
+      }, { once: true });
+
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        if (packTrendGraphChartInst) {
+          packTrendGraphChartInst.destroy();
+          packTrendGraphChartInst = null;
+        }
+      }, { once: true });
+
+      if (modalInstance) modalInstance.show();
+    }
+
     function buildPackTrendDetailContent(packRows, packName, detalleMeta, trendRow = null) {
       const sales = buildPackTrendSalesRows(packRows, packName, detalleMeta);
       const totalLibros = sales.reduce((acc, row) => acc + toNumber(row.libros || 0), 0);
@@ -3671,7 +3791,6 @@
             <span>${formatearMonto(totalMonto)} USD</span>
           </div>
         </div>
-        ${buildPackTrendDailyPanel(trendRow, selectedPackTrendsMetric)}
         <div class="pack-trend-sales">
           ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este pack con los filtros actuales.</div>'}
         </div>
@@ -3965,10 +4084,32 @@
           }
           sparkEl.appendChild(bar);
         });
+        sparkEl.setAttribute('role', 'button');
+        sparkEl.tabIndex = 0;
+        sparkEl.title = 'Ver actividad del grafico';
+        sparkEl.addEventListener('click', (event) => {
+          event.stopPropagation();
+          selectedPackTrendName = row.pack_name;
+          renderPackTrendsTest(packRows, detalleMeta);
+          showPackTrendGraphModal(row, metric);
+        });
+        sparkEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          sparkEl.click();
+        });
 
         const iconEl = document.createElement('div');
         iconEl.className = 'pack-trend-icon';
         iconEl.innerHTML = '<i class="fas fa-chart-column"></i>';
+        iconEl.title = 'Ver actividad del grafico';
+        iconEl.addEventListener('click', (event) => {
+          event.stopPropagation();
+          selectedPackTrendName = row.pack_name;
+          renderPackTrendsTest(packRows, detalleMeta);
+          showPackTrendGraphModal(row, metric);
+        });
 
         rowEl.appendChild(mainEl);
         rowEl.appendChild(metricEl);
@@ -5557,6 +5698,22 @@
       </div>
       <div class="modal-body" id="packTrendModalBody">
         <div class="pack-trend-empty">Selecciona un pack para ver sus ventas.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade pack-trend-modal" id="packTrendGraphModal" tabindex="-1" aria-labelledby="packTrendGraphModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="packTrendGraphModalTitle">
+          <i class="fas fa-chart-line"></i>
+          Actividad del grafico
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="packTrendGraphModalBody">
+        <div class="pack-trend-empty">Selecciona el grafico de un pack para ver su actividad.</div>
       </div>
     </div>
   </div>
