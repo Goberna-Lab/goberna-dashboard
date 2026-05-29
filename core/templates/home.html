@@ -165,6 +165,112 @@
       opacity: 0.85;
       text-align: right;
     }
+    .pack-trend-row {
+      cursor: pointer;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .pack-trend-row:hover,
+    .pack-trend-row.is-selected {
+      border-color: #9dbcf0;
+      box-shadow: 0 8px 20px rgba(52, 102, 170, 0.1);
+      transform: translateY(-1px);
+    }
+    .pack-trend-row.is-selected {
+      background: #f8fbff;
+    }
+    .pack-trend-modal .modal-content {
+      border: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
+    }
+    .pack-trend-modal .modal-header {
+      background: linear-gradient(to right, #1f2d3d, #263544);
+      color: #fff;
+      border-bottom: 3px solid #ffc107;
+    }
+    .pack-trend-modal .modal-title {
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pack-trend-modal .btn-close {
+      filter: invert(1) grayscale(1) brightness(1.7);
+      opacity: 0.85;
+    }
+    .pack-trend-modal .modal-body {
+      background: #f3f6fb;
+    }
+    .pack-trend-detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .pack-trend-detail-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .pack-trend-detail-summary {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #475569;
+    }
+    .pack-trend-detail-summary span {
+      border: 1px solid #dbe4ee;
+      border-radius: 999px;
+      background: #fff;
+      padding: 4px 9px;
+      font-weight: 700;
+    }
+    .pack-trend-sales {
+      display: grid;
+      gap: 8px;
+      max-height: min(58vh, 520px);
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .pack-trend-sale-row {
+      display: grid;
+      grid-template-columns: 150px minmax(180px, 1fr) 140px 120px;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .pack-trend-sale-date {
+      color: #475569;
+      font-weight: 700;
+    }
+    .pack-trend-sale-folio a {
+      color: #0a3a72;
+      font-weight: 800;
+    }
+    .pack-trend-sale-meta {
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .pack-trend-sale-amount {
+      font-size: 15px;
+      font-weight: 800;
+      color: #062044;
+      text-align: right;
+    }
+    .pack-trend-sale-books {
+      color: #475569;
+      text-align: right;
+      font-weight: 700;
+    }
     .pack-trends-footer {
       margin-top: 8px;
       padding: 10px 12px;
@@ -771,6 +877,9 @@
       .pack-trend-metric-cell { min-width: 0; }
       .pack-trend-spark { justify-content: flex-start; }
       .pack-trend-icon { display: none; }
+      .pack-trend-sale-row { grid-template-columns: 1fr; }
+      .pack-trend-sale-amount,
+      .pack-trend-sale-books { text-align: left; }
     }
   </style>
 </head>
@@ -1467,6 +1576,16 @@
       return `$ ${MONTO_FORMATTER.format(toNumber(v))}`;
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      }[char]));
+    }
+
     function formatearTickMonto(v) {
       return MONTO_FORMATTER.format(toNumber(v));
     }
@@ -1567,6 +1686,7 @@
     const PACK_TRENDS_ORDER_INDEX = new Map(PACK_TRENDS_ORDER.map((name, index) => [name, index]));
     const PACK_TRENDS_DAYS = 7;
     let selectedPackTrendsMetric = 'monto';
+    let selectedPackTrendName = '';
     let packTrendsLastRows = [];
     let packTrendsLastDetalleMeta = new Map();
 
@@ -3179,6 +3299,122 @@
         }
         return qty * toNumber(row?.precio_unitario_usd || 0);
     }
+
+    function formatPackSaleDate(dateObj) {
+      if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'Sin fecha';
+      return dateObj.toLocaleString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    function buildPackTrendSalesRows(packRows, packName, detalleMeta) {
+      const ventaById = new Map((ventasDetalle || []).map((venta) => [Number(venta?.id || 0), venta]));
+      const saleMap = new Map();
+
+      (packRows || []).forEach((row) => {
+        const currentPackName = String(row?.pack_producto_nombre || '').trim();
+        if (currentPackName !== packName) return;
+
+        const ventaId = Number(row?.venta_id || 0);
+        const detailKey = getPackDetalleKey(row);
+        const key = ventaId ? `venta-${ventaId}` : `detalle-${detailKey}`;
+        const venta = ventaById.get(ventaId) || {};
+        const rowDate = parseVentaDate(row?.venta_fecha) || parseVentaDate(venta?.fecha_venta);
+        const amount = getPackRowAmount(row, detalleMeta);
+        const qty = toNumber(row?.cantidad || 0);
+
+        if (!saleMap.has(key)) {
+          saleMap.set(key, {
+            venta_id: ventaId,
+            folio: row?.folio_venta || venta?.folio_venta || 'Sin folio',
+            fecha: rowDate,
+            vendedor: venta?.vendedor || venta?.usuario__username || 'Sin vendedor',
+            medio: venta?.medio_label || venta?.medio || 'Sin medio',
+            pais: venta?.pais_cliente || 'Sin pais',
+            libros: 0,
+            monto: 0,
+            detalleKeys: new Set(),
+          });
+        }
+
+        const entry = saleMap.get(key);
+        entry.libros += qty;
+        entry.monto += amount;
+        entry.detalleKeys.add(detailKey);
+        if (!entry.fecha && rowDate) entry.fecha = rowDate;
+      });
+
+      return Array.from(saleMap.values()).sort((a, b) => {
+        const dateA = a.fecha instanceof Date ? a.fecha.getTime() : 0;
+        const dateB = b.fecha instanceof Date ? b.fecha.getTime() : 0;
+        if (dateA !== dateB) return dateB - dateA;
+        return String(a.folio || '').localeCompare(String(b.folio || ''), 'es', { sensitivity: 'base' });
+      });
+    }
+
+    function buildPackTrendDetailContent(packRows, packName, detalleMeta) {
+      const sales = buildPackTrendSalesRows(packRows, packName, detalleMeta);
+      const totalLibros = sales.reduce((acc, row) => acc + toNumber(row.libros || 0), 0);
+      const totalMonto = sales.reduce((acc, row) => acc + toNumber(row.monto || 0), 0);
+      const daysCount = new Set(sales.map((row) => getDateKey(row.fecha)).filter(Boolean)).size;
+
+      const rowsHtml = sales.map((sale) => {
+        const urlVenta = sale.venta_id ? buildMainAppPath(`${VENTA_DETALLE_PATH}${sale.venta_id}/`) : '';
+        const folioHtml = urlVenta
+          ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
+          : `<span>${escapeHtml(sale.folio)}</span>`;
+        return `
+          <div class="pack-trend-sale-row">
+            <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
+            <div class="pack-trend-sale-folio">
+              ${folioHtml}
+              <div class="pack-trend-sale-meta">${escapeHtml(sale.vendedor)} - ${escapeHtml(sale.medio)} - ${escapeHtml(sale.pais)}</div>
+            </div>
+            <div class="pack-trend-sale-books">${formatearTickCantidad(sale.libros)} libros</div>
+            <div class="pack-trend-sale-amount">${formatearMonto(sale.monto)}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="pack-trend-detail-head">
+          <div>
+            <div class="pack-trend-detail-title">Ventas realizadas: ${escapeHtml(packName)}</div>
+            <div class="pack-trend-sale-meta">Ordenado por fecha mas reciente y respetando los filtros activos.</div>
+          </div>
+          <div class="pack-trend-detail-summary">
+            <span>${formatearTickCantidad(sales.length)} ventas</span>
+            <span>${formatearTickCantidad(daysCount)} dias</span>
+            <span>${formatearTickCantidad(totalLibros)} libros</span>
+            <span>${formatearMonto(totalMonto)} USD</span>
+          </div>
+        </div>
+        <div class="pack-trend-sales">
+          ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este pack con los filtros actuales.</div>'}
+        </div>
+      `;
+    }
+
+    function showPackTrendModal(packRows, packName, detalleMeta) {
+      const titleEl = document.getElementById('packTrendModalTitle');
+      const bodyEl = document.getElementById('packTrendModalBody');
+      const modalEl = document.getElementById('packTrendModal');
+      if (!modalEl || !bodyEl) return;
+
+      if (titleEl) {
+        titleEl.innerHTML = `<i class="fas fa-boxes-stacked"></i> ${escapeHtml(packName)}`;
+      }
+      bodyEl.innerHTML = buildPackTrendDetailContent(packRows, packName, detalleMeta);
+
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }
+    }
+
     function buildPackTrendDayKeys(anchorDate) {
       const base = anchorDate instanceof Date && !Number.isNaN(anchorDate.getTime())
         ? new Date(anchorDate)
@@ -3331,6 +3567,10 @@
         return;
       }
 
+      if (selectedPackTrendName && !trendRows.some((row) => row.pack_name === selectedPackTrendName)) {
+        selectedPackTrendName = '';
+      }
+
       const totalLibros = trendRows.reduce((acc, row) => acc + toNumber(row.qty || 0), 0);
       const totalMonto = trendRows.reduce((acc, row) => acc + toNumber(row.amount || 0), 0);
       const totalVentas = trendRows.reduce((acc, row) => acc + toNumber(row.ventas_count || 0), 0);
@@ -3352,6 +3592,13 @@
       trendRows.forEach((row) => {
         const rowEl = document.createElement('div');
         rowEl.className = 'pack-trend-row';
+        rowEl.tabIndex = 0;
+        rowEl.setAttribute('role', 'button');
+        rowEl.setAttribute('aria-expanded', selectedPackTrendName === row.pack_name ? 'true' : 'false');
+        rowEl.setAttribute('title', 'Ver ventas de este pack');
+        if (selectedPackTrendName === row.pack_name) {
+          rowEl.classList.add('is-selected');
+        }
 
         const mainEl = document.createElement('div');
         mainEl.className = 'pack-trend-main';
@@ -3415,6 +3662,16 @@
         rowEl.appendChild(metricEl);
         rowEl.appendChild(sparkEl);
         rowEl.appendChild(iconEl);
+        rowEl.addEventListener('click', () => {
+          selectedPackTrendName = row.pack_name;
+          renderPackTrendsTest(packRows, detalleMeta);
+          showPackTrendModal(packRows, row.pack_name, detalleMeta);
+        });
+        rowEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          rowEl.click();
+        });
         container.appendChild(rowEl);
       });
     }
@@ -4976,6 +5233,22 @@
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
 </script>
+<div class="modal fade pack-trend-modal" id="packTrendModal" tabindex="-1" aria-labelledby="packTrendModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="packTrendModalTitle">
+          <i class="fas fa-boxes-stacked"></i>
+          Detalle de pack
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="packTrendModalBody">
+        <div class="pack-trend-empty">Selecciona un pack para ver sus ventas.</div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
