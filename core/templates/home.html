@@ -143,21 +143,31 @@
     .pack-trend-metric-value { color: #0a2142; font-size: 26px; font-weight: 800; line-height: 1.0; letter-spacing: -0.01em; }
     .pack-trend-meta { color: #64748b; font-size: 12px; margin-top: 3px; }
     .pack-trend-spark {
-      width: 120px;
-      height: 44px;
+      width: 132px;
+      height: 52px;
       display: flex;
       align-items: flex-end;
       justify-content: flex-end;
-      gap: 4px;
+      gap: 5px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
     }
     .pack-trend-spark-bar {
-      width: 8px;
-      border-radius: 4px 4px 2px 2px;
-      min-height: 8px;
-      background: #dbe3ef;
+      width: 9px;
+      border-radius: 5px 5px 3px 3px;
+      min-height: 7px;
+      background: #d7e1ee;
+      transition: height 0.2s ease, background 0.2s ease, transform 0.2s ease;
     }
-    .pack-trend-spark-bar.is-value { background: #7ea9e8; }
-    .pack-trend-spark-bar.is-peak { background: #5d90de; }
+    .pack-trend-spark-bar:hover { transform: translateY(-2px); }
+    .pack-trend-spark-bar.is-value { background: #8fb4ec; }
+    .pack-trend-spark-bar.is-peak { background: #3f7bd5; }
+    .pack-trend-spark-bar.is-empty {
+      height: 7px;
+      opacity: 0.85;
+    }
     .pack-trend-metric-cell { min-width: 0; }
     .pack-trend-icon {
       color: #1e3a5f;
@@ -3572,10 +3582,13 @@
       }
     }
 
-    function buildPackTrendDayKeys(anchorDate) {
-      const base = anchorDate instanceof Date && !Number.isNaN(anchorDate.getTime())
-        ? new Date(anchorDate)
-        : new Date();
+    function buildPackTrendDayKeys(entry) {
+      const activeKeys = Array.from(entry?.daily?.keys?.() || []).sort();
+      if (activeKeys.length) {
+        return activeKeys.slice(-PACK_TRENDS_DAYS);
+      }
+
+      const base = new Date();
       base.setHours(0, 0, 0, 0);
       const keys = [];
       for (let offset = PACK_TRENDS_DAYS - 1; offset >= 0; offset -= 1) {
@@ -3639,7 +3652,6 @@
 
       const fallbackImage = `${MAIN_APP_URL ? MAIN_APP_URL.replace(/\/$/, '') : ''}/media/productos/default.png`;
       const ventaDateById = new Map((ventasDetalle || []).map((v) => [Number(v?.id || 0), parseVentaDate(v?.fecha_venta)]));
-      let anchorDate = null;
 
       const trendsByPack = new Map();
       packRows.forEach((row) => {
@@ -3663,7 +3675,6 @@
         const ventaId = Number(row?.venta_id || 0);
 
         const rowDate = parseVentaDate(row?.venta_fecha) || ventaDateById.get(ventaId) || null;
-        if (rowDate && (!anchorDate || rowDate > anchorDate)) anchorDate = rowDate;
         const dateKey = rowDate ? getDateKey(rowDate) : '';
 
         if (!entry.pack_imagen_url) {
@@ -3685,7 +3696,6 @@
         }
       });
 
-      const dayKeys = buildPackTrendDayKeys(anchorDate);
       const trendRows = Array.from(trendsByPack.values())
         .map((entry) => {
           const ventasCount = entry.ventas.size;
@@ -3694,12 +3704,14 @@
             : metric === 'ventas'
               ? ventasCount
               : toNumber(entry.amount);
+          const dayKeys = buildPackTrendDayKeys(entry);
           const daySeries = dayKeys.map((key) => getPackTrendMetricDayValue(entry.daily.get(key), metric));
 
           return {
             ...entry,
             ventas_count: ventasCount,
             metric_value: metricValue,
+            day_keys: dayKeys,
             day_series: daySeries,
           };
         })
@@ -3796,17 +3808,26 @@
         sparkEl.className = 'pack-trend-spark';
         const peak = Math.max(...row.day_series, 0);
         const hasData = peak > 0;
-        row.day_series.forEach((value) => {
+        row.day_series.forEach((value, index) => {
           const bar = document.createElement('span');
           bar.className = 'pack-trend-spark-bar';
+          const dayKey = row.day_keys?.[index] || '';
+          const dayData = dayKey ? row.daily.get(dayKey) : null;
+          const ventasDay = dayData?.ventas instanceof Set ? dayData.ventas.size : 0;
+          const tooltipValue = metric === 'monto'
+            ? `${formatearMonto(value)} USD`
+            : `${formatearTickCantidad(value)} ${metric === 'ventas' ? 'ventas' : 'libros'}`;
+          bar.title = dayKey
+            ? `${dayKey} - ${tooltipValue} - ${ventasDay} venta${ventasDay === 1 ? '' : 's'}`
+            : 'Sin ventas';
           if (hasData && value > 0) {
             const ratio = value / peak;
-            const height = Math.max(8, Math.min(42, Math.round(8 + ratio * 34)));
+            const height = Math.max(12, Math.min(40, Math.round(10 + ratio * 30)));
             bar.style.height = `${height}px`;
             bar.classList.add('is-value');
             if (value === peak) bar.classList.add('is-peak');
           } else {
-            bar.style.height = '8px';
+            bar.classList.add('is-empty');
           }
           sparkEl.appendChild(bar);
         });
