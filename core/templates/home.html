@@ -267,6 +267,30 @@
       color: #64748b;
       margin-top: 2px;
     }
+    .pack-trend-sale-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 5px;
+    }
+    .pack-trend-sale-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid #dbe4ee;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #475569;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .pack-trend-sale-tag strong {
+      color: #0f172a;
+      font-weight: 800;
+    }
     .pack-trend-sale-amount {
       font-size: 15px;
       font-weight: 800;
@@ -3470,7 +3494,11 @@
             <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
             <div class="pack-trend-sale-folio">
               ${folioHtml}
-              <div class="pack-trend-sale-meta">${escapeHtml(sale.vendedor)} - ${escapeHtml(sale.medio)} - ${escapeHtml(sale.pais)}</div>
+              <div class="pack-trend-sale-tags">
+                <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
+                <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
+                <span class="pack-trend-sale-tag">País: <strong>${escapeHtml(sale.pais)}</strong></span>
+              </div>
               <div class="pack-trend-sale-toggle"><i class="fas fa-chevron-down"></i> Ver libros comprados</div>
             </div>
             <div class="pack-trend-sale-books">${formatearTickCantidad(sale.libros)} libros</div>
