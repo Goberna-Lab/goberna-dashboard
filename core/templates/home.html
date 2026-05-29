@@ -240,6 +240,83 @@
       padding: 4px 9px;
       font-weight: 700;
     }
+    .pack-trend-daily-panel {
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .pack-trend-daily-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .pack-trend-daily-title {
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .pack-trend-daily-note {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .pack-trend-daily-bars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+      gap: 8px;
+      align-items: end;
+    }
+    .pack-trend-day-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 8px;
+      min-height: 116px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .pack-trend-day-bar-wrap {
+      height: 48px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .pack-trend-day-bar {
+      width: 18px;
+      min-height: 8px;
+      border-radius: 9px 9px 4px 4px;
+      background: #d7e1ee;
+    }
+    .pack-trend-day-bar.is-value { background: #8fb4ec; }
+    .pack-trend-day-bar.is-peak { background: #3f7bd5; }
+    .pack-trend-day-date {
+      color: #475569;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+    }
+    .pack-trend-day-value {
+      color: #062044;
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+    }
+    .pack-trend-day-meta {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
     .pack-trend-sales {
       display: grid;
       gap: 8px;
@@ -3480,7 +3557,63 @@
       });
     }
 
-    function buildPackTrendDetailContent(packRows, packName, detalleMeta) {
+    function formatPackTrendDayLabel(dayKey) {
+      if (!dayKey) return 'Sin fecha';
+      const parts = String(dayKey).split('-').map(Number);
+      if (parts.length !== 3 || !parts.every(Boolean)) return dayKey;
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      return date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+    }
+
+    function buildPackTrendDailyPanel(trendRow, metric) {
+      if (!trendRow || !Array.isArray(trendRow.day_series) || !trendRow.day_series.length) {
+        return '';
+      }
+
+      const metricLabel = metric === 'cantidad'
+        ? 'libros'
+        : metric === 'ventas'
+          ? 'ventas'
+          : 'USD';
+      const peak = Math.max(...trendRow.day_series, 0);
+      const cardsHtml = trendRow.day_series.map((value, index) => {
+        const dayKey = trendRow.day_keys?.[index] || '';
+        const dayData = dayKey ? trendRow.daily.get(dayKey) : null;
+        const ventasDay = dayData?.ventas instanceof Set ? dayData.ventas.size : 0;
+        const librosDay = toNumber(dayData?.qty || 0);
+        const amountDay = toNumber(dayData?.amount || 0);
+        const hasValue = peak > 0 && value > 0;
+        const height = hasValue ? Math.max(10, Math.min(48, Math.round(10 + (value / peak) * 38))) : 8;
+        const valueText = metric === 'monto'
+          ? formatearMonto(value)
+          : `${formatearTickCantidad(value)} ${metricLabel}`;
+        return `
+          <div class="pack-trend-day-card">
+            <div class="pack-trend-day-bar-wrap">
+              <span class="pack-trend-day-bar ${hasValue ? 'is-value' : ''} ${value === peak && hasValue ? 'is-peak' : ''}" style="height: ${height}px"></span>
+            </div>
+            <div class="pack-trend-day-date">${escapeHtml(formatPackTrendDayLabel(dayKey))}</div>
+            <div class="pack-trend-day-value">${escapeHtml(valueText)}</div>
+            <div class="pack-trend-day-meta">${formatearTickCantidad(ventasDay)} ventas - ${formatearTickCantidad(librosDay)} libros</div>
+            <div class="pack-trend-day-meta">${formatearMonto(amountDay)}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="pack-trend-daily-panel">
+          <div class="pack-trend-daily-head">
+            <div class="pack-trend-daily-title"><i class="fas fa-chart-column"></i> Actividad del grafico</div>
+            <div class="pack-trend-daily-note">Cada barra representa un dia con datos del filtro actual.</div>
+          </div>
+          <div class="pack-trend-daily-bars">
+            ${cardsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildPackTrendDetailContent(packRows, packName, detalleMeta, trendRow = null) {
       const sales = buildPackTrendSalesRows(packRows, packName, detalleMeta);
       const totalLibros = sales.reduce((acc, row) => acc + toNumber(row.libros || 0), 0);
       const totalMonto = sales.reduce((acc, row) => acc + toNumber(row.monto || 0), 0);
@@ -3538,13 +3671,14 @@
             <span>${formatearMonto(totalMonto)} USD</span>
           </div>
         </div>
+        ${buildPackTrendDailyPanel(trendRow, selectedPackTrendsMetric)}
         <div class="pack-trend-sales">
           ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este pack con los filtros actuales.</div>'}
         </div>
       `;
     }
 
-    function showPackTrendModal(packRows, packName, detalleMeta) {
+    function showPackTrendModal(packRows, packName, detalleMeta, trendRow = null) {
       const titleEl = document.getElementById('packTrendModalTitle');
       const bodyEl = document.getElementById('packTrendModalBody');
       const modalEl = document.getElementById('packTrendModal');
@@ -3553,7 +3687,7 @@
       if (titleEl) {
         titleEl.innerHTML = `<i class="fas fa-boxes-stacked"></i> ${escapeHtml(packName)}`;
       }
-      bodyEl.innerHTML = buildPackTrendDetailContent(packRows, packName, detalleMeta);
+      bodyEl.innerHTML = buildPackTrendDetailContent(packRows, packName, detalleMeta, trendRow);
       bodyEl.querySelectorAll('.pack-trend-sale-row').forEach((rowEl) => {
         const toggleSaleDetail = () => {
           const targetId = rowEl.getAttribute('data-pack-sale-target');
@@ -3843,7 +3977,7 @@
         rowEl.addEventListener('click', () => {
           selectedPackTrendName = row.pack_name;
           renderPackTrendsTest(packRows, detalleMeta);
-          showPackTrendModal(packRows, row.pack_name, detalleMeta);
+          showPackTrendModal(packRows, row.pack_name, detalleMeta, row);
         });
         rowEl.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
