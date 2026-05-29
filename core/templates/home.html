@@ -243,10 +243,17 @@
       gap: 12px;
       align-items: center;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
+      border-radius: 10px 10px 0 0;
       background: #fff;
       padding: 10px 12px;
       font-size: 12px;
+      cursor: pointer;
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+    .pack-trend-sale-row:hover,
+    .pack-trend-sale-row.is-open {
+      background: #f8fbff;
+      border-color: #b9cbea;
     }
     .pack-trend-sale-date {
       color: #475569;
@@ -270,6 +277,65 @@
       color: #475569;
       text-align: right;
       font-weight: 700;
+    }
+    .pack-trend-sale-toggle {
+      color: #64748b;
+      font-size: 11px;
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+    }
+    .pack-trend-sale-row.is-open .pack-trend-sale-toggle i {
+      transform: rotate(180deg);
+    }
+    .pack-trend-sale-toggle i {
+      transition: transform 0.18s ease;
+    }
+    .pack-trend-sale-detail {
+      display: none;
+      border: 1px solid #b9cbea;
+      border-top: 0;
+      border-radius: 0 0 10px 10px;
+      background: #fff;
+      padding: 10px 12px 12px;
+      margin-bottom: 8px;
+    }
+    .pack-trend-sale-detail.is-open {
+      display: block;
+    }
+    .pack-trend-books-head,
+    .pack-trend-book-row {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 90px 120px;
+      gap: 12px;
+      align-items: center;
+    }
+    .pack-trend-books-head {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 0 0 6px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .pack-trend-book-row {
+      padding: 8px 0 0;
+      font-size: 12px;
+    }
+    .pack-trend-book-name {
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .pack-trend-book-qty,
+    .pack-trend-book-amount {
+      text-align: right;
+      font-weight: 800;
+      color: #334155;
+    }
+    .pack-trend-book-amount {
+      color: #062044;
     }
     .pack-trends-footer {
       margin-top: 8px;
@@ -878,8 +944,12 @@
       .pack-trend-spark { justify-content: flex-start; }
       .pack-trend-icon { display: none; }
       .pack-trend-sale-row { grid-template-columns: 1fr; }
+      .pack-trend-books-head,
+      .pack-trend-book-row { grid-template-columns: 1fr; gap: 4px; }
       .pack-trend-sale-amount,
-      .pack-trend-sale-books { text-align: left; }
+      .pack-trend-sale-books,
+      .pack-trend-book-qty,
+      .pack-trend-book-amount { text-align: left; }
     }
   </style>
 </head>
@@ -3338,6 +3408,7 @@
             libros: 0,
             monto: 0,
             detalleKeys: new Set(),
+            books: new Map(),
           });
         }
 
@@ -3346,9 +3417,28 @@
         entry.monto += amount;
         entry.detalleKeys.add(detailKey);
         if (!entry.fecha && rowDate) entry.fecha = rowDate;
+
+        const bookName = String(row?.libro_nombre || 'Libro sin nombre').trim() || 'Libro sin nombre';
+        if (!entry.books.has(bookName)) {
+          entry.books.set(bookName, {
+            name: bookName,
+            qty: 0,
+            amount: 0,
+          });
+        }
+        const bookEntry = entry.books.get(bookName);
+        bookEntry.qty += qty;
+        bookEntry.amount += amount;
       });
 
-      return Array.from(saleMap.values()).sort((a, b) => {
+      return Array.from(saleMap.values()).map((sale) => ({
+        ...sale,
+        books: Array.from(sale.books.values()).sort((a, b) => {
+          const byQty = compareByOrder(a.qty, b.qty, 'desc');
+          if (byQty !== 0) return byQty;
+          return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+        }),
+      })).sort((a, b) => {
         const dateA = a.fecha instanceof Date ? a.fecha.getTime() : 0;
         const dateB = b.fecha instanceof Date ? b.fecha.getTime() : 0;
         if (dateA !== dateB) return dateB - dateA;
@@ -3367,15 +3457,32 @@
         const folioHtml = urlVenta
           ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
           : `<span>${escapeHtml(sale.folio)}</span>`;
+        const saleKey = `pack-sale-${String(sale.venta_id || sale.folio || '').replace(/[^\w-]/g, '-')}`;
+        const booksHtml = (sale.books || []).map((book) => `
+          <div class="pack-trend-book-row">
+            <div class="pack-trend-book-name">${escapeHtml(book.name)}</div>
+            <div class="pack-trend-book-qty">${formatearTickCantidad(book.qty)}</div>
+            <div class="pack-trend-book-amount">${formatearMonto(book.amount)}</div>
+          </div>
+        `).join('');
         return `
-          <div class="pack-trend-sale-row">
+          <div class="pack-trend-sale-row" data-pack-sale-target="${escapeHtml(saleKey)}" role="button" tabindex="0" aria-expanded="false">
             <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
             <div class="pack-trend-sale-folio">
               ${folioHtml}
               <div class="pack-trend-sale-meta">${escapeHtml(sale.vendedor)} - ${escapeHtml(sale.medio)} - ${escapeHtml(sale.pais)}</div>
+              <div class="pack-trend-sale-toggle"><i class="fas fa-chevron-down"></i> Ver libros comprados</div>
             </div>
             <div class="pack-trend-sale-books">${formatearTickCantidad(sale.libros)} libros</div>
             <div class="pack-trend-sale-amount">${formatearMonto(sale.monto)}</div>
+          </div>
+          <div class="pack-trend-sale-detail" id="${escapeHtml(saleKey)}">
+            <div class="pack-trend-books-head">
+              <div>Libro dentro del pack</div>
+              <div class="text-end">Cantidad</div>
+              <div class="text-end">Monto</div>
+            </div>
+            ${booksHtml || '<div class="pack-trend-empty">No hay libros asociados a esta venta.</div>'}
           </div>
         `;
       }).join('');
@@ -3409,6 +3516,28 @@
         titleEl.innerHTML = `<i class="fas fa-boxes-stacked"></i> ${escapeHtml(packName)}`;
       }
       bodyEl.innerHTML = buildPackTrendDetailContent(packRows, packName, detalleMeta);
+      bodyEl.querySelectorAll('.pack-trend-sale-row').forEach((rowEl) => {
+        const toggleSaleDetail = () => {
+          const targetId = rowEl.getAttribute('data-pack-sale-target');
+          if (!targetId) return;
+          const escapedTargetId = window.CSS?.escape ? CSS.escape(targetId) : targetId.replace(/"/g, '\\"');
+          const detailEl = bodyEl.querySelector(`#${escapedTargetId}`);
+          if (!detailEl) return;
+          const nextOpen = !detailEl.classList.contains('is-open');
+          detailEl.classList.toggle('is-open', nextOpen);
+          rowEl.classList.toggle('is-open', nextOpen);
+          rowEl.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        };
+        rowEl.addEventListener('click', (event) => {
+          if (event.target.closest('a')) return;
+          toggleSaleDetail();
+        });
+        rowEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          toggleSaleDetail();
+        });
+      });
 
       if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
