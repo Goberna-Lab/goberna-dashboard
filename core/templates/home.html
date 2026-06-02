@@ -351,6 +351,11 @@
       background: #f8fbff;
       border-color: #b9cbea;
     }
+    .school-sale-row {
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: default;
+    }
     .pack-trend-sale-date {
       color: #475569;
       font-weight: 700;
@@ -485,6 +490,14 @@
       gap: 12px;
       align-items: center;
       min-height: 76px;
+      cursor: pointer;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .school-trend-row:hover,
+    .school-trend-row.is-selected {
+      border-color: #9dbcf0;
+      box-shadow: 0 8px 20px rgba(52, 102, 170, 0.1);
+      transform: translateY(-1px);
     }
     .school-trend-main {
       display: flex;
@@ -557,6 +570,7 @@
       border-radius: 9px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
+      cursor: pointer;
     }
     .school-trend-spark .pack-trend-spark-bar {
       width: 8px;
@@ -3386,8 +3400,9 @@
             const imgUrl = String(d.image_url || '').trim() || fallbackImage;
             const metricLabel = useMonto ? 'Ganancia (USD)' : 'Cantidad';
             const metricValue = useMonto ? formatearMonto(d.amount) : formatearTickCantidad(d.qty);
-            const dayKeys = buildPackTrendDayKeys(d);
-            const daySeries = dayKeys.map((key) => getPackTrendMetricDayValue(d.daily.get(key), useMonto ? 'monto' : 'cantidad'));
+            const trendRow = buildSchoolTrendRow(d, useMonto ? 'monto' : 'cantidad');
+            const dayKeys = trendRow.day_keys || [];
+            const daySeries = trendRow.day_series || [];
             const peak = Math.max(...daySeries, 0);
             const sparkHtml = daySeries.map((value, index) => {
               const dayKey = dayKeys[index] || '';
@@ -3421,11 +3436,99 @@
                 imgEl.src = fallbackImage;
               };
             }
+            rowEl.addEventListener('click', () => {
+              showSchoolSalesModal(d);
+            });
+            const sparkEl = rowEl.querySelector('.school-trend-spark');
+            if (sparkEl) {
+              sparkEl.setAttribute('role', 'button');
+              sparkEl.tabIndex = 0;
+              sparkEl.title = 'Ver actividad del curso';
+              sparkEl.addEventListener('click', (event) => {
+                event.stopPropagation();
+                showPackTrendGraphModal(trendRow, useMonto ? 'monto' : 'cantidad');
+              });
+              sparkEl.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                event.stopPropagation();
+                sparkEl.click();
+              });
+            }
             container.appendChild(rowEl);
         });
 
         if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
         if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
+    }
+
+    function buildSchoolTrendRow(item, metric = 'monto') {
+      const metricSafe = metric === 'cantidad' ? 'cantidad' : 'monto';
+      const dayKeys = buildPackTrendDayKeys(item);
+      return {
+        ...item,
+        pack_name: item?.name || 'Curso',
+        unit_label: 'unidades',
+        day_keys: dayKeys,
+        day_series: dayKeys.map((key) => getPackTrendMetricDayValue(item.daily.get(key), metricSafe)),
+      };
+    }
+
+    function showSchoolSalesModal(item) {
+      const titleEl = document.getElementById('packTrendModalTitle');
+      const bodyEl = document.getElementById('packTrendModalBody');
+      const modalEl = document.getElementById('packTrendModal');
+      if (!modalEl || !bodyEl || !item) return;
+
+      if (titleEl) {
+        titleEl.innerHTML = `<i class="fas fa-graduation-cap"></i> ${escapeHtml(item.name || 'Curso')}`;
+      }
+
+      const totalQty = toNumber(item.qty || 0);
+      const totalAmount = toNumber(item.amount || 0);
+      const sales = Array.isArray(item.sales) ? item.sales : [];
+      const rowsHtml = sales.map((sale) => {
+        const urlVenta = sale.venta_id ? buildMainAppPath(`${VENTA_DETALLE_PATH}${sale.venta_id}/`) : '';
+        const folioHtml = urlVenta
+          ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
+          : `<span>${escapeHtml(sale.folio)}</span>`;
+        return `
+          <div class="pack-trend-sale-row school-sale-row">
+            <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
+            <div class="pack-trend-sale-folio">
+              ${folioHtml}
+              <div class="pack-trend-sale-tags">
+                <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
+                <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
+                <span class="pack-trend-sale-tag">País: <strong>${escapeHtml(sale.pais)}</strong></span>
+              </div>
+            </div>
+            <div class="pack-trend-sale-books">${formatearTickCantidad(sale.qty)} unidades</div>
+            <div class="pack-trend-sale-amount">${formatearMonto(sale.amount)}</div>
+          </div>
+        `;
+      }).join('');
+
+      bodyEl.innerHTML = `
+        <div class="pack-trend-detail-head">
+          <div>
+            <div class="pack-trend-detail-title">Ventas realizadas: ${escapeHtml(item.name || 'Curso')}</div>
+            <div class="pack-trend-sale-meta">Ordenado por fecha mas reciente y respetando los filtros activos.</div>
+          </div>
+          <div class="pack-trend-detail-summary">
+            <span>${formatearTickCantidad(sales.length)} ventas</span>
+            <span>${formatearTickCantidad(totalQty)} unidades</span>
+            <span>${formatearMonto(totalAmount)} USD</span>
+          </div>
+        </div>
+        <div class="pack-trend-sales">
+          ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este curso con los filtros actuales.</div>'}
+        </div>
+      `;
+
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }
     }
 
     function buildSchoolSalesList(ventaIds, productosSeleccionados) {
@@ -3438,22 +3541,26 @@
       });
 
       const schoolMap = new Map();
+      const ventaById = new Map((ventasDetalle || []).map((v) => [Number(v?.id || 0), v]));
       const ventaDateById = new Map((ventasDetalle || []).map((v) => [Number(v?.id || 0), parseVentaDate(v?.fecha_venta)]));
       schoolDetails.forEach(d => {
           const name = d.producto__nombre_producto || 'Desconocido';
           if(!schoolMap.has(name)) {
             schoolMap.set(name, {
+              name,
               qty: 0,
               amount: 0,
               image_url: String(d.producto_imagen_url || '').trim(),
               ventas: new Set(),
               daily: new Map(),
+              sales: new Map(),
             });
           }
           const entry = schoolMap.get(name);
           const qty = parseInt(d.cantidad || 0);
           const amount = toNumber(d.monto_usd || 0);
           const ventaId = Number(d.venta_id || 0);
+          const venta = ventaById.get(ventaId) || {};
           const rowDate = ventaDateById.get(ventaId) || null;
           const dateKey = rowDate ? getDateKey(rowDate) : '';
 
@@ -3471,6 +3578,23 @@
             dayEntry.qty += qty;
             if (ventaId) dayEntry.ventas.add(ventaId);
           }
+
+          const saleKey = ventaId ? `venta-${ventaId}` : `detalle-${name}-${dateKey}`;
+          if (!entry.sales.has(saleKey)) {
+            entry.sales.set(saleKey, {
+              venta_id: ventaId,
+              folio: venta?.folio_venta || 'Sin folio',
+              fecha: rowDate,
+              vendedor: venta?.vendedor || venta?.usuario__username || 'Sin vendedor',
+              medio: venta?.medio_label || venta?.medio || 'Sin medio',
+              pais: venta?.pais_cliente || 'Sin pais',
+              qty: 0,
+              amount: 0,
+            });
+          }
+          const saleEntry = entry.sales.get(saleKey);
+          saleEntry.qty += qty;
+          saleEntry.amount += amount;
       });
 
       return Array.from(schoolMap.entries())
@@ -3478,6 +3602,12 @@
             name,
             ...val,
             ventas_count: val.ventas instanceof Set ? val.ventas.size : 0,
+            sales: Array.from(val.sales.values()).sort((a, b) => {
+              const dateA = a.fecha instanceof Date ? a.fecha.getTime() : 0;
+              const dateB = b.fecha instanceof Date ? b.fecha.getTime() : 0;
+              if (dateA !== dateB) return dateB - dateA;
+              return String(a.folio || '').localeCompare(String(b.folio || ''), 'es', { sensitivity: 'base' });
+            }),
           }))
           .sort((a,b) => {
             const base = selectedSchoolSort === 'cantidad'
@@ -3765,8 +3895,9 @@
         return '';
       }
 
+      const unitLabel = trendRow?.unit_label || 'libros';
       const metricLabel = metric === 'cantidad'
-        ? 'libros'
+        ? unitLabel
         : metric === 'ventas'
           ? 'ventas'
           : 'USD';
@@ -3789,7 +3920,7 @@
             </div>
             <div class="pack-trend-day-date">${escapeHtml(formatPackTrendDayLabel(dayKey))}</div>
             <div class="pack-trend-day-value">${escapeHtml(valueText)}</div>
-            <div class="pack-trend-day-meta">${formatearTickCantidad(ventasDay)} ventas - ${formatearTickCantidad(librosDay)} libros</div>
+            <div class="pack-trend-day-meta">${formatearTickCantidad(ventasDay)} ventas - ${formatearTickCantidad(librosDay)} ${escapeHtml(unitLabel)}</div>
             <div class="pack-trend-day-meta">${formatearMonto(amountDay)}</div>
           </div>
         `;
@@ -3825,7 +3956,9 @@
       if (!modalEl || !bodyEl || !trendRow) return;
 
       const metricSafe = ['monto', 'cantidad', 'ventas'].includes(metric) ? metric : 'monto';
-      const metricLabel = getPackTrendMetricLabel(metricSafe);
+      const metricLabel = metricSafe === 'cantidad' && trendRow?.unit_label
+        ? 'Cantidad'
+        : getPackTrendMetricLabel(metricSafe);
       const labels = (trendRow.day_keys || []).map(formatPackTrendDayLabel);
       const data = (trendRow.day_series || []).map(toNumber);
       const total = data.reduce((acc, value) => acc + toNumber(value), 0);
