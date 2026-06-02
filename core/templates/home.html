@@ -443,21 +443,30 @@
       background: #f8fafc;
       min-height: 34px;
     }
-    .modal-sales-filters .select2-container--default .select2-selection--single {
+    .modal-sales-filters .multi-check summary {
       border: 1px solid #d1dbe8;
       border-radius: 8px;
-      min-height: 34px;
-      display: flex;
-      align-items: center;
-    }
-    .modal-sales-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
+      background: #fff;
       color: #0f172a;
       font-size: 12px;
-      line-height: 32px;
-      padding-left: 10px;
+      min-height: 34px;
+      padding: 7px 10px;
     }
-    .modal-sales-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
-      min-height: 32px;
+    .modal-sales-filters .multi-check-menu {
+      z-index: 1060;
+      max-height: 260px;
+    }
+    .modal-sales-filters .multi-check-row input[type="radio"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #193b59;
+      margin: 0;
+      flex: 0 0 auto;
+    }
+    .modal-sales-filters .multi-check-row.is-selected {
+      background: #eef5ff;
+      color: #0b3d75;
+      font-weight: 800;
     }
     .modal-sales-filter-count {
       color: #64748b;
@@ -3630,7 +3639,12 @@
         .join('');
       const folioOptions = Array.from(new Set(sales.map((sale) => String(sale.folio || '').trim()).filter(Boolean)))
         .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
-        .map((folio) => `<option value="${escapeHtml(folio)}">${escapeHtml(folio)}</option>`)
+        .map((folio) => `
+          <label class="multi-check-row">
+            <input type="radio" name="schoolModalFolio" value="${escapeHtml(folio)}" data-label="${escapeHtml(folio)}">
+            <span>${escapeHtml(folio)}</span>
+          </label>
+        `)
         .join('');
 
       bodyEl.innerHTML = `
@@ -3646,10 +3660,23 @@
           </div>
         </div>
         <div class="modal-sales-filters">
-          <select id="schoolModalFolio" class="django-select2" data-placeholder="Buscar folio">
-            <option value="">Todos los folios</option>
-            ${folioOptions}
-          </select>
+          <details class="multi-check modal-folio-filter" id="schoolModalFolioDropdown">
+            <summary id="schoolModalFolioSummary">Todos los folios</summary>
+            <div class="multi-check-menu">
+              <div class="multi-check-search">
+                <i class="fas fa-search icon"></i>
+                <input type="text" id="schoolModalFolioBuscar" placeholder="Buscar folio...">
+              </div>
+              <label class="multi-check-row is-selected">
+                <input type="radio" name="schoolModalFolio" value="" data-label="Todos los folios" checked>
+                <span>Todos los folios</span>
+              </label>
+              <div class="multi-check-divider"></div>
+              <div id="schoolModalFolioOptions" class="multi-check-list">
+                ${folioOptions}
+              </div>
+            </div>
+          </details>
           <select id="schoolModalEstado">
             <option value="">Todos los estados</option>
             ${estadoOptions}
@@ -3662,13 +3689,24 @@
         </div>
       `;
 
-      const folioSelect = document.getElementById('schoolModalFolio');
+      const folioDropdown = document.getElementById('schoolModalFolioDropdown');
+      const folioSummary = document.getElementById('schoolModalFolioSummary');
+      const folioSearch = document.getElementById('schoolModalFolioBuscar');
       const estadoSelect = document.getElementById('schoolModalEstado');
       const clearButton = document.getElementById('schoolModalClearFilters');
       const listEl = document.getElementById('schoolModalSalesList');
       const countEl = document.getElementById('schoolModalFilterCount');
+      const getSelectedFolio = () => String(document.querySelector('input[name="schoolModalFolio"]:checked')?.value || '');
+      const setFolioSummary = () => {
+        const checked = document.querySelector('input[name="schoolModalFolio"]:checked');
+        const label = checked?.dataset?.label || 'Todos los folios';
+        if (folioSummary) folioSummary.textContent = label;
+        document.querySelectorAll('input[name="schoolModalFolio"]').forEach((input) => {
+          input.closest('.multi-check-row')?.classList.toggle('is-selected', input.checked);
+        });
+      };
       const applyModalFilters = () => {
-        const folio = String(folioSelect?.value || '');
+        const folio = getSelectedFolio();
         const estado = String(estadoSelect?.value || '');
         const filtered = sales.filter((sale) => {
           if (folio && String(sale.folio || '').trim() !== folio) return false;
@@ -3685,24 +3723,32 @@
         }
       };
 
-      folioSelect?.addEventListener('change', applyModalFilters);
+      document.querySelectorAll('input[name="schoolModalFolio"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          setFolioSummary();
+          if (folioDropdown) folioDropdown.open = false;
+          applyModalFilters();
+        });
+      });
+      folioSearch?.addEventListener('input', () => {
+        applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
+      });
+      folioDropdown?.addEventListener('toggle', () => {
+        if (!folioDropdown.open) return;
+        applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
+        requestAnimationFrame(() => folioSearch?.focus());
+      });
       estadoSelect?.addEventListener('change', applyModalFilters);
       clearButton?.addEventListener('click', () => {
-        if (folioSelect) folioSelect.value = '';
+        const allFolio = document.querySelector('input[name="schoolModalFolio"][value=""]');
+        if (allFolio) allFolio.checked = true;
+        if (folioSearch) folioSearch.value = '';
         if (estadoSelect) estadoSelect.value = '';
-        if (window.jQuery && typeof window.jQuery.fn?.select2 === 'function' && folioSelect) {
-          window.jQuery(folioSelect).val('').trigger('change.select2');
-        }
+        setFolioSummary();
+        applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
         applyModalFilters();
       });
-      if (window.jQuery && typeof window.jQuery.fn?.select2 === 'function' && folioSelect) {
-        window.jQuery(folioSelect).select2({
-          allowClear: true,
-          dropdownParent: window.jQuery(modalEl),
-          placeholder: 'Buscar folio',
-          width: '100%',
-        }).on('change', applyModalFilters);
-      }
+      setFolioSummary();
       applyModalFilters();
 
       if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
