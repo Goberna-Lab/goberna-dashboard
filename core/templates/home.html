@@ -414,7 +414,7 @@
     }
     .modal-sales-filters {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) 170px auto;
+      grid-template-columns: minmax(180px, 240px) minmax(160px, 190px) auto;
       gap: 8px;
       align-items: center;
       border: 1px solid #dbe4ee;
@@ -455,6 +455,7 @@
     .modal-sales-filters .multi-check-menu {
       z-index: 1060;
       max-height: 260px;
+      min-width: 100%;
     }
     .modal-sales-filters .multi-check-row input[type="radio"] {
       width: 15px;
@@ -3635,7 +3636,15 @@
       }).join('');
       const estadoOptions = Array.from(new Set(sales.map((sale) => String(sale.estado || '')).filter(Boolean)))
         .sort((a, b) => Number(a) - Number(b))
-        .map((estado) => `<option value="${escapeHtml(estado)}">${escapeHtml(estadoLabels[estado] || `Estado ${estado}`)}</option>`)
+        .map((estado) => {
+          const label = estadoLabels[estado] || `Estado ${estado}`;
+          return `
+            <label class="multi-check-row">
+              <input type="radio" name="schoolModalEstado" value="${escapeHtml(estado)}" data-label="${escapeHtml(label)}">
+              <span>${escapeHtml(label)}</span>
+            </label>
+          `;
+        })
         .join('');
       const folioOptions = Array.from(new Set(sales.map((sale) => String(sale.folio || '').trim()).filter(Boolean)))
         .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
@@ -3677,10 +3686,23 @@
               </div>
             </div>
           </details>
-          <select id="schoolModalEstado">
-            <option value="">Todos los estados</option>
-            ${estadoOptions}
-          </select>
+          <details class="multi-check modal-status-filter" id="schoolModalEstadoDropdown">
+            <summary id="schoolModalEstadoSummary">Todos los estados</summary>
+            <div class="multi-check-menu">
+              <div class="multi-check-search">
+                <i class="fas fa-search icon"></i>
+                <input type="text" id="schoolModalEstadoBuscar" placeholder="Buscar estado...">
+              </div>
+              <label class="multi-check-row is-selected">
+                <input type="radio" name="schoolModalEstado" value="" data-label="Todos los estados" checked>
+                <span>Todos los estados</span>
+              </label>
+              <div class="multi-check-divider"></div>
+              <div id="schoolModalEstadoOptions" class="multi-check-list">
+                ${estadoOptions}
+              </div>
+            </div>
+          </details>
           <button type="button" id="schoolModalClearFilters">Limpiar</button>
         </div>
         <div class="modal-sales-filter-count" id="schoolModalFilterCount"></div>
@@ -3692,22 +3714,27 @@
       const folioDropdown = document.getElementById('schoolModalFolioDropdown');
       const folioSummary = document.getElementById('schoolModalFolioSummary');
       const folioSearch = document.getElementById('schoolModalFolioBuscar');
-      const estadoSelect = document.getElementById('schoolModalEstado');
+      const estadoDropdown = document.getElementById('schoolModalEstadoDropdown');
+      const estadoSummary = document.getElementById('schoolModalEstadoSummary');
+      const estadoSearch = document.getElementById('schoolModalEstadoBuscar');
       const clearButton = document.getElementById('schoolModalClearFilters');
       const listEl = document.getElementById('schoolModalSalesList');
       const countEl = document.getElementById('schoolModalFilterCount');
       const getSelectedFolio = () => String(document.querySelector('input[name="schoolModalFolio"]:checked')?.value || '');
-      const setFolioSummary = () => {
-        const checked = document.querySelector('input[name="schoolModalFolio"]:checked');
-        const label = checked?.dataset?.label || 'Todos los folios';
-        if (folioSummary) folioSummary.textContent = label;
-        document.querySelectorAll('input[name="schoolModalFolio"]').forEach((input) => {
+      const getSelectedEstado = () => String(document.querySelector('input[name="schoolModalEstado"]:checked')?.value || '');
+      const setRadioDropdownSummary = (name, summaryEl, fallbackLabel) => {
+        const checked = document.querySelector(`input[name="${name}"]:checked`);
+        const label = checked?.dataset?.label || fallbackLabel;
+        if (summaryEl) summaryEl.textContent = label;
+        document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
           input.closest('.multi-check-row')?.classList.toggle('is-selected', input.checked);
         });
       };
+      const setFolioSummary = () => setRadioDropdownSummary('schoolModalFolio', folioSummary, 'Todos los folios');
+      const setEstadoSummary = () => setRadioDropdownSummary('schoolModalEstado', estadoSummary, 'Todos los estados');
       const applyModalFilters = () => {
         const folio = getSelectedFolio();
-        const estado = String(estadoSelect?.value || '');
+        const estado = getSelectedEstado();
         const filtered = sales.filter((sale) => {
           if (folio && String(sale.folio || '').trim() !== folio) return false;
           if (estado && String(sale.estado || '') !== estado) return false;
@@ -3730,25 +3757,44 @@
           applyModalFilters();
         });
       });
+      document.querySelectorAll('input[name="schoolModalEstado"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          setEstadoSummary();
+          if (estadoDropdown) estadoDropdown.open = false;
+          applyModalFilters();
+        });
+      });
       folioSearch?.addEventListener('input', () => {
         applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
+      });
+      estadoSearch?.addEventListener('input', () => {
+        applyMultiSearchFilter('schoolModalEstadoBuscar', 'schoolModalEstadoOptions');
       });
       folioDropdown?.addEventListener('toggle', () => {
         if (!folioDropdown.open) return;
         applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
         requestAnimationFrame(() => folioSearch?.focus());
       });
-      estadoSelect?.addEventListener('change', applyModalFilters);
+      estadoDropdown?.addEventListener('toggle', () => {
+        if (!estadoDropdown.open) return;
+        applyMultiSearchFilter('schoolModalEstadoBuscar', 'schoolModalEstadoOptions');
+        requestAnimationFrame(() => estadoSearch?.focus());
+      });
       clearButton?.addEventListener('click', () => {
         const allFolio = document.querySelector('input[name="schoolModalFolio"][value=""]');
+        const allEstado = document.querySelector('input[name="schoolModalEstado"][value=""]');
         if (allFolio) allFolio.checked = true;
+        if (allEstado) allEstado.checked = true;
         if (folioSearch) folioSearch.value = '';
-        if (estadoSelect) estadoSelect.value = '';
+        if (estadoSearch) estadoSearch.value = '';
         setFolioSummary();
+        setEstadoSummary();
         applyMultiSearchFilter('schoolModalFolioBuscar', 'schoolModalFolioOptions');
+        applyMultiSearchFilter('schoolModalEstadoBuscar', 'schoolModalEstadoOptions');
         applyModalFilters();
       });
       setFolioSummary();
+      setEstadoSummary();
       applyModalFilters();
 
       if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
