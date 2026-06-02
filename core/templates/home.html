@@ -392,6 +392,26 @@
       color: #0f172a;
       font-weight: 800;
     }
+    .pack-trend-sale-tag.status-paid {
+      background: #eaf7ef;
+      border-color: #cdeed8;
+      color: #1f7a3f;
+    }
+    .pack-trend-sale-tag.status-pending {
+      background: #fff7e6;
+      border-color: #fde7c3;
+      color: #9a5b00;
+    }
+    .pack-trend-sale-tag.status-danger {
+      background: #feecef;
+      border-color: #f8c7d0;
+      color: #a4233a;
+    }
+    .pack-trend-sale-tag.status-muted {
+      background: #f1f5f9;
+      border-color: #dbe4ee;
+      color: #475569;
+    }
     .pack-trend-sale-amount {
       font-size: 15px;
       font-weight: 800;
@@ -3474,6 +3494,14 @@
       };
     }
 
+    function getVentaStatusTagClass(estado) {
+      const value = Number(estado || 0);
+      if (value === 1) return 'status-paid';
+      if (value === 2) return 'status-pending';
+      if ([3, 4, 7].includes(value)) return 'status-danger';
+      return 'status-muted';
+    }
+
     function showSchoolSalesModal(item) {
       const titleEl = document.getElementById('packTrendModalTitle');
       const bodyEl = document.getElementById('packTrendModalBody');
@@ -3492,6 +3520,8 @@
         const folioHtml = urlVenta
           ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
           : `<span>${escapeHtml(sale.folio)}</span>`;
+        const estadoLabel = estadoLabels[sale.estado] || 'Sin estado';
+        const estadoClass = getVentaStatusTagClass(sale.estado);
         return `
           <div class="pack-trend-sale-row school-sale-row">
             <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
@@ -3501,6 +3531,7 @@
                 <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
                 <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
                 <span class="pack-trend-sale-tag">País: <strong>${escapeHtml(sale.pais)}</strong></span>
+                <span class="pack-trend-sale-tag ${estadoClass}">Estado: <strong>${escapeHtml(estadoLabel)}</strong></span>
               </div>
             </div>
             <div class="pack-trend-sale-books">${formatearTickCantidad(sale.qty)} unidades</div>
@@ -3588,6 +3619,7 @@
               vendedor: venta?.vendedor || venta?.usuario__username || 'Sin vendedor',
               medio: venta?.medio_label || venta?.medio || 'Sin medio',
               pais: venta?.pais_cliente || 'Sin pais',
+              estado: venta?.estado || '',
               qty: 0,
               amount: 0,
             });
@@ -3841,6 +3873,7 @@
             vendedor: venta?.vendedor || venta?.usuario__username || 'Sin vendedor',
             medio: venta?.medio_label || venta?.medio || 'Sin medio',
             pais: venta?.pais_cliente || 'Sin pais',
+            estado: venta?.estado || '',
             libros: 0,
             monto: 0,
             detalleKeys: new Set(),
@@ -4062,6 +4095,8 @@
         const folioHtml = urlVenta
           ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
           : `<span>${escapeHtml(sale.folio)}</span>`;
+        const estadoLabel = estadoLabels[sale.estado] || 'Sin estado';
+        const estadoClass = getVentaStatusTagClass(sale.estado);
         const saleKey = `pack-sale-${String(sale.venta_id || sale.folio || '').replace(/[^\w-]/g, '-')}`;
         const booksHtml = (sale.books || []).map((book) => `
           <div class="pack-trend-book-row">
@@ -4079,6 +4114,7 @@
                 <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
                 <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
                 <span class="pack-trend-sale-tag">País: <strong>${escapeHtml(sale.pais)}</strong></span>
+                <span class="pack-trend-sale-tag ${estadoClass}">Estado: <strong>${escapeHtml(estadoLabel)}</strong></span>
               </div>
               <div class="pack-trend-sale-toggle"><i class="fas fa-chevron-down"></i> Ver libros comprados</div>
             </div>
