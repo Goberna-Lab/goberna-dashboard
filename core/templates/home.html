@@ -467,6 +467,103 @@
       font-size: 12px;
       font-weight: 700;
     }
+    .school-trends-list {
+      display: grid;
+      gap: 8px;
+      max-height: 280px;
+      overflow: auto;
+      padding-right: 2px;
+      margin-top: 8px;
+    }
+    .school-trend-row {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 76px;
+    }
+    .school-trend-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .school-trend-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: 1px solid #dbe4ee;
+      object-fit: cover;
+      background: #eef2f7;
+      flex: 0 0 auto;
+    }
+    .school-trend-name {
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .school-trend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eaf7ef;
+      color: #1f7a3f;
+      font-size: 11px;
+      font-weight: 800;
+      border: 1px solid #cdeed8;
+    }
+    .school-trend-side {
+      display: grid;
+      grid-template-columns: 110px 96px;
+      gap: 10px;
+      align-items: center;
+    }
+    .school-trend-metric-label {
+      color: #64748b;
+      font-size: 11px;
+    }
+    .school-trend-metric-value {
+      color: #062044;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .school-trend-meta {
+      color: #64748b;
+      font-size: 11px;
+      margin-top: 4px;
+      font-weight: 700;
+    }
+    .school-trend-spark {
+      width: 96px;
+      height: 42px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 4px;
+      padding: 5px 7px;
+      border-radius: 9px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .school-trend-spark .pack-trend-spark-bar {
+      width: 8px;
+    }
+    .school-trends-footer {
+      margin-top: 8px;
+    }
     .pack-books-table-wrap {
       max-height: none;
       overflow: visible;
@@ -1070,6 +1167,9 @@
       .pack-trend-sale-books,
       .pack-trend-book-qty,
       .pack-trend-book-amount { text-align: left; }
+      .school-trend-row,
+      .school-trend-side { grid-template-columns: 1fr; }
+      .school-trend-spark { justify-content: flex-start; width: 100%; }
     }
   </style>
 </head>
@@ -1445,24 +1545,11 @@
               </select>
             </div>
           </div>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="table table-sm table-hover mb-0" id="tableSchool">
-              <thead class="text-secondary small-header">
-                <tr>
-                  <th>Producto</th>
-                  <th class="text-end">Cant.</th>
-                  <th class="text-end">Ganancia (USD)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-              <tfoot class="table-light fw-bold small" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2; font-size: 0.78rem;">
-                <tr>
-                  <td class="text-uppercase text-secondary">Total</td>
-                  <td class="text-end"><span class="badge bg-light text-dark border" id="tableSchoolTotalQty">0</span></td>
-                  <td class="text-end text-success" id="tableSchoolTotalAmount">$0</td>
-                </tr>
-              </tfoot>
-            </table>
+          <div class="school-trends-list" id="schoolTrendsList">
+            <div class="pack-trend-empty">Sin datos de escuela.</div>
+          </div>
+          <div class="pack-trends-footer school-trends-footer">
+            Total: <span id="tableSchoolTotalQty">0</span> unidades - <span id="tableSchoolTotalAmount">$0</span> USD
           </div>
         </div>
 
@@ -3272,14 +3359,14 @@
     }
 
     function renderSchoolTable(data) {
-        const tbody = document.querySelector('#tableSchool tbody');
+        const container = document.getElementById('schoolTrendsList');
         const totalQtyEl = document.getElementById('tableSchoolTotalQty');
         const totalAmountEl = document.getElementById('tableSchoolTotalAmount');
-        if(!tbody) return;
-        tbody.innerHTML = '';
+        if(!container) return;
+        container.innerHTML = '';
 
         if(!data || !data.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            container.innerHTML = '<div class="pack-trend-empty">Sin datos de escuela.</div>';
             if (totalQtyEl) totalQtyEl.textContent = '0';
             if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
             return;
@@ -3287,16 +3374,54 @@
 
         let totalQty = 0;
         let totalAmount = 0;
+        const useMonto = selectedSchoolSort !== 'cantidad';
+        const fallbackImage = `${MAIN_APP_URL ? MAIN_APP_URL.replace(/\/$/, '') : ''}/media/productos/default.png`;
+
         data.forEach(d => {
             totalQty += toNumber(d.qty || 0);
             totalAmount += toNumber(d.amount || 0);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><small class="fw-bold text-dark">${d.name}</small></td>
-                <td class="text-end"><span class="badge bg-light text-dark border">${d.qty}</span></td>
-                <td class="text-end text-success fw-bold small">${formatearMonto(d.amount)}</td>
+            const rowEl = document.createElement('div');
+            rowEl.className = 'school-trend-row';
+
+            const imgUrl = String(d.image_url || '').trim() || fallbackImage;
+            const metricLabel = useMonto ? 'Ganancia (USD)' : 'Cantidad';
+            const metricValue = useMonto ? formatearMonto(d.amount) : formatearTickCantidad(d.qty);
+            const dayKeys = buildPackTrendDayKeys(d);
+            const daySeries = dayKeys.map((key) => getPackTrendMetricDayValue(d.daily.get(key), useMonto ? 'monto' : 'cantidad'));
+            const peak = Math.max(...daySeries, 0);
+            const sparkHtml = daySeries.map((value, index) => {
+              const dayKey = dayKeys[index] || '';
+              const hasValue = peak > 0 && value > 0;
+              const height = hasValue ? Math.max(10, Math.min(34, Math.round(8 + (value / peak) * 26))) : 7;
+              const titleValue = useMonto ? formatearMonto(value) : `${formatearTickCantidad(value)} unidades`;
+              return `<span class="pack-trend-spark-bar ${hasValue ? 'is-value' : 'is-empty'} ${value === peak && hasValue ? 'is-peak' : ''}" style="height:${height}px" title="${escapeHtml(dayKey)} - ${escapeHtml(titleValue)}"></span>`;
+            }).join('');
+
+            rowEl.innerHTML = `
+              <div class="school-trend-main">
+                <img class="school-trend-thumb" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(d.name)}">
+                <div>
+                  <div class="school-trend-name">${escapeHtml(d.name)}</div>
+                  <span class="school-trend-badge"><i class="fas fa-circle-check"></i> Escuela</span>
+                </div>
+              </div>
+              <div class="school-trend-side">
+                <div>
+                  <div class="school-trend-metric-label">${metricLabel}</div>
+                  <div class="school-trend-metric-value">${metricValue}</div>
+                  <div class="school-trend-meta">${formatearTickCantidad(d.qty)} unidades - ${formatearTickCantidad(d.ventas_count || 0)} venta${Number(d.ventas_count || 0) === 1 ? '' : 's'}</div>
+                </div>
+                <div class="school-trend-spark">${sparkHtml}</div>
+              </div>
             `;
-            tbody.appendChild(tr);
+            const imgEl = rowEl.querySelector('img');
+            if (imgEl) {
+              imgEl.onerror = () => {
+                imgEl.onerror = null;
+                imgEl.src = fallbackImage;
+              };
+            }
+            container.appendChild(rowEl);
         });
 
         if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
@@ -3313,16 +3438,47 @@
       });
 
       const schoolMap = new Map();
+      const ventaDateById = new Map((ventasDetalle || []).map((v) => [Number(v?.id || 0), parseVentaDate(v?.fecha_venta)]));
       schoolDetails.forEach(d => {
           const name = d.producto__nombre_producto || 'Desconocido';
-          if(!schoolMap.has(name)) schoolMap.set(name, { qty: 0, amount: 0 });
+          if(!schoolMap.has(name)) {
+            schoolMap.set(name, {
+              qty: 0,
+              amount: 0,
+              image_url: String(d.producto_imagen_url || '').trim(),
+              ventas: new Set(),
+              daily: new Map(),
+            });
+          }
           const entry = schoolMap.get(name);
-          entry.qty += parseInt(d.cantidad || 0);
-          entry.amount += toNumber(d.monto_usd || 0);
+          const qty = parseInt(d.cantidad || 0);
+          const amount = toNumber(d.monto_usd || 0);
+          const ventaId = Number(d.venta_id || 0);
+          const rowDate = ventaDateById.get(ventaId) || null;
+          const dateKey = rowDate ? getDateKey(rowDate) : '';
+
+          entry.qty += qty;
+          entry.amount += amount;
+          if (ventaId) entry.ventas.add(ventaId);
+          if (!entry.image_url && d.producto_imagen_url) entry.image_url = String(d.producto_imagen_url || '').trim();
+
+          if (dateKey) {
+            if (!entry.daily.has(dateKey)) {
+              entry.daily.set(dateKey, { amount: 0, qty: 0, ventas: new Set() });
+            }
+            const dayEntry = entry.daily.get(dateKey);
+            dayEntry.amount += amount;
+            dayEntry.qty += qty;
+            if (ventaId) dayEntry.ventas.add(ventaId);
+          }
       });
 
       return Array.from(schoolMap.entries())
-          .map(([name, val]) => ({ name, ...val }))
+          .map(([name, val]) => ({
+            name,
+            ...val,
+            ventas_count: val.ventas instanceof Set ? val.ventas.size : 0,
+          }))
           .sort((a,b) => {
             const base = selectedSchoolSort === 'cantidad'
               ? compareByOrder(a.qty, b.qty, selectedSchoolSortOrder)

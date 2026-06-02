@@ -539,8 +539,13 @@ def home_dashboard(request):
             "producto__codigo_negocio",
             "producto__codigo_negocio__nombre_negocio",
             "producto__nombre_producto",
+            "producto__imagen_producto",
             "cantidad"
         )
+
+        detalles_export = list(detalles_export)
+        for row in detalles_export:
+            row["producto_imagen_url"] = _resolve_media_url(row.pop("producto__imagen_producto", None))
 
         libros_en_pack_export = (
             LibroEnPack.objects.filter(detalle_venta__venta__in=ventas_qs)
@@ -615,7 +620,7 @@ def home_dashboard(request):
             "cuotas_detalle": cuotas_detalle,
             "ventas_estado_detalle": list(ventas_scope.values("estado")),
             "cuotas_estado_detalle": list(cuotas_scope.values("estado")),
-            "detalles_categoria": list(detalles_export), 
+            "detalles_categoria": detalles_export, 
             "libros_en_pack_detalle": libros_en_pack_export,
         }
         cache.set(list_cache_key, response_data, 300)
