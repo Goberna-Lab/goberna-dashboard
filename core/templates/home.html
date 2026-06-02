@@ -412,6 +412,64 @@
       border-color: #dbe4ee;
       color: #475569;
     }
+    .modal-sales-filters {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 170px auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0 12px;
+    }
+    .modal-sales-filters input,
+    .modal-sales-filters select {
+      border: 1px solid #d1dbe8;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: #0f172a;
+      background: #fff;
+      min-height: 34px;
+    }
+    .modal-sales-filters button {
+      border: 1px solid #d1dbe8;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #1f2d3d;
+      background: #f8fafc;
+      min-height: 34px;
+    }
+    .modal-sales-filters .select2-container--default .select2-selection--single {
+      border: 1px solid #d1dbe8;
+      border-radius: 8px;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+    }
+    .modal-sales-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #0f172a;
+      font-size: 12px;
+      line-height: 32px;
+      padding-left: 10px;
+    }
+    .modal-sales-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
+      min-height: 32px;
+    }
+    .modal-sales-filter-count {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 768px) {
+      .modal-sales-filters {
+        grid-template-columns: 1fr;
+      }
+    }
     .pack-trend-sale-amount {
       font-size: 15px;
       font-weight: 800;
@@ -3502,6 +3560,33 @@
       return 'status-muted';
     }
 
+    function renderSchoolSaleRows(sales) {
+      return sales.map((sale) => {
+        const urlVenta = sale.venta_id ? buildMainAppPath(`${VENTA_DETALLE_PATH}${sale.venta_id}/`) : '';
+        const folioHtml = urlVenta
+          ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
+          : `<span>${escapeHtml(sale.folio)}</span>`;
+        const estadoLabel = estadoLabels[sale.estado] || 'Sin estado';
+        const estadoClass = getVentaStatusTagClass(sale.estado);
+        return `
+          <div class="pack-trend-sale-row school-sale-row">
+            <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
+            <div class="pack-trend-sale-folio">
+              ${folioHtml}
+              <div class="pack-trend-sale-tags">
+                <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
+                <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
+                <span class="pack-trend-sale-tag">Pais: <strong>${escapeHtml(sale.pais)}</strong></span>
+                <span class="pack-trend-sale-tag ${estadoClass}">Estado: <strong>${escapeHtml(estadoLabel)}</strong></span>
+              </div>
+            </div>
+            <div class="pack-trend-sale-books">${formatearTickCantidad(sale.qty)} unidades</div>
+            <div class="pack-trend-sale-amount">${formatearMonto(sale.amount)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
     function showSchoolSalesModal(item) {
       const titleEl = document.getElementById('packTrendModalTitle');
       const bodyEl = document.getElementById('packTrendModalBody');
@@ -3539,6 +3624,14 @@
           </div>
         `;
       }).join('');
+      const estadoOptions = Array.from(new Set(sales.map((sale) => String(sale.estado || '')).filter(Boolean)))
+        .sort((a, b) => Number(a) - Number(b))
+        .map((estado) => `<option value="${escapeHtml(estado)}">${escapeHtml(estadoLabels[estado] || `Estado ${estado}`)}</option>`)
+        .join('');
+      const folioOptions = Array.from(new Set(sales.map((sale) => String(sale.folio || '').trim()).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+        .map((folio) => `<option value="${escapeHtml(folio)}">${escapeHtml(folio)}</option>`)
+        .join('');
 
       bodyEl.innerHTML = `
         <div class="pack-trend-detail-head">
@@ -3552,10 +3645,65 @@
             <span>${formatearMonto(totalAmount)} USD</span>
           </div>
         </div>
-        <div class="pack-trend-sales">
-          ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este curso con los filtros actuales.</div>'}
+        <div class="modal-sales-filters">
+          <select id="schoolModalFolio" class="django-select2" data-placeholder="Buscar folio">
+            <option value="">Todos los folios</option>
+            ${folioOptions}
+          </select>
+          <select id="schoolModalEstado">
+            <option value="">Todos los estados</option>
+            ${estadoOptions}
+          </select>
+          <button type="button" id="schoolModalClearFilters">Limpiar</button>
+        </div>
+        <div class="modal-sales-filter-count" id="schoolModalFilterCount"></div>
+        <div class="pack-trend-sales" id="schoolModalSalesList">
+          ${renderSchoolSaleRows(sales) || '<div class="pack-trend-empty">No hay ventas para este curso con los filtros actuales.</div>'}
         </div>
       `;
+
+      const folioSelect = document.getElementById('schoolModalFolio');
+      const estadoSelect = document.getElementById('schoolModalEstado');
+      const clearButton = document.getElementById('schoolModalClearFilters');
+      const listEl = document.getElementById('schoolModalSalesList');
+      const countEl = document.getElementById('schoolModalFilterCount');
+      const applyModalFilters = () => {
+        const folio = String(folioSelect?.value || '');
+        const estado = String(estadoSelect?.value || '');
+        const filtered = sales.filter((sale) => {
+          if (folio && String(sale.folio || '').trim() !== folio) return false;
+          if (estado && String(sale.estado || '') !== estado) return false;
+          return true;
+        });
+        const visibleQty = filtered.reduce((sum, sale) => sum + toNumber(sale.qty || 0), 0);
+        const visibleAmount = filtered.reduce((sum, sale) => sum + toNumber(sale.amount || 0), 0);
+        if (listEl) {
+          listEl.innerHTML = renderSchoolSaleRows(filtered) || '<div class="pack-trend-empty">No hay ventas con estos filtros.</div>';
+        }
+        if (countEl) {
+          countEl.textContent = `${formatearTickCantidad(filtered.length)} ventas - ${formatearTickCantidad(visibleQty)} unidades - ${formatearMonto(visibleAmount)} USD`;
+        }
+      };
+
+      folioSelect?.addEventListener('change', applyModalFilters);
+      estadoSelect?.addEventListener('change', applyModalFilters);
+      clearButton?.addEventListener('click', () => {
+        if (folioSelect) folioSelect.value = '';
+        if (estadoSelect) estadoSelect.value = '';
+        if (window.jQuery && typeof window.jQuery.fn?.select2 === 'function' && folioSelect) {
+          window.jQuery(folioSelect).val('').trigger('change.select2');
+        }
+        applyModalFilters();
+      });
+      if (window.jQuery && typeof window.jQuery.fn?.select2 === 'function' && folioSelect) {
+        window.jQuery(folioSelect).select2({
+          allowClear: true,
+          dropdownParent: window.jQuery(modalEl),
+          placeholder: 'Buscar folio',
+          width: '100%',
+        }).on('change', applyModalFilters);
+      }
+      applyModalFilters();
 
       if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
