@@ -593,12 +593,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #eef5ff;
-      box-shadow: inset 0 0 0 1px #dbeafe;
+      background: linear-gradient(135deg, #1f2d3d, #263544);
+      box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.22);
       flex: 0 0 auto;
     }
     .school-trends-icon i {
-      color: #2f76df !important;
+      color: #ffc107 !important;
       font-size: 14px;
     }
     .school-trends-controls {
@@ -646,8 +646,8 @@
     }
     .school-trend-row:hover,
     .school-trend-row.is-selected {
-      border-color: #9dbcf0;
-      box-shadow: 0 8px 20px rgba(52, 102, 170, 0.1);
+      border-color: rgba(245, 197, 68, 0.78);
+      box-shadow: 0 8px 20px rgba(31, 45, 61, 0.12);
       transform: translateY(-1px);
     }
     .school-trend-rank {
@@ -658,8 +658,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #eef5ff;
-      color: #2f76df;
+      background: linear-gradient(135deg, #1f2d3d, #263544);
+      color: #ffc107;
+      border: 1px solid rgba(255, 193, 7, 0.28);
       font-size: 13px;
       font-weight: 900;
       line-height: 1;
@@ -695,12 +696,15 @@
       margin-top: 4px;
       padding: 2px 8px;
       border-radius: 999px;
-      background: #eaf7ef;
-      color: #1f7a3f;
+      background: rgba(245, 197, 68, 0.16);
+      color: #193b59;
       font-size: 11px;
       font-weight: 800;
-      border: 1px solid #cdeed8;
+      border: 1px solid rgba(245, 197, 68, 0.45);
       line-height: 1.3;
+    }
+    .school-trend-badge i {
+      color: #b38300 !important;
     }
     .school-trend-side {
       display: grid;
@@ -745,6 +749,12 @@
     .school-trend-spark .pack-trend-spark-bar {
       width: 8px;
     }
+    .school-trend-spark .pack-trend-spark-bar.is-value {
+      background: #3c4b5b;
+    }
+    .school-trend-spark .pack-trend-spark-bar.is-peak {
+      background: #ffc107;
+    }
     .school-trends-footer {
       margin-top: 8px;
       padding: 10px 12px;
@@ -767,9 +777,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #eaf3ff;
-      color: #2f76df;
+      background: linear-gradient(135deg, #1f2d3d, #263544);
+      color: #ffc107;
+      border: 1px solid rgba(255, 193, 7, 0.24);
       flex: 0 0 auto;
+    }
+    .school-total-icon i {
+      color: #ffc107 !important;
     }
     .school-total-label,
     .school-trends-footer strong {
@@ -1369,12 +1383,27 @@
     body.fullscreen-dash .school-trends-icon,
     body.fullscreen-dash .school-total-icon,
     body.fullscreen-dash .school-trend-rank {
-      background: #172554;
-      color: #bfdbfe;
+      background: #263544;
+      border-color: rgba(245, 197, 68, 0.35);
+      color: #f5c544;
     }
     body.fullscreen-dash .school-trends-icon i,
     body.fullscreen-dash .school-total-icon i {
-      color: #bfdbfe !important;
+      color: #f5c544 !important;
+    }
+    body.fullscreen-dash .school-trend-badge {
+      background: rgba(245, 197, 68, 0.14);
+      border-color: rgba(245, 197, 68, 0.35);
+      color: #f8dfa2;
+    }
+    body.fullscreen-dash .school-trend-badge i {
+      color: #f5c544 !important;
+    }
+    body.fullscreen-dash .school-trend-spark .pack-trend-spark-bar.is-value {
+      background: #8ba0b5;
+    }
+    body.fullscreen-dash .school-trend-spark .pack-trend-spark-bar.is-peak {
+      background: #f5c544;
     }
     @media print {
       .sidebar,
