@@ -769,11 +769,11 @@
       align-items: center;
       justify-content: center;
       background: #eaf3ff;
-      color: #2f76df;
+      color: #193b59;
       flex: 0 0 auto;
     }
     .school-total-icon i {
-      color: #2f76df !important;
+      color: #193b59 !important;
     }
     .school-total-label,
     .school-trends-footer strong {
@@ -1229,8 +1229,166 @@
     .contrib-grid { display:grid; grid-auto-flow:column; grid-auto-columns:10px; grid-template-rows:repeat(7,10px); gap:3px; width:fit-content; }
     .contrib-cell { width:10px; height:10px; border-radius:2px; background:#e5e7eb; cursor:pointer; transition: box-shadow .12s ease, transform .12s ease; }
     .contrib-cell.contrib-cell-clickable:hover { box-shadow: 0 0 0 1px #0ea5e9 inset; transform: scale(1.08); }
+    .vendor-ranking-card {
+      overflow: hidden;
+    }
+    .vendor-ranking-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .vendor-ranking-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #e2ebf3;
+      color: #193b59;
+      box-shadow: inset 0 0 0 1px #cddaea;
+    }
+    .vendor-ranking-icon i {
+      color: #193b59 !important;
+      font-size: 13px;
+    }
+    .vendor-ranking-note {
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .vendor-ranking-card .form-select {
+      border-color: #dbe4ee;
+      border-radius: 8px;
+      color: #334155;
+      box-shadow: none;
+    }
+    .vendor-ranking-card .form-select:focus {
+      border-color: #193b59;
+      box-shadow: 0 0 0 2px rgba(25, 59, 89, 0.12);
+    }
+    .vendor-ranking-table-wrap {
+      max-height: 280px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+    }
+    #tableVendors {
+      font-variant-numeric: tabular-nums;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    #tableVendors thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: #fff;
+      color: #193b59;
+      border-bottom: 1px solid #dbe4ee;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+    }
+    #tableVendors tbody td {
+      padding-top: 0.46rem;
+      padding-bottom: 0.46rem;
+      vertical-align: middle;
+      border-color: #edf2f7;
+    }
     #tableVendors tbody tr.vendor-click-row { cursor: pointer; }
     #tableVendors tbody tr.vendor-click-row:hover { background: #f8fafc; }
+    .vendor-name-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+    .vendor-rank-pill {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      background: #e2ebf3;
+      color: #193b59;
+      border: 1px solid #cddaea;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .vendor-name-text {
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+    }
+    .vendor-sales-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-width: 46px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      border: 1px solid #dbe4ee;
+      color: #193b59;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .vendor-sales-badge.is-top {
+      background: #e2ebf3;
+      border-color: #cddaea;
+      color: #193b59;
+    }
+    .vendor-sales-badge.is-mid {
+      background: #eef5ff;
+      border-color: #dbeafe;
+      color: #0b3d75;
+    }
+    .vendor-sales-badge i {
+      color: inherit !important;
+      font-size: 10px;
+    }
+    .vendor-money-cell {
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .vendor-money-cell.is-total {
+      color: #193b59;
+      font-weight: 800;
+    }
+    #tableVendors tfoot {
+      position: sticky;
+      bottom: 0;
+      z-index: 4;
+      background: #f8fafd;
+      box-shadow: 0 -1px 0 #dbe4ee;
+    }
+    #tableVendors tfoot td {
+      background: #f8fafd;
+      border-top: 1px solid #dbe4ee;
+      color: #193b59;
+      font-size: 12px;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    .vendor-total-badge {
+      background: #e2ebf3 !important;
+      color: #193b59 !important;
+      border-color: #cddaea !important;
+      font-weight: 900;
+    }
     .contrib-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:10px; flex-wrap:wrap; }
     .contrib-legend .box { width:12px; height:12px; border-radius:2px; background:#e5e7eb; }
     .heatmap-meta { font-size:13px; color:#475569; }
@@ -1781,9 +1939,9 @@
           <canvas id="chartCategorias" height="180"></canvas>
         </div>
 
-        <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-card vendor-ranking-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-fire text-danger"></i> Ranking Vendedores</span>
+            <span class="vendor-ranking-title"><span class="vendor-ranking-icon"><i class="fas fa-fire"></i></span> Ranking Vendedores</span>
             <div class="d-flex align-items-center gap-2">
               <select id="filtroOrdenVendedores" class="form-select form-select-sm" style="max-width: 160px;">
                 <option value="cantidad" selected>Ventas</option>
@@ -1795,8 +1953,8 @@
               </select>
             </div>
           </div>
-          <div class="text-muted small mb-2">Monto vendido sigue el scope filtrado; deuda y pagado se prorratean al filtrar por producto.</div>
-          <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+          <div class="vendor-ranking-note mb-2">Monto vendido sigue el scope filtrado; deuda y pagado se prorratean al filtrar por producto.</div>
+          <div class="table-responsive vendor-ranking-table-wrap">
             <table class="table table-sm table-hover mb-0" id="tableVendors" style="min-width: 100%;">
               <thead class="text-secondary small-header">
                 <tr>
@@ -1808,13 +1966,13 @@
                 </tr>
               </thead>
               <tbody></tbody>
-              <tfoot class="table-light fw-bold small" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2; font-size: 0.78rem;">
+              <tfoot class="fw-bold small">
                 <tr>
                   <td class="text-uppercase text-secondary">Total</td>
-                  <td class="text-end"><span class="badge bg-secondary-subtle text-dark border" id="tableVendorsTotalCount">0</span></td>
-                  <td class="text-end text-muted" id="tableVendorsTotalDeuda">$0</td>
-                  <td class="text-end text-muted" id="tableVendorsTotalPagado">$0</td>
-                  <td class="text-end text-success" id="tableVendorsTotalMonto">$0</td>
+                  <td class="text-end"><span class="badge vendor-total-badge" id="tableVendorsTotalCount">0</span></td>
+                  <td class="text-end" id="tableVendorsTotalDeuda">$0</td>
+                  <td class="text-end" id="tableVendorsTotalPagado">$0</td>
+                  <td class="text-end" id="tableVendorsTotalMonto">$0</td>
                 </tr>
               </tfoot>
             </table>
@@ -3611,28 +3769,28 @@
             totalPagado += montoPagadoUsd;
             totalMonto += montoTotalUsd;
             
-            // Heatmap logic: 0% = blue/white, 100% = red/orange
-            // We'll use HSL for simpler gradient. 
-            // Low (0) -> 200 (Blue). High (100) -> 0 (Red).
             const percent = salesCount / maxSales;
-            const hue = (1 - percent) * 200; // 200 to 0
-            
-            // Or simpler badges approach as requested "cuadro con temperatura"
-            // Let's color the Count cell background
-            // Use alpha to make it readable
-            const bgColor = `hsla(${hue}, 80%, 60%, 0.3)`;
-            const textColor = `hsla(${hue}, 90%, 30%, 1)`;
+            const salesBadgeLevel = percent >= 0.72
+              ? 'is-top'
+              : percent >= 0.28
+                ? 'is-mid'
+                : 'is-low';
 
             tr.innerHTML = `
-                <td><small class="fw-bold text-dark">${d.name}</small></td>
+                <td>
+                    <span class="vendor-name-cell">
+                        <span class="vendor-rank-pill">${index + 1}</span>
+                        <span class="vendor-name-text" title="${escapeHtml(d.name || '')}">${escapeHtml(d.name || 'Sin vendedor')}</span>
+                    </span>
+                </td>
                 <td class="text-end">
-                    <span class="badge" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${textColor};">
+                    <span class="vendor-sales-badge ${salesBadgeLevel}">
                         ${salesCount} <i class="fas fa-fire-alt small"></i>
                     </span>
                 </td>
-                <td class="text-end text-muted small">${formatearMonto(deudaUsd)}</td>
-                <td class="text-end text-muted small">${formatearMonto(montoPagadoUsd)}</td>
-                <td class="text-end text-muted small">${formatearMonto(montoTotalUsd)}</td>
+                <td class="text-end vendor-money-cell">${formatearMonto(deudaUsd)}</td>
+                <td class="text-end vendor-money-cell">${formatearMonto(montoPagadoUsd)}</td>
+                <td class="text-end vendor-money-cell is-total">${formatearMonto(montoTotalUsd)}</td>
             `;
             if (vendorFilter) {
                 tr.classList.add('vendor-click-row');
