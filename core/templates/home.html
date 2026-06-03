@@ -560,111 +560,224 @@
       font-size: 12px;
       font-weight: 700;
     }
+    .school-trends-card {
+      grid-column: span 4;
+      padding: 32px 34px 26px;
+      border-radius: 28px;
+      border-color: #e5eaf2;
+      box-shadow: 0 22px 55px rgba(15, 23, 42, 0.08);
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+    .school-trends-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+    }
+    .school-trends-heading {
+      display: inline-flex;
+      align-items: center;
+      gap: 24px;
+      color: #0f172a;
+      font-size: clamp(28px, 2.2vw, 40px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+    .school-trends-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f3f7ff, #edf4ff);
+      box-shadow: inset 0 0 0 1px rgba(219, 228, 238, 0.72);
+      flex: 0 0 auto;
+    }
+    .school-trends-icon i {
+      color: #2f76df !important;
+      font-size: 34px;
+    }
+    .school-trends-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .school-trends-controls .form-select {
+      width: auto;
+      flex: 0 0 auto;
+      min-width: 172px;
+      min-height: 58px;
+      border-radius: 12px;
+      border-color: #dce4ef;
+      color: #475569;
+      font-size: 18px;
+      font-weight: 500;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.03);
+      padding-left: 20px;
+    }
     .school-trends-list {
-      display: grid;
-      gap: 8px;
-      max-height: 280px;
+      max-height: 696px;
       overflow: auto;
-      padding-right: 2px;
-      margin-top: 8px;
+      border: 1px solid #e1e7f0;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
     }
     .school-trend-row {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
       background: #fff;
-      padding: 10px;
+      padding: 30px 28px 30px 20px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
+      grid-template-columns: 58px 174px minmax(250px, 1fr) minmax(230px, 0.7fr) 220px;
+      gap: 30px;
       align-items: center;
-      min-height: 76px;
+      min-height: 236px;
+      border-bottom: 1px solid #e7ecf3;
       cursor: pointer;
-      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+      transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .school-trend-row:last-child {
+      border-bottom: 0;
     }
     .school-trend-row:hover,
     .school-trend-row.is-selected {
-      border-color: #9dbcf0;
-      box-shadow: 0 8px 20px rgba(52, 102, 170, 0.1);
+      background: #fbfdff;
+      box-shadow: inset 4px 0 0 #3f7bd5, 0 14px 28px rgba(63, 123, 213, 0.08);
       transform: translateY(-1px);
     }
-    .school-trend-main {
-      display: flex;
+    .school-trend-rank {
+      justify-self: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 11px;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      min-width: 0;
+      justify-content: center;
+      background: #eef5ff;
+      color: #2f76df;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
     }
     .school-trend-thumb {
-      width: 48px;
-      height: 48px;
-      border-radius: 8px;
+      width: 148px;
+      height: 148px;
+      border-radius: 13px;
       border: 1px solid #dbe4ee;
       object-fit: cover;
       background: #eef2f7;
-      flex: 0 0 auto;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    }
+    .school-trend-main {
+      min-width: 0;
+      align-self: center;
     }
     .school-trend-name {
       color: #0f172a;
-      font-size: 13px;
-      font-weight: 800;
-      line-height: 1.25;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      font-size: clamp(22px, 1.55vw, 30px);
+      font-weight: 900;
+      line-height: 1.18;
+      letter-spacing: -0.035em;
+      max-width: 390px;
     }
     .school-trend-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      margin-top: 4px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #eaf7ef;
-      color: #1f7a3f;
-      font-size: 11px;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 7px 13px;
+      border-radius: 9px;
+      background: #edf8f1;
+      color: #239052;
+      font-size: 18px;
       font-weight: 800;
       border: 1px solid #cdeed8;
+      line-height: 1;
     }
     .school-trend-side {
-      display: grid;
-      grid-template-columns: 110px 96px;
-      gap: 10px;
-      align-items: center;
+      min-width: 0;
     }
     .school-trend-metric-label {
-      color: #64748b;
-      font-size: 11px;
+      color: #475569;
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 14px;
     }
     .school-trend-metric-value {
-      color: #062044;
-      font-size: 20px;
+      color: #0f172a;
+      font-size: clamp(34px, 2.5vw, 46px);
       font-weight: 900;
-      line-height: 1;
+      line-height: 0.98;
+      letter-spacing: -0.055em;
     }
     .school-trend-meta {
       color: #64748b;
-      font-size: 11px;
-      margin-top: 4px;
-      font-weight: 700;
+      font-size: 18px;
+      margin-top: 20px;
+      font-weight: 500;
     }
     .school-trend-spark {
-      width: 96px;
-      height: 42px;
+      width: 220px;
+      height: 136px;
       display: flex;
       align-items: flex-end;
       justify-content: flex-end;
-      gap: 4px;
-      padding: 5px 7px;
-      border-radius: 9px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      gap: 8px;
+      padding: 24px 18px 18px;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid #dfe6f0;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
       cursor: pointer;
     }
     .school-trend-spark .pack-trend-spark-bar {
-      width: 8px;
+      width: 9px;
+      border-radius: 5px 5px 2px 2px;
+      background: #a9c7f3;
+    }
+    .school-trend-spark .pack-trend-spark-bar.is-value {
+      background: #3f7bd5;
+    }
+    .school-trend-spark .pack-trend-spark-bar.is-peak {
+      background: #2f76df;
     }
     .school-trends-footer {
-      margin-top: 8px;
+      margin-top: 24px;
+      padding: 14px 18px;
+      border-radius: 15px;
+      border: 1px solid #dfe6f0;
+      background: #f6f9fe;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 22px;
+      font-weight: 500;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.03);
+    }
+    .school-total-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #eaf3ff;
+      color: #2f76df;
+      flex: 0 0 auto;
+    }
+    .school-total-label,
+    .school-trends-footer strong {
+      color: #0f172a;
+      font-weight: 900;
+    }
+    .school-total-dot {
+      color: #94a3b8;
     }
     .pack-books-table-wrap {
       max-height: none;
@@ -1228,6 +1341,41 @@
       border-color: #334155;
       color: #94a3b8;
     }
+    body.fullscreen-dash .school-trends-card,
+    body.fullscreen-dash .school-trends-list,
+    body.fullscreen-dash .school-trend-row,
+    body.fullscreen-dash .school-trend-spark,
+    body.fullscreen-dash .school-trends-footer {
+      background: #0f172a;
+      border-color: #334155;
+      color: #e5e7eb;
+    }
+    body.fullscreen-dash .school-trend-row:hover,
+    body.fullscreen-dash .school-trend-row.is-selected {
+      background: #111827;
+      box-shadow: inset 4px 0 0 #60a5fa, 0 14px 28px rgba(0,0,0,0.25);
+    }
+    body.fullscreen-dash .school-trends-heading,
+    body.fullscreen-dash .school-trend-name,
+    body.fullscreen-dash .school-trend-metric-value,
+    body.fullscreen-dash .school-total-label,
+    body.fullscreen-dash .school-trends-footer strong {
+      color: #e5e7eb;
+    }
+    body.fullscreen-dash .school-trend-metric-label,
+    body.fullscreen-dash .school-trend-meta {
+      color: #94a3b8;
+    }
+    body.fullscreen-dash .school-trends-icon,
+    body.fullscreen-dash .school-total-icon,
+    body.fullscreen-dash .school-trend-rank {
+      background: #172554;
+      color: #bfdbfe;
+    }
+    body.fullscreen-dash .school-trends-icon i,
+    body.fullscreen-dash .school-total-icon i {
+      color: #bfdbfe !important;
+    }
     @media print {
       .sidebar,
       .btn,
@@ -1252,6 +1400,45 @@
       .grid { gap: 12px !important; }
       .chart-card { box-shadow: none !important; }
     }
+    @media (max-width: 1300px) {
+      .school-trends-card {
+        grid-column: 1 / -1;
+        padding: 26px;
+      }
+      .school-trend-row {
+        grid-template-columns: 52px 118px minmax(220px, 1fr) minmax(200px, 0.8fr) 170px;
+        gap: 20px;
+        min-height: 180px;
+        padding: 24px 22px;
+      }
+      .school-trend-thumb {
+        width: 112px;
+        height: 112px;
+      }
+      .school-trend-name {
+        font-size: 24px;
+      }
+      .school-trend-metric-label {
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+      .school-trend-metric-value {
+        font-size: 34px;
+      }
+      .school-trend-meta {
+        font-size: 14px;
+        margin-top: 12px;
+      }
+      .school-trend-spark {
+        width: 170px;
+        height: 116px;
+        gap: 6px;
+        padding: 16px 12px 12px;
+      }
+      .school-trends-footer {
+        font-size: 18px;
+      }
+    }
     @media (max-width: 900px) {
       .page > .content { padding: 16px 14px 28px; }
       .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -1269,9 +1456,37 @@
       .pack-trend-sale-books,
       .pack-trend-book-qty,
       .pack-trend-book-amount { text-align: left; }
-      .school-trend-row,
-      .school-trend-side { grid-template-columns: 1fr; }
-      .school-trend-spark { justify-content: flex-start; width: 100%; }
+      .school-trends-card { grid-column: 1 / -1; padding: 20px; border-radius: 20px; }
+      .school-trends-head { align-items: flex-start; margin-bottom: 16px; }
+      .school-trends-heading { gap: 12px; font-size: 26px; }
+      .school-trends-icon { width: 54px; height: 54px; border-radius: 14px; }
+      .school-trends-icon i { font-size: 24px; }
+      .school-trends-controls { width: 100%; gap: 8px; }
+      .school-trends-controls .form-select { flex: 1 1 140px; min-height: 44px; font-size: 14px; }
+      .school-trend-row {
+        grid-template-columns: 42px 74px minmax(0, 1fr);
+        gap: 12px;
+        padding: 16px;
+        min-height: 0;
+      }
+      .school-trend-rank { width: 38px; height: 38px; font-size: 20px; }
+      .school-trend-thumb { width: 74px; height: 74px; border-radius: 10px; }
+      .school-trend-name { font-size: 18px; max-width: none; }
+      .school-trend-badge { margin-top: 8px; font-size: 12px; padding: 5px 8px; }
+      .school-trend-side {
+        grid-column: 2 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 132px;
+        gap: 12px;
+        align-items: center;
+      }
+      .school-trend-metric-label { font-size: 12px; margin-bottom: 5px; }
+      .school-trend-metric-value { font-size: 24px; }
+      .school-trend-meta { font-size: 12px; margin-top: 6px; }
+      .school-trend-spark { justify-content: flex-start; width: 132px; height: 100px; padding: 8px; gap: 4px; }
+      .school-trend-spark .pack-trend-spark-bar { width: 7px; }
+      .school-trends-footer { font-size: 15px; gap: 8px; }
+      .school-total-icon { width: 36px; height: 36px; }
     }
   </style>
 </head>
@@ -1633,15 +1848,15 @@
           </div>
         </div>
 
-        <div class="chart-card" style="grid-column: span 2;">
-          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-graduation-cap text-primary"></i> Ventas de Escuela</span>
-            <div class="d-flex align-items-center gap-2">
-              <select id="filtroOrdenEscuela" class="form-select form-select-sm" style="max-width: 160px;">
+        <div class="chart-card school-trends-card">
+          <div class="section-title school-trends-head">
+            <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
+            <div class="school-trends-controls">
+              <select id="filtroOrdenEscuela" class="form-select">
                 <option value="monto" selected>Monto</option>
                 <option value="cantidad">Cantidad</option>
               </select>
-              <select id="filtroOrdenEscuelaDir" class="form-select form-select-sm" style="max-width: 180px;">
+              <select id="filtroOrdenEscuelaDir" class="form-select">
                 <option value="desc" selected>Descendente</option>
                 <option value="asc">Ascendente</option>
               </select>
@@ -1650,8 +1865,12 @@
           <div class="school-trends-list" id="schoolTrendsList">
             <div class="pack-trend-empty">Sin datos de escuela.</div>
           </div>
-          <div class="pack-trends-footer school-trends-footer">
-            Total: <span id="tableSchoolTotalQty">0</span> unidades - <span id="tableSchoolTotalAmount">$0</span> USD
+          <div class="school-trends-footer">
+            <span class="school-total-icon"><i class="fas fa-chart-simple"></i></span>
+            <span class="school-total-label">Total:</span>
+            <span><span id="tableSchoolTotalQty">0</span> unidades</span>
+            <span class="school-total-dot">·</span>
+            <strong><span id="tableSchoolTotalAmount">$0</span> USD</strong>
           </div>
         </div>
 
@@ -3406,7 +3625,7 @@
         let totalPagado = 0;
         let totalMonto = 0;
 
-        data.forEach(d => {
+        data.forEach((d, index) => {
             const tr = document.createElement('tr');
             const vendorFilter = String(d.user_id || d.userId || d.username || '').trim();
             const salesCount = Number(d.count || 0);
@@ -3495,18 +3714,17 @@
             const sparkHtml = daySeries.map((value, index) => {
               const dayKey = dayKeys[index] || '';
               const hasValue = peak > 0 && value > 0;
-              const height = hasValue ? Math.max(10, Math.min(34, Math.round(8 + (value / peak) * 26))) : 7;
+              const height = hasValue ? Math.max(18, Math.min(82, Math.round(16 + (value / peak) * 66))) : 8;
               const titleValue = useMonto ? formatearMonto(value) : `${formatearTickCantidad(value)} unidades`;
               return `<span class="pack-trend-spark-bar ${hasValue ? 'is-value' : 'is-empty'} ${value === peak && hasValue ? 'is-peak' : ''}" style="height:${height}px" title="${escapeHtml(dayKey)} - ${escapeHtml(titleValue)}"></span>`;
             }).join('');
 
             rowEl.innerHTML = `
+              <div class="school-trend-rank">${index + 1}</div>
+              <img class="school-trend-thumb" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(d.name)}">
               <div class="school-trend-main">
-                <img class="school-trend-thumb" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(d.name)}">
-                <div>
-                  <div class="school-trend-name">${escapeHtml(d.name)}</div>
-                  <span class="school-trend-badge"><i class="fas fa-circle-check"></i> Escuela</span>
-                </div>
+                <div class="school-trend-name">${escapeHtml(d.name)}</div>
+                <span class="school-trend-badge"><i class="fas fa-building-columns"></i> Escuela</span>
               </div>
               <div class="school-trend-side">
                 <div>
