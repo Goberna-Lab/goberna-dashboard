@@ -5,4 +5,3 @@ python-dotenv>=1.0.0
 gunicorn
 whitenoise # Para servir estáticos si fuera necesario
 openpyxl
-Pillow
