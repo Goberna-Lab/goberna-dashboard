@@ -102,7 +102,10 @@ USE_TZ = True
 # STATIC FILES
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Sin Manifest: en Vercel los estáticos los sirve el routing de vercel.json (no Django)
+# y el build no corre collectstatic. El ManifestStorage con DEBUG=False lanza
+# "Missing staticfiles manifest" y tumba cualquier página que use {% static %}.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # MEDIA FILES (Importante: Vercel no guarda archivos, leer desde S3 o URL externa)
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/') 
