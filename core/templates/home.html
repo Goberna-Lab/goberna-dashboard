@@ -1719,116 +1719,6 @@
           </div>
         </div>
 
-        {% if show_meta_kpis and meta_kpis %}
-        <div class="chart-card meta-pauta-card" id="metaPautaCard" style="grid-column: 1 / -1;">
-          <style>
-            /* Pauta Meta — variante sobre .chart-card (estilos del bloque) */
-            .meta-pauta-card { padding: 16px 18px; }
-            .meta-pauta-card .meta-pauta-icon { color: #2563EB; }
-            .meta-pauta-link { font-size: 13px; font-weight: 600; color: #2563EB; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
-            .meta-pauta-link:hover { color: #1D4ED8; text-decoration: underline; }
-            .meta-pauta-link:focus-visible { outline: none; color: #1D4ED8; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25); }
-            .meta-kpi { flex: 1 1 0; min-width: 170px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
-            .meta-kpi .stat-label { font-size: 13px; }
-            /* Scoped (0,2,0) para ganarle a ".table > :not(caption) > * > *" (0,1,1) de Bootstrap en los <td> */
-            .meta-pauta-card .delta-pos { color: #1F7A3F; }
-            .meta-pauta-card .delta-neg { color: #991B1B; }
-            .meta-roas-prev { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; line-height: 1; color: #193b59; background: #e2ebf3; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
-            .meta-pauta-empty { text-align: center; color: #64748b; font-size: 13px; padding: 12px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; }
-            .meta-pauta-foot { font-size: 12px; color: #64748b; margin-top: 8px; }
-            .meta-foot-warn { color: #92400E; font-weight: 600; }
-            body.fullscreen-dash .meta-kpi { background: #0b1220; border-color: #1f2937; }
-            body.fullscreen-dash .delta-pos { color: #4ade80; }
-            body.fullscreen-dash .delta-neg { color: #f87171; }
-            body.fullscreen-dash .meta-roas-prev { background: #1f2937; color: #e5e7eb; }
-            body.fullscreen-dash .meta-pauta-empty { background: #0b1220; border-color: #1f2937; color: #9ca3af; }
-            body.fullscreen-dash .meta-pauta-foot { color: #9ca3af; }
-            body.fullscreen-dash .meta-foot-warn { color: #fbbf24; }
-            body.fullscreen-dash .meta-pauta-link { color: #93c5fd; }
-          </style>
-          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
-            <span class="d-flex align-items-center gap-2"><i class="fas fa-rectangle-ad meta-pauta-icon"></i> Pauta Meta — mes actual</span>
-            <a href="/ads/" class="meta-pauta-link">Ver detalle en Pauta <i class="fas fa-arrow-right"></i></a>
-          </div>
-          <div class="d-flex flex-wrap gap-3 mb-2">
-            <div class="meta-kpi">
-              <div>
-                <div class="stat-value" data-meta-amount="{{ meta_kpis.inversion_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.inversion_usd|floatformat:0 }}</div>
-                <div class="stat-label">Inversión publicitaria</div>
-              </div>
-              <span class="icon-badge"><i class="fas fa-coins"></i></span>
-            </div>
-            <div class="meta-kpi">
-              <div>
-                <div class="stat-value" data-meta-amount="{{ meta_kpis.ventas_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.ventas_usd|floatformat:0 }}</div>
-                <div class="stat-label">Ventas con pauta</div>
-              </div>
-              <span class="icon-badge success"><i class="fas fa-cart-shopping"></i></span>
-            </div>
-            <div class="meta-kpi">
-              <div>
-                <div class="stat-value {% if meta_kpis.utilidad_usd >= 0 %}delta-pos{% else %}delta-neg{% endif %}" data-meta-amount="{{ meta_kpis.utilidad_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.utilidad_usd|floatformat:0 }}</div>
-                <div class="stat-label">Utilidad sobre pauta</div>
-              </div>
-              <span class="icon-badge {% if meta_kpis.utilidad_usd >= 0 %}success{% else %}warning{% endif %}"><i class="fas fa-chart-line"></i></span>
-            </div>
-            <div class="meta-kpi">
-              <div>
-                <div class="stat-value d-flex align-items-center gap-2 flex-wrap">
-                  <span>{% if meta_kpis.roas %}{{ meta_kpis.roas|floatformat:1 }}x{% else %}—{% endif %}</span>
-                  {% if meta_kpis_prev and meta_kpis_prev.roas %}<span class="meta-roas-prev" title="ROAS del mes anterior">mes anterior {{ meta_kpis_prev.roas|floatformat:1 }}x</span>{% endif %}
-                </div>
-                <div class="stat-label">ROAS</div>
-                {% if meta_kpis.margen_pct is not None %}<div class="stat-label">Margen {{ meta_kpis.margen_pct|floatformat:0 }}%</div>{% endif %}
-              </div>
-              <span class="icon-badge"><i class="fas fa-arrows-rotate"></i></span>
-            </div>
-          </div>
-          {% if meta_kpis.por_negocio %}
-          <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-              <thead class="text-secondary small-header">
-                <tr>
-                  <th>Unidad de negocio</th>
-                  <th class="text-end">Inversión</th>
-                  <th class="text-end">Ventas</th>
-                  <th class="text-end">Utilidad</th>
-                  <th class="text-end">Margen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for n in meta_kpis.por_negocio %}
-                <tr>
-                  <td>{{ n.negocio }}</td>
-                  <td class="text-end" data-meta-amount="{{ n.inversion|stringformat:'.2f' }}">$ {{ n.inversion|floatformat:2 }}</td>
-                  <td class="text-end" data-meta-amount="{{ n.ventas|stringformat:'.2f' }}">$ {{ n.ventas|floatformat:2 }}</td>
-                  <td class="text-end fw-semibold {% if n.utilidad >= 0 %}delta-pos{% else %}delta-neg{% endif %}" data-meta-amount="{{ n.utilidad|stringformat:'.2f' }}">$ {{ n.utilidad|floatformat:2 }}</td>
-                  <td class="text-end">{% if n.margen is not None %}{{ n.margen|floatformat:0 }}%{% else %}—{% endif %}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-          <div class="meta-pauta-empty">Sin desglose por unidad de negocio este mes.</div>
-          {% endif %}
-          <div class="meta-pauta-foot">
-            Fuente: Meta Ads · incluye ventas pagadas y pendientes del medio Pagado{% if meta_kpis.rows_sin_usd %} · <span class="meta-foot-warn"><i class="fas fa-triangle-exclamation"></i> {{ meta_kpis.rows_sin_usd }} registro{{ meta_kpis.rows_sin_usd|pluralize }} de inversión sin conversión a USD, no incluido{{ meta_kpis.rows_sin_usd|pluralize }}</span>{% endif %}
-          </div>
-          <script>
-            (function () {
-              var fmt2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              var fmt0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-              document.querySelectorAll('#metaPautaCard [data-meta-amount]').forEach(function (el) {
-                var v = parseFloat(el.getAttribute('data-meta-amount'));
-                if (!isFinite(v)) return;
-                var f = el.getAttribute('data-meta-decimals') === '0' ? fmt0 : fmt2;
-                el.textContent = '$ ' + f.format(v);
-              });
-            })();
-          </script>
-        </div>
-        {% endif %}
 
         <div class="chart-card" style="grid-column: 1 / -1; padding: 14px 16px;">
           <div class="status-pills">
@@ -2326,6 +2216,117 @@
             <div class="stat-label mt-2" id="vendorLineMeta"></div>
           </div>
         </div>
+
+        {% if show_meta_kpis and meta_kpis %}
+        <div class="chart-card meta-pauta-card" id="metaPautaCard" style="grid-column: 1 / -1;">
+          <style>
+            /* Pauta Meta — variante sobre .chart-card (estilos del bloque) */
+            .meta-pauta-card { padding: 16px 18px; }
+            .meta-pauta-card .meta-pauta-icon { color: #2563EB; }
+            .meta-pauta-link { font-size: 13px; font-weight: 600; color: #2563EB; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
+            .meta-pauta-link:hover { color: #1D4ED8; text-decoration: underline; }
+            .meta-pauta-link:focus-visible { outline: none; color: #1D4ED8; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25); }
+            .meta-kpi { flex: 1 1 0; min-width: 170px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
+            .meta-kpi .stat-label { font-size: 13px; }
+            /* Scoped (0,2,0) para ganarle a ".table > :not(caption) > * > *" (0,1,1) de Bootstrap en los <td> */
+            .meta-pauta-card .delta-pos { color: #1F7A3F; }
+            .meta-pauta-card .delta-neg { color: #991B1B; }
+            .meta-roas-prev { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; line-height: 1; color: #193b59; background: #e2ebf3; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+            .meta-pauta-empty { text-align: center; color: #64748b; font-size: 13px; padding: 12px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; }
+            .meta-pauta-foot { font-size: 12px; color: #64748b; margin-top: 8px; }
+            .meta-foot-warn { color: #92400E; font-weight: 600; }
+            body.fullscreen-dash .meta-kpi { background: #0b1220; border-color: #1f2937; }
+            body.fullscreen-dash .delta-pos { color: #4ade80; }
+            body.fullscreen-dash .delta-neg { color: #f87171; }
+            body.fullscreen-dash .meta-roas-prev { background: #1f2937; color: #e5e7eb; }
+            body.fullscreen-dash .meta-pauta-empty { background: #0b1220; border-color: #1f2937; color: #9ca3af; }
+            body.fullscreen-dash .meta-pauta-foot { color: #9ca3af; }
+            body.fullscreen-dash .meta-foot-warn { color: #fbbf24; }
+            body.fullscreen-dash .meta-pauta-link { color: #93c5fd; }
+          </style>
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-rectangle-ad meta-pauta-icon"></i> Pauta Meta — mes actual</span>
+            <a href="/ads/" class="meta-pauta-link">Ver detalle en Pauta <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="d-flex flex-wrap gap-3 mb-2">
+            <div class="meta-kpi">
+              <div>
+                <div class="stat-value" data-meta-amount="{{ meta_kpis.inversion_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.inversion_usd|floatformat:0 }}</div>
+                <div class="stat-label">Inversión publicitaria</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-coins"></i></span>
+            </div>
+            <div class="meta-kpi">
+              <div>
+                <div class="stat-value" data-meta-amount="{{ meta_kpis.ventas_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.ventas_usd|floatformat:0 }}</div>
+                <div class="stat-label">Ventas con pauta</div>
+              </div>
+              <span class="icon-badge success"><i class="fas fa-cart-shopping"></i></span>
+            </div>
+            <div class="meta-kpi">
+              <div>
+                <div class="stat-value {% if meta_kpis.utilidad_usd >= 0 %}delta-pos{% else %}delta-neg{% endif %}" data-meta-amount="{{ meta_kpis.utilidad_usd|stringformat:'.2f' }}" data-meta-decimals="0">$ {{ meta_kpis.utilidad_usd|floatformat:0 }}</div>
+                <div class="stat-label">Utilidad sobre pauta</div>
+              </div>
+              <span class="icon-badge {% if meta_kpis.utilidad_usd >= 0 %}success{% else %}warning{% endif %}"><i class="fas fa-chart-line"></i></span>
+            </div>
+            <div class="meta-kpi">
+              <div>
+                <div class="stat-value d-flex align-items-center gap-2 flex-wrap">
+                  <span>{% if meta_kpis.roas %}{{ meta_kpis.roas|floatformat:1 }}x{% else %}—{% endif %}</span>
+                  {% if meta_kpis_prev and meta_kpis_prev.roas %}<span class="meta-roas-prev" title="ROAS del mes anterior">mes anterior {{ meta_kpis_prev.roas|floatformat:1 }}x</span>{% endif %}
+                </div>
+                <div class="stat-label">ROAS</div>
+                {% if meta_kpis.margen_pct is not None %}<div class="stat-label">Margen {{ meta_kpis.margen_pct|floatformat:0 }}%</div>{% endif %}
+              </div>
+              <span class="icon-badge"><i class="fas fa-arrows-rotate"></i></span>
+            </div>
+          </div>
+          {% if meta_kpis.por_negocio %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Unidad de negocio</th>
+                  <th class="text-end">Inversión</th>
+                  <th class="text-end">Ventas</th>
+                  <th class="text-end">Utilidad</th>
+                  <th class="text-end">Margen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for n in meta_kpis.por_negocio %}
+                <tr>
+                  <td>{{ n.negocio }}</td>
+                  <td class="text-end" data-meta-amount="{{ n.inversion|stringformat:'.2f' }}">$ {{ n.inversion|floatformat:2 }}</td>
+                  <td class="text-end" data-meta-amount="{{ n.ventas|stringformat:'.2f' }}">$ {{ n.ventas|floatformat:2 }}</td>
+                  <td class="text-end fw-semibold {% if n.utilidad >= 0 %}delta-pos{% else %}delta-neg{% endif %}" data-meta-amount="{{ n.utilidad|stringformat:'.2f' }}">$ {{ n.utilidad|floatformat:2 }}</td>
+                  <td class="text-end">{% if n.margen is not None %}{{ n.margen|floatformat:0 }}%{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="meta-pauta-empty">Sin desglose por unidad de negocio este mes.</div>
+          {% endif %}
+          <div class="meta-pauta-foot">
+            Fuente: Meta Ads · incluye ventas pagadas y pendientes del medio Pagado{% if meta_kpis.rows_sin_usd %} · <span class="meta-foot-warn"><i class="fas fa-triangle-exclamation"></i> {{ meta_kpis.rows_sin_usd }} registro{{ meta_kpis.rows_sin_usd|pluralize }} de inversión sin conversión a USD, no incluido{{ meta_kpis.rows_sin_usd|pluralize }}</span>{% endif %}
+          </div>
+          <script>
+            (function () {
+              var fmt2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              var fmt0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+              document.querySelectorAll('#metaPautaCard [data-meta-amount]').forEach(function (el) {
+                var v = parseFloat(el.getAttribute('data-meta-amount'));
+                if (!isFinite(v)) return;
+                var f = el.getAttribute('data-meta-decimals') === '0' ? fmt0 : fmt2;
+                el.textContent = '$ ' + f.format(v);
+              });
+            })();
+          </script>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
