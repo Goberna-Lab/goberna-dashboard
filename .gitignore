@@ -1,0 +1,22 @@
+# Secrets / entorno local
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# SDD / tooling
+.atl/
+
+# OS
+.DS_Store
+.vercel
+.env*.local
+
+# Playwright
+.playwright-mcp/

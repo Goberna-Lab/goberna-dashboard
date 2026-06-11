@@ -3,6 +3,13 @@ import sys
 from pathlib import Path
 import pymysql
 
+# Load .env file for local development (no-op if not present or dotenv not installed)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
 # Usar PyMySQL como driver para compatibilidad Serverless
 pymysql.install_as_MySQLdb()
 
