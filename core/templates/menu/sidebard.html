@@ -444,6 +444,16 @@
 
       {% endif %}
 
+      {% show_ads_link as can_see_ads %}
+      {% if can_see_ads %}
+      <li class="nav-item {% if '/ads' in request.path %}active-indicator{% endif %}">
+        <a class="nav-link {% if '/ads' in request.path %}active{% endif %}" href="/ads/">
+          <i class="fas fa-bullhorn"></i>
+          <span>Ads / Pauta</span>
+        </a>
+      </li>
+      {% endif %}
+
       <li class="nav-item">
         <a class="nav-link" href="{{ MAIN_APP_URL }}/">
           <i class="fas fa-user"></i>
