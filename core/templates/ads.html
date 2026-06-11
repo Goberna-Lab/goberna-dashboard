@@ -1,0 +1,1783 @@
+{% load group_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pauta — Meta Ads · Goberna</title>
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- FontAwesome 6.5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tabulator 6.4 (Bootstrap 5 theme) -->
+  <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4.0/dist/css/tabulator_bootstrap5.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4.0/dist/js/tabulator.min.js"></script>
+
+  <!-- SheetJS (XLSX client-side export — Tabulator picks up window.XLSX) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    /* ============================================================
+       GOBERNA DESIGN TOKENS
+    ============================================================ */
+    :root {
+      --navy:     #0E2A52;
+      --blue:     #2563EB;
+      --blue-hv:  #1D4ED8;
+      --gold:     #FFC800;
+      --gold-ink: #CAA106;
+      --app-bg:   #F5F7FB;
+      --card-bg:  #FFFFFF;
+      --border:   #E6EAF2;
+      --ink:      #16213A;
+      --muted:    #5B6B86;
+      --success:  #16A34A;
+    }
+
+    body {
+      background: var(--app-bg);
+      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+    }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    .page-wrapper {
+      margin-left: 80px; /* same as sidebar collapsed width */
+      padding: 28px 24px 40px;
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       PAGE HEADER
+    ============================================================ */
+    .page-header {
+      margin-bottom: 20px;
+    }
+
+    .page-header h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+
+    .page-header h1 i { color: var(--blue); }
+
+    .page-header .sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 2px;
+      margin-bottom: 0;
+    }
+
+    /* ============================================================
+       CARD — canonical Goberna card shell (shared spec)
+    ============================================================ */
+    .gob-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 2px 10px rgba(14, 42, 82, 0.07);
+      overflow: hidden;
+      margin-bottom: 20px;
+      min-width: 0;
+    }
+
+    /* ============================================================
+       TOOLBAR
+    ============================================================ */
+    .grid-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-box {
+      position: relative;
+      flex: 0 1 240px;
+      min-width: 170px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    .search-box input {
+      width: 100%;
+      font-size: 0.8rem;
+      padding: 7px 10px 7px 30px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--app-bg);
+      color: var(--ink);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--blue);
+      background: #fff;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    /* ============================================================
+       CANONICAL BUTTON SYSTEM (shared Goberna spec)
+    ============================================================ */
+    .btn-gob-primary{background:var(--blue);border:1px solid var(--blue);color:#fff;font-size:.82rem;font-weight:700;padding:8px 16px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background-color .15s ease;}
+    .btn-gob-primary:hover{background:var(--blue-hv);border-color:var(--blue-hv);color:#fff;}
+    .btn-gob-primary:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-primary.btn-sm{font-size:.78rem;padding:5px 14px;} /* table-row actions like Vincular */
+
+    .btn-gob-ghost{background:#fff;border:1px solid var(--border);color:var(--muted);font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+    .btn-gob-ghost:hover{color:var(--ink);background:var(--app-bg);}
+    .btn-gob-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-ghost.is-active,
+    .btn-gob-ghost.active-density{color:var(--blue);border-color:var(--blue);background:#EFF4FE;} /* .active-density = legacy hook the inline script toggles */
+
+    .btn-gob-alert{background:#FFFBEB;border:1.5px solid #F59E0B;color:#92400E;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+    .btn-gob-alert:hover{background:#FEF3C7;border-color:#D97706;color:#78350F;}
+    .btn-gob-alert:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+
+    /* ============================================================
+       CANONICAL BADGE / PILL SYSTEM (shared Goberna spec)
+       freshness levels green|amber|red (server) alias the semantic variants
+    ============================================================ */
+    .pill,
+    .status-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:.74rem;font-weight:700;border:1px solid transparent;white-space:nowrap;}
+    .pill .dot,
+    .status-badge .dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+    .pill-success,.pill-green{background:#E8F6EC;color:#1F7A3F;border-color:#CDEED8;} .pill-success .dot,.pill-green .dot{background:#16A34A;}
+    .pill-warning,.pill-amber{background:#FFFBEB;color:#92400E;border-color:#FCD34D;} .pill-warning .dot,.pill-amber .dot{background:#F59E0B;}
+    .pill-danger,.pill-red{background:#FEF2F2;color:#991B1B;border-color:#FECACA;} .pill-danger .dot,.pill-red .dot{background:#DC2626;}
+    .pill-neutral{background:var(--app-bg);color:var(--muted);border-color:var(--border);}
+    a.pill{text-decoration:none;} /* pills rendered as links (e.g. "Sin producto +") */
+
+    .badge-gob-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;font-size:.68rem;font-weight:800;border-radius:999px;background:#F59E0B;color:#fff;}
+    .badge-on-navy{background:rgba(255,255,255,.2);color:#fff;font-weight:600;font-size:.78rem;border-radius:999px;padding:2px 8px;} /* shared set: count chips on navy card headers */
+
+    .toolbar-spacer { flex: 1 1 auto; }
+
+    .columns-menu {
+      max-height: 340px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      min-width: 240px;
+    }
+
+    .columns-menu .dropdown-item {
+      cursor: pointer;
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+
+    /* ============================================================
+       TABULATOR — GOBERNA THEME
+    ============================================================ */
+    #adsGrid .tabulator,
+    #adsGrid.tabulator {
+      border: none;
+      background: transparent;
+      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Navy header, white bold titles */
+    #adsGrid .tabulator-header {
+      background: var(--navy);
+      border-bottom: none;
+    }
+
+    #adsGrid .tabulator-header .tabulator-col {
+      background: var(--navy);
+      border-right: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    #adsGrid .tabulator-header .tabulator-col.tabulator-sortable:hover {
+      background: #16365F;
+    }
+
+    #adsGrid .tabulator-header .tabulator-col .tabulator-col-title {
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.72rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* Sort arrows: white idle, gold when active (functional accent) */
+    #adsGrid .tabulator-header .tabulator-col .tabulator-col-sorter {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    #adsGrid .tabulator-header .tabulator-col .tabulator-col-sorter .tabulator-arrow {
+      border-bottom-color: rgba(255, 255, 255, 0.55);
+    }
+
+    #adsGrid .tabulator-header .tabulator-col[aria-sort="ascending"] .tabulator-col-sorter .tabulator-arrow {
+      border-bottom-color: var(--gold);
+    }
+
+    #adsGrid .tabulator-header .tabulator-col[aria-sort="descending"] .tabulator-col-sorter .tabulator-arrow {
+      border-top-color: var(--gold);
+      border-bottom-color: transparent;
+    }
+
+    /* ============================================================
+       EXCEL-STYLE HEADER FILTERS (funnel icon + anchored popup)
+    ============================================================ */
+    /* Single compact header row — no static filter row */
+    #adsGrid .tabulator-header .tabulator-col .tabulator-col-content {
+      padding: 8px 8px;
+    }
+
+    .ads-hf-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .ads-hf-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ads-hf-btn {
+      flex: 0 0 auto;
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 4px;
+      font-size: 0.6rem;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.45);
+      cursor: pointer;
+    }
+
+    .ads-hf-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .ads-hf-btn.ads-hf-active {
+      color: var(--blue);
+      background: #fff;
+    }
+
+    .ads-hf-count {
+      font-size: 0.56rem;
+      font-weight: 800;
+    }
+
+    /* Compact filter popup (minimalist — no big card) */
+    .ads-filter-pop {
+      position: fixed;
+      z-index: 1080;
+      min-width: 190px;
+      max-width: 250px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(14, 42, 82, 0.18);
+      padding: 8px;
+      font-size: 13px;
+    }
+
+    .ads-fp-search {
+      width: 100%;
+      font-size: 12px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .ads-fp-search:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .ads-fp-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .ads-fp-actions button {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--blue);
+      cursor: pointer;
+    }
+
+    .ads-fp-actions button:hover { color: var(--blue-hv); }
+
+    .ads-fp-list {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .ads-fp-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 3px 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 0;
+    }
+
+    .ads-fp-item:hover { background: var(--app-bg); }
+
+    .ads-fp-item input { margin: 0; flex: 0 0 auto; }
+
+    .ads-fp-item .ads-fp-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    /* Rows: dense, clean, no zebra */
+    #adsGrid .tabulator-row {
+      border-bottom: 1px solid var(--border);
+      background-color: #fff;
+      min-height: 34px;
+    }
+
+    /* Zebra sutil: ayuda a seguir la fila a lo ancho de las 21 columnas */
+    #adsGrid .tabulator-row.tabulator-row-even {
+      background-color: #FAFBFD;
+    }
+
+    #adsGrid .tabulator-row.tabulator-selectable:hover {
+      background-color: #F0F4FB;
+    }
+
+    #adsGrid .tabulator-row .tabulator-cell {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      border-right: 1px solid #F1F4F9;
+    }
+
+    /* Compact density */
+    #adsGrid.density-compact .tabulator-row { min-height: 27px; }
+    #adsGrid.density-compact .tabulator-row .tabulator-cell {
+      padding: 4px 8px;
+      font-size: 0.74rem;
+    }
+
+    /* Frozen columns: opaque bg + visible divider */
+    #adsGrid .tabulator-row .tabulator-cell.tabulator-frozen {
+      background-color: inherit;
+      border-right: 1px solid var(--border);
+    }
+
+    #adsGrid .tabulator-row .tabulator-cell.tabulator-frozen.tabulator-frozen-left {
+      background-color: #fff;
+    }
+
+    #adsGrid .tabulator-row.tabulator-selectable:hover .tabulator-cell.tabulator-frozen-left {
+      background-color: #F0F4FB;
+    }
+
+    /* Bottom calc row */
+    #adsGrid .tabulator-footer {
+      background: #F0F4FB;
+      border-top: 2px solid var(--navy);
+      padding: 0;
+    }
+
+    #adsGrid .tabulator-footer .tabulator-calcs-holder {
+      background: #F0F4FB !important;
+      border-top: none !important;
+      border-bottom: none !important;
+    }
+
+    #adsGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row {
+      background: #F0F4FB !important;
+    }
+
+    #adsGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell {
+      font-weight: 700;
+      font-size: 0.74rem;
+      color: var(--navy);
+    }
+
+    /* Placeholder (filtered-to-empty) */
+    #adsGrid .tabulator-placeholder .tabulator-placeholder-contents {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* ============================================================
+       CHIPS & BADGES
+    ============================================================ */
+    .chip {
+      display: block;
+      width: 100%;
+      text-align: center;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* .status-badge (estado de Entrega) shares the .pill base above —
+       only the per-state colors are set inline by the formatter */
+
+    /* Producto: one quiet neutral chip — color is reserved for semantic
+       chips (Categoría, Entrega). Full name available via tooltip. */
+    .chip-product {
+      background: #EEF1F5;
+      color: #475569;
+      border: 1px solid #E2E8F0;
+    }
+
+    .cell-null { color: var(--muted); }
+
+    /* ============================================================
+       EMPTY / LOADING STATES
+    ============================================================ */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-state i {
+      font-size: 2.5rem;
+      color: var(--border);
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
+      margin: 0;
+    }
+
+    .empty-state code {
+      background: var(--app-bg);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.80rem;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* ============================================================
+       FOCUS-VISIBLE (AA) — controls that live on the navy header or
+       light strips; canonical buttons carry their own ring above
+    ============================================================ */
+    .ads-hf-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+    }
+
+    .ads-fp-actions button:focus-visible,
+    #activeFiltersStrip .afs-clear:focus-visible,
+    #activeFiltersStrip .afs-dismiss:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       ACTIVE FILTERS STRIP (item B7)
+    ============================================================ */
+    #activeFiltersStrip {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 18px;
+      background: #EFF4FE;
+      border-bottom: 1px solid #CDDCF2;
+      font-size: 0.78rem;
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    #activeFiltersStrip .afs-label { color: var(--muted); font-weight: 600; }
+    #activeFiltersStrip .afs-cols  { color: var(--navy); }
+    #activeFiltersStrip .afs-clear {
+      color: var(--blue);
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      margin-left: 4px;
+    }
+    #activeFiltersStrip .afs-clear:hover { color: var(--blue-hv); }
+    #activeFiltersStrip .afs-dismiss {
+      margin-left: auto;
+      background: none;
+      border: none;
+      font-size: 0.8rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    #activeFiltersStrip .afs-dismiss:hover { color: var(--ink); }
+  </style>
+</head>
+
+<body>
+
+{% include 'menu/sidebard.html' %}
+
+<div class="page-wrapper">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <h1><i class="fas fa-bullhorn me-2"></i>Pauta — Meta Ads</h1>
+      {% if freshness_label %}
+      <span class="pill pill-{{ freshness_level }}"
+            title="Última sincronización: {{ freshness_title }}">
+        <span class="dot"></span>{{ freshness_label }}
+      </span>
+      {% endif %}
+    </div>
+    <p class="sub">Campañas publicitarias de Meta · datos sincronizados desde Meta Marketing API</p>
+  </div>
+
+  <!-- ------------------------------------------------------------------ -->
+  {% if total == 0 %}
+  <!-- Empty state — no data loaded yet -->
+  <div class="gob-card">
+    <div class="empty-state">
+      <i class="fas fa-database"></i>
+      <p>No hay datos de Pauta cargados.</p>
+      <p class="mt-2">Ejecutá el comando para cargar el export de Meta:</p>
+      <p class="mt-1"><code>python manage.py import_meta_ads "/ruta/al/ANÁLISIS PAUTAS.xlsx" --replace</code></p>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Main data card -->
+  <div class="gob-card">
+
+    <!-- Toolbar: grid controls left · navigation/actions right ·
+         ONE primary CTA on this screen: "+ Crear campaña" -->
+    <div class="grid-toolbar">
+      <div class="search-box">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="search" id="globalSearch" placeholder="Buscar campaña, producto o ID..." autocomplete="off">
+      </div>
+
+      <div class="dropdown">
+        <button class="btn-gob-ghost dropdown-toggle" type="button" id="btnColumns"
+                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+          <i class="fas fa-table-columns me-1"></i>Columnas
+        </button>
+        <ul class="dropdown-menu columns-menu" id="columnsMenu" aria-labelledby="btnColumns"></ul>
+      </div>
+
+      <div class="btn-group" role="group" aria-label="Densidad">
+        <button type="button" class="btn-gob-ghost" id="btnDensityCompact" title="Filas compactas">
+          <i class="fas fa-bars"></i>
+        </button>
+        <button type="button" class="btn-gob-ghost" id="btnDensityComfort" title="Filas cómodas">
+          <i class="fas fa-bars-staggered"></i>
+        </button>
+      </div>
+
+      <button type="button" class="btn-gob-ghost" id="btnClearFilters">
+        <i class="fas fa-filter-circle-xmark me-1"></i>Limpiar filtros
+      </button>
+
+      <span class="pill pill-neutral" id="rowCountBadge">Cargando…</span>
+
+      <span class="toolbar-spacer"></span>
+
+      <!-- Cuentas Meta link -->
+      <a href="/ads/cuentas/" class="btn-gob-ghost" title="Ver cuentas Meta vinculadas">
+        <i class="fas fa-building-columns me-1"></i>Cuentas
+      </a>
+
+      <!-- Vincular productos -->
+      {% if unlinked_count %}
+      <a href="/ads/vincular/" class="btn-gob-alert"
+         title="{{ unlinked_count }} campaña{% if unlinked_count != 1 %}s{% endif %} sin producto asignado — {{ pct_spend_unlinked }}% del gasto sin identificar">
+        <i class="fas fa-link"></i>Vincular productos
+        <span class="badge-gob-count">{{ unlinked_count }}</span>
+      </a>
+      {% else %}
+      <a href="/ads/vincular/" class="btn-gob-ghost" title="Vincular campañas a productos del catálogo">
+        <i class="fas fa-link me-1"></i>Vincular productos
+      </a>
+      {% endif %}
+
+      <!-- Export: secondary action over the filtered data -->
+      <button type="button" id="btnExport" class="btn-gob-ghost" title="Descargar las filas filtradas y columnas visibles en Excel">
+        <i class="fas fa-file-excel me-1"></i>Exportar XLSX
+      </button>
+
+      <!-- SOLE primary CTA of the screen -->
+      <a href="/ads/crear-campana/" class="btn-gob-primary" title="Crear nueva campaña en Meta Ads">
+        <i class="fas fa-plus me-1"></i>Crear campaña
+      </a>
+    </div>
+
+    <!-- Active filters strip (item B7) — shown/hidden by JS -->
+    <div id="activeFiltersStrip">
+      <span class="afs-label">Filtros activos:</span>
+      <span class="afs-cols" id="afsColList"></span>
+      <span>·</span>
+      <a class="afs-clear" id="afsClearAll" href="#">Limpiar todo</a>
+      <button type="button" class="afs-dismiss" id="afsDismiss" title="Ocultar aviso">×</button>
+    </div>
+
+    <!-- Loading state (replaced by the grid once data arrives) -->
+    <div id="gridLoading" class="loading-state">
+      <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+      <div>Cargando datos de pauta…</div>
+    </div>
+
+    <!-- Error state -->
+    <div id="gridError" class="empty-state" style="display:none;">
+      <i class="fas fa-exclamation-circle" style="color:#DC2626;"></i>
+      <p>Error al cargar los datos. Intentá recargar la página.</p>
+    </div>
+
+    <!-- Tabulator grid -->
+    <div id="adsGrid" style="display:none;"></div>
+
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+
+<script>
+// ============================================================
+// ADS DASHBOARD — Tabulator 6 data grid
+// ============================================================
+(function () {
+  "use strict";
+
+  var NULL_HTML = '<span class="cell-null">—</span>';
+
+  // --- Locale number formats (1,234.56 like the Excel reference) ---
+  var NF_INT   = new Intl.NumberFormat("es-PE");
+  var NF_MONEY = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function norm(s) {
+    return String(s == null ? "" : s)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  // --- Month calendar order (tolerates Setiembre/Septiembre) ---
+  var MES_ORDER = {
+    enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7,
+    agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12
+  };
+
+  function monthIndex(m) {
+    var k = norm(m).trim();
+    return MES_ORDER[k] || 99;
+  }
+
+  function monthSorter(a, b) {
+    var d = monthIndex(a) - monthIndex(b);
+    return d !== 0 ? d : String(a || "").localeCompare(String(b || ""));
+  }
+
+  // Product chips render in ONE neutral style (.chip-product) — color is
+  // reserved for semantic chips (Categoría, Entrega). Tooltip = full name.
+
+  // --- Category chips: 5 fixed brand-anchored colors ---
+  var CATEGORY_CHIPS = {
+    "escuela":     { bg: "#E8EEF9", fg: "#1E4FA3", bd: "#CDDCF2" },
+    "editorial":   { bg: "#EFEAF8", fg: "#5B3FA8", bd: "#DCD2EF" },
+    "consultoria": { bg: "#E6F2F1", fg: "#0F6B66", bd: "#CBE5E2" },
+    "lifestyle":   { bg: "#FDEFE3", fg: "#B05A1A", bd: "#F6DCC4" },
+    "goberna":     { bg: "#0E2A52", fg: "#FFC800", bd: "#0E2A52" }
+  };
+  var CATEGORY_FALLBACK = { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
+
+  // --- Delivery status badges (item A3: Spanish labels) ---
+  // Key = raw DB value (lowercased, spaces→_); label = Spanish display text
+  var DELIVERY_BADGES = {
+    active:             { label: "Activa",              bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
+    inactive:           { label: "Inactiva",            bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" },
+    completed:          { label: "Finalizada",          bg: "#E8EEF9", fg: "#1E4FA3", bd: "#CDDCF2" },
+    recently_completed: { label: "Recién finalizada",   bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4" },
+    archived:           { label: "Archivada",           bg: "#F4F1EA", fg: "#7A7261", bd: "#E7E1D2" },
+    not_delivering:     { label: "Sin entrega",         bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#F59E0B" },
+    // API effective_status (rows with source='api' from sync_meta_ads)
+    paused:             { label: "Pausada",             bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
+    deleted:            { label: "Eliminada",           bg: "#334155", fg: "#F1F5F9", bd: "#334155" },
+    with_issues:        { label: "Con problemas",       bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#F59E0B" },
+    in_process:         { label: "En proceso",          bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4", dot: "#0EA5E9" },
+    campaign_paused:    { label: "Pausada (campaña)",   bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" },
+    adset_paused:       { label: "Pausada (conjunto)",  bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" }
+  };
+
+  // --- Result indicator: raw Meta API action types -> human labels ---
+  // Display-only mapping; filters keep comparing against the raw values.
+  var RESULT_LABELS = {
+    "actions:offsite_conversion.fb_pixel_lead":                   "Registros en el sitio (píxel)",
+    "actions:onsite_conversion.messaging_conversation_started_7d": "Conversaciones por mensajes",
+    "actions:lead":                                               "Clientes potenciales",
+    "actions:post_engagement":                                    "Interacciones con la publicación",
+    "actions:link_click":                                         "Clics en el enlace",
+    "actions:onsite_conversion.purchase":                         "Compras en Facebook/Instagram",
+    "actions:purchase":                                           "Compras",
+    "actions:offsite_conversion.fb_pixel_purchase":               "Compras en el sitio (píxel)",
+    "actions:offsite_conversion.fb_pixel_initiate_checkout":      "Inicios de compra en el sitio",
+    "actions:offsite_conversion.fb_pixel_view_content":           "Contenido visto en el sitio",
+    "actions:landing_page_view":                                  "Visitas a la página de destino",
+    "actions:omni_landing_page_view":                             "Visitas a la página de destino",
+    "actions:onsite_conversion.lead_grouped":                     "Clientes potenciales (en Meta)",
+    "estimated_ad_recallers":                                     "Reconocimiento de marca (est.)",
+    "reach":                                                      "Alcance",
+    "impressions":                                                "Impresiones",
+    "video_continuous_2_sec_watched_actions":                     "Reproducciones de video (2 s)",
+    "video_thruplay_watched_actions":                             "Reproducciones de video (ThruPlay)",
+    "mixed":                                                      "Varios indicadores"
+  };
+
+  function resultLabel(v) {
+    if (v === null || v === undefined || v === "") return v;
+    var raw = String(v);
+    if (RESULT_LABELS[raw]) return RESULT_LABELS[raw];
+    // Custom conversions: actions:offsite_conversion.custom.<id> /
+    // conversions:offsite_conversion.fb_pixel_custom.<Name>
+    var m = raw.match(/custom\.?(.*)$/i);
+    if (m) {
+      var tag = m[1] && !/^\d+$/.test(m[1]) ? " (" + m[1] + ")" : "";
+      return "Conversión personalizada" + tag;
+    }
+    // Unknown type: strip the technical prefix, keep it readable
+    return raw.replace(/^(actions|conversions):/, "").replace(/[_.]/g, " ");
+  }
+
+  // --- Heatmap scales (5-step, brand pastel band — no neon) ---
+  var HEAT_CPR = [
+    ["#DCEFE0", "#1F6B3A"],  // excelente (barato)
+    ["#EAF2D9", "#56711F"],  // bueno
+    ["#FBF0D3", "#8A6512"],  // medio
+    ["#FBE3CE", "#A35418"],  // alto
+    ["#F8DCD7", "#A33327"]   // crítico (caro)
+  ];
+
+  var BLUE_SPEND = [null, "#F0F5FD", "#E0EBFA", "#CCDEF6", "#B3CEF1"]; // 0 = sin tinte
+
+  // ----------------------------------------------------------
+  // Formatter helpers (all user data via textContent => XSS-safe)
+  // ----------------------------------------------------------
+  function dashFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined || v === "") return NULL_HTML;
+    var span = document.createElement("span");
+    span.textContent = v;
+    return span;
+  }
+
+  function dateFmt(cell) {
+    var v = cell.getValue();
+    if (!v) return NULL_HTML;
+    var p = String(v).split("-");
+    if (p.length !== 3) { var s = document.createElement("span"); s.textContent = v; return s; }
+    return p[2] + "/" + p[1] + "/" + p[0];
+  }
+
+  function intFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined) return NULL_HTML;
+    return NF_INT.format(v);
+  }
+
+  function moneyFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined) return NULL_HTML;
+    return NF_MONEY.format(v);
+  }
+
+  // CPR: up to 4 significant decimals below 1, money format above
+  function fmtCprValue(v) {
+    var n = +v;
+    if (!isFinite(n)) return String(v);
+    if (n === 0) return "0";
+    if (Math.abs(n) >= 1) return NF_MONEY.format(n);
+    return String(+n.toPrecision(4));
+  }
+
+  function resetCellStyle(el) {
+    el.style.backgroundColor = "";
+    el.style.color = "";
+    el.style.fontWeight = "";
+    el.removeAttribute("title");
+  }
+
+  // Paleta pastel curada: color ESTABLE por producto (mismo producto = mismo color
+  // siempre), para diferenciarlos de un vistazo como en el Excel original.
+  var PRODUCT_PALETTE = [
+    ["#E8EEF9", "#1D4ED8"], ["#FCE7F3", "#9D174D"], ["#DCFCE7", "#166534"],
+    ["#FEF3C7", "#92400E"], ["#EDE9FE", "#5B21B6"], ["#CFFAFE", "#155E75"],
+    ["#FFE4E6", "#9F1239"], ["#ECFCCB", "#3F6212"], ["#FFEDD5", "#9A3412"],
+    ["#E0E7FF", "#3730A3"], ["#F5D0FE", "#86198F"], ["#D1FAE5", "#065F46"],
+  ];
+  function productColor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return PRODUCT_PALETTE[h % PRODUCT_PALETTE.length];
+  }
+
+  function productFmt(cell) {
+    var v = cell.getValue();
+    if (!v) {
+      // Null product → canonical warning pill linking to vincular
+      var a = document.createElement("a");
+      a.href = "/ads/vincular/";
+      a.title = "Campaña sin producto asignado — hacé clic para vincular";
+      a.className = "pill pill-warning";
+      a.textContent = "Sin producto +";
+      return a;
+    }
+    var chip = document.createElement("span");
+    chip.className = "chip chip-product";
+    var c = productColor(v);
+    chip.style.backgroundColor = c[0];
+    chip.style.color = c[1];
+    chip.style.border = "1px solid " + c[1] + "22";
+    chip.textContent = v;
+    chip.title = v;
+    return chip;
+  }
+
+  // Result indicator → human label; raw API value stays in the tooltip
+  function resultFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined || v === "") return NULL_HTML;
+    var span = document.createElement("span");
+    span.textContent = resultLabel(v);
+    span.title = "Valor original de Meta: " + v;
+    return span;
+  }
+
+  function categoryFmt(cell) {
+    var v = cell.getValue();
+    if (!v) return NULL_HTML;
+    var c = CATEGORY_CHIPS[norm(v).trim()] || CATEGORY_FALLBACK;
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    chip.style.backgroundColor = c.bg;
+    chip.style.color = c.fg;
+    chip.style.border = "1px solid " + c.bd;
+    chip.textContent = v;
+    return chip;
+  }
+
+  function deliveryFmt(cell) {
+    var v = cell.getValue();
+    if (!v) return NULL_HTML;
+    var key = norm(v).trim().replace(/\s+/g, "_");
+    var c = DELIVERY_BADGES[key] || { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
+    var badge = document.createElement("span");
+    badge.className = "status-badge";
+    badge.style.backgroundColor = c.bg;
+    badge.style.color = c.fg;
+    badge.style.borderColor = c.bd;
+    if (c.dot) {
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.backgroundColor = c.dot;
+      badge.appendChild(dot);
+    }
+    // Use Spanish label when available (item A3); fallback to raw DB value
+    badge.appendChild(document.createTextNode(c.label || v));
+    return badge;
+  }
+
+  function cprFmt(cell) {
+    var v = cell.getValue();
+    var el = cell.getElement();
+    resetCellStyle(el);
+    if (v === null || v === undefined) return NULL_HTML;
+    var d = cell.getData() || {};
+    if (d._cprStep !== null && d._cprStep !== undefined) {
+      var c = HEAT_CPR[d._cprStep];
+      el.style.backgroundColor = c[0];
+      el.style.color = c[1];
+      el.style.fontWeight = "700";
+      if (d._cprTip) el.setAttribute("title", d._cprTip);
+    }
+    return fmtCprValue(v);
+  }
+
+  function spendFmt(cell) {
+    var v = cell.getValue();
+    var el = cell.getElement();
+    resetCellStyle(el);
+    if (v === null || v === undefined) return NULL_HTML;
+    var d = cell.getData() || {};
+    if (d._spendStep) {
+      el.style.backgroundColor = BLUE_SPEND[d._spendStep];
+      el.style.color = "#0E2A52";
+      if (d._spendStep >= 4) el.style.fontWeight = "700";
+    }
+    return NF_MONEY.format(v);
+  }
+
+  // ----------------------------------------------------------
+  // Percentile pre-computation (client-side, after data load)
+  // ----------------------------------------------------------
+  function percentileRank(sortedArr, v) {
+    // midrank percentile: (countLess + countLessOrEqual) / 2 / n
+    var lo = 0, hi = sortedArr.length;
+    while (lo < hi) { var m = (lo + hi) >> 1; if (sortedArr[m] < v) lo = m + 1; else hi = m; }
+    var less = lo;
+    hi = sortedArr.length;
+    while (lo < hi) { var m2 = (lo + hi) >> 1; if (sortedArr[m2] <= v) lo = m2 + 1; else hi = m2; }
+    var lessOrEqual = lo;
+    return (less + lessOrEqual) / 2 / sortedArr.length;
+  }
+
+  function stepFromPercentile(p) {
+    if (p < 0.2) return 0;
+    if (p < 0.4) return 1;
+    if (p < 0.6) return 2;
+    if (p < 0.8) return 3;
+    return 4;
+  }
+
+  function annotateRows(rows) {
+    // CPR heatmap: percentiles WITHIN rows sharing the same result_indicator
+    var groups = {};
+    rows.forEach(function (r) {
+      if (r.cost_per_result === null || r.cost_per_result === undefined) return;
+      var k = r.result_indicator || "(sin indicador)";
+      (groups[k] = groups[k] || []).push(+r.cost_per_result);
+    });
+    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return a - b; }); });
+
+    // Spend blue scale: GLOBAL percentiles
+    var spends = rows
+      .filter(function (r) { return r.spend !== null && r.spend !== undefined; })
+      .map(function (r) { return +r.spend; })
+      .sort(function (a, b) { return a - b; });
+
+    rows.forEach(function (r) {
+      r._cprStep = null;
+      r._cprTip = null;
+      r._spendStep = 0;
+
+      if (r.cost_per_result !== null && r.cost_per_result !== undefined) {
+        var k = r.result_indicator || "(sin indicador)";
+        var arr = groups[k];
+        if (arr && arr.length >= 3) {  // ranking needs at least 3 comparables
+          var p = percentileRank(arr, +r.cost_per_result);
+          r._cprStep = stepFromPercentile(p);
+          r._cprTip = "Percentil " + Math.round(p * 100) + " dentro de “" + resultLabel(k) + "” (" + arr.length + " campañas)";
+        }
+      }
+
+      if (r.spend !== null && r.spend !== undefined && spends.length >= 3) {
+        r._spendStep = stepFromPercentile(percentileRank(spends, +r.spend));
+      }
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Excel-style popup filters
+  // ----------------------------------------------------------
+  // Approach: NO Tabulator headerFilters at all => single compact header
+  // row. Each filterable column renders a funnel button (titleFormatter);
+  // clicking it opens a compact popup anchored to the header. Every active
+  // condition (global search + per-column "like" + per-column value lists)
+  // is AND-composed into ONE table.setFilter() predicate, reusing the same
+  // inFilter machinery the old header filters used.
+
+  function inFilter(headerValue, rowValue) {
+    if (!Array.isArray(headerValue) || headerValue.length === 0) return true;
+    return headerValue.indexOf(rowValue) > -1;
+  }
+
+  function uniqueSorted(rows, field) {
+    var seen = {};
+    rows.forEach(function (r) { var v = r[field]; if (v) seen[v] = true; });
+    return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b, "es"); });
+  }
+
+  var TEXT_FILTER_COLS = ["campaign_name", "product"];
+
+  var allRows = [];          // loaded dataset — source for distinct values
+  var searchTerm = "";       // global toolbar search (normalized)
+  var textFilters = {};      // field -> raw input string ("like" filter)
+  var listFilters = {};      // field -> ARRAY of selected values; key absent OR empty array = no filter
+  var listValuesCache = {};  // field -> distinct values (built once per load)
+  var iconBtns = {};         // field -> funnel <button> element
+
+  function getListValues(field) {
+    if (!listValuesCache[field]) {
+      var vals = uniqueSorted(allRows, field);
+      if (field === "month") vals.sort(monthSorter); // Mes in calendar order
+      listValuesCache[field] = vals;
+    }
+    return listValuesCache[field];
+  }
+
+  // --- Active-filter icon state (blue + tiny count/dot) ---
+  function refreshIcon(field) {
+    var btn = iconBtns[field];
+    if (!btn) return;
+    var active = false, count = null;
+    if (TEXT_FILTER_COLS.indexOf(field) > -1) {
+      active = !!(textFilters[field] && textFilters[field].trim());
+    } else if (Array.isArray(listFilters[field]) && listFilters[field].length) {
+      active = true;                 // empty selection = no filter => icon stays inactive
+      count = listFilters[field].length;
+    }
+    btn.classList.toggle("ads-hf-active", active);
+    var cEl = btn.querySelector(".ads-hf-count");
+    if (cEl) cEl.remove();
+    if (active) {
+      var c = document.createElement("span");
+      c.className = "ads-hf-count";
+      c.textContent = count === null ? "•" : String(count);
+      btn.appendChild(c);
+    }
+  }
+
+  function refreshAllIcons() {
+    Object.keys(iconBtns).forEach(refreshIcon);
+  }
+
+  // --- Column human names for active-filters strip (B7) ---
+  var COL_TITLES = {
+    campaign_name:    "Nombre de la Campaña",
+    product:          "Producto",
+    paid_country:     "País (pauta)",
+    country:          "País (cliente)",
+    delivery:         "Entrega",
+    result_indicator: "Indicador de resultados",
+    month:            "Mes",
+    category:         "Categoría"
+  };
+
+  // --- AND-composed programmatic filter (drives Tabulator setFilter) ---
+  function applyFilters() {
+    refreshAllIcons();
+    if (!table) return;
+
+    var likeTerms = [];
+    TEXT_FILTER_COLS.forEach(function (f) {
+      var t = norm(textFilters[f] || "").trim();
+      if (t) likeTerms.push([f, t]);
+    });
+    var listConds = [];
+    Object.keys(listFilters).forEach(function (f) {
+      var sel = listFilters[f];
+      // Empty selection = no filter for that column (inFilter contract),
+      // NOT "hide everything" — same semantics as the old header filters.
+      if (Array.isArray(sel) && sel.length) listConds.push([f, sel]);
+    });
+
+    // B7: update active filters strip
+    var activeColNames = [];
+    likeTerms.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
+    listConds.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
+    var strip = document.getElementById("activeFiltersStrip");
+    var colList = document.getElementById("afsColList");
+    if (strip && colList) {
+      if (activeColNames.length > 0) {
+        colList.textContent = activeColNames.join(", ");
+        strip.style.display = "flex";
+      } else {
+        strip.style.display = "none";
+      }
+    }
+
+    if (!searchTerm && !likeTerms.length && !listConds.length) {
+      table.clearFilter();
+      return;
+    }
+
+    var t0 = searchTerm;
+    table.setFilter(function (data) {
+      if (t0 &&
+          norm(data.campaign_name).indexOf(t0) === -1 &&
+          norm(data.product).indexOf(t0) === -1 &&
+          norm(data.campaign_id).indexOf(t0) === -1) return false;
+      for (var i = 0; i < likeTerms.length; i++) {
+        if (norm(data[likeTerms[i][0]]).indexOf(likeTerms[i][1]) === -1) return false;
+      }
+      for (var j = 0; j < listConds.length; j++) {
+        if (!inFilter(listConds[j][1], data[listConds[j][0]])) return false;
+      }
+      return true;
+    });
+  }
+
+  // --- Column title with funnel button (B6: hover title) ---
+  function filterTitle(field, title) {
+    return function () {
+      var wrap = document.createElement("span");
+      wrap.className = "ads-hf-title";
+
+      var txt = document.createElement("span");
+      txt.className = "ads-hf-text";
+      txt.textContent = title;
+      wrap.appendChild(txt);
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ads-hf-btn";
+      btn.setAttribute("aria-label", "Filtrar " + title);
+      btn.title = "Filtrar " + title;  // B6: descriptive hover title
+      btn.innerHTML = '<i class="fas fa-filter" aria-hidden="true"></i>'; // static markup, no data
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();   // don't trigger column sort
+        ev.preventDefault();
+        toggleFilterPopup(field, title, btn);
+      });
+      wrap.appendChild(btn);
+
+      iconBtns[field] = btn;
+      refreshIcon(field);
+      return wrap;
+    };
+  }
+
+  // --- Popup (single instance, anchored, viewport-aware) ---
+  var popEl = null, popField = null;
+
+  function onDocDown(ev) {
+    if (!popEl) return;
+    if (popEl.contains(ev.target)) return;
+    if (ev.target.closest && ev.target.closest(".ads-hf-btn")) return; // button click toggles itself
+    closeFilterPopup();
+  }
+
+  function onDocKey(ev) {
+    if (ev.key === "Escape") closeFilterPopup();
+  }
+
+  function onAnyScroll(ev) {
+    if (!popEl) return;
+    var t = ev.target;
+    if (t && t.nodeType === 1) {
+      if (popEl.contains(t)) return; // popup's own list
+      if (t.classList && t.classList.contains("tabulator-tableholder")) {
+        // VERTICAL body scroll never moves the header (the popup anchor),
+        // so it must not close the popup. Crucially, live-apply triggers it
+        // programmatically: applyFilters() -> setFilter() makes Tabulator
+        // re-render and reset/clamp the holder's scrollTop, which fires a
+        // scroll event here — closing on it would dismiss the popup right
+        // after the first checkbox click / keystroke whenever the user had
+        // scrolled down. Only close when scrollLeft changed (horizontal
+        // scroll DOES shift the header columns under the popup).
+        var cur = String(t.scrollLeft);
+        var prev = t.dataset.adsPrevScrollLeft;
+        t.dataset.adsPrevScrollLeft = cur;
+        if (prev === undefined || prev === cur) return; // vertical-only scroll
+      }
+    }
+    closeFilterPopup();
+  }
+
+  function closeFilterPopup() {
+    if (!popEl) return;
+    popEl.remove();
+    popEl = null;
+    popField = null;
+    document.removeEventListener("mousedown", onDocDown, true);
+    document.removeEventListener("keydown", onDocKey, true);
+    window.removeEventListener("resize", closeFilterPopup);
+    window.removeEventListener("scroll", onAnyScroll, true);
+  }
+
+  function positionPopup(btn) {
+    var r = btn.getBoundingClientRect();
+    popEl.style.visibility = "hidden";
+    popEl.style.left = "0px";
+    popEl.style.top = "0px";
+    var w = popEl.offsetWidth, h = popEl.offsetHeight;
+    var left = r.left;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, r.right - w); // flip near right edge
+    var top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    popEl.style.left = left + "px";
+    popEl.style.top = top + "px";
+    popEl.style.visibility = "";
+  }
+
+  function toggleFilterPopup(field, title, btn) {
+    if (popEl && popField === field) { closeFilterPopup(); return; }
+    closeFilterPopup();
+    popField = field;
+    popEl = document.createElement("div");
+    popEl.className = "ads-filter-pop";
+    popEl.setAttribute("role", "dialog");
+    popEl.setAttribute("aria-label", "Filtro de " + title);
+
+    // B6: popup header "Filtrar: {col}"
+    var popHeader = document.createElement("div");
+    popHeader.style.cssText = "font-size:11px;font-weight:700;color:#5B6B86;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #E6EAF2;";
+    popHeader.textContent = "Filtrar: " + title;
+    popEl.appendChild(popHeader);
+
+    if (TEXT_FILTER_COLS.indexOf(field) > -1) buildTextPopup(field);
+    else buildListPopup(field);
+
+    document.body.appendChild(popEl);
+    positionPopup(btn);
+    document.addEventListener("mousedown", onDocDown, true);
+    document.addEventListener("keydown", onDocKey, true);
+    window.addEventListener("resize", closeFilterPopup);
+    window.addEventListener("scroll", onAnyScroll, true);
+    // Baseline scrollLeft so onAnyScroll can tell horizontal from vertical
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".tabulator-tableholder"),
+      function (el) { el.dataset.adsPrevScrollLeft = String(el.scrollLeft); }
+    );
+
+    var inp = popEl.querySelector("input.ads-fp-search");
+    if (inp) inp.focus();
+  }
+
+  function makeLink(text, fn) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = text;
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  // Popup list label: DB values ALWAYS via textContent (XSS-safe);
+  // Entrega renders its status badge so the list mirrors the cells.
+  function listLabelNode(field, v) {
+    if (field === "delivery") {
+      var key = norm(v).trim().replace(/\s+/g, "_");
+      var c = DELIVERY_BADGES[key] || { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
+      var badge = document.createElement("span");
+      badge.className = "status-badge";
+      badge.style.backgroundColor = c.bg;
+      badge.style.color = c.fg;
+      badge.style.borderColor = c.bd;
+      if (c.dot) {
+        var dot = document.createElement("span");
+        dot.className = "dot";
+        dot.style.backgroundColor = c.dot;
+        badge.appendChild(dot);
+      }
+      // Use Spanish label (item A3)
+      badge.appendChild(document.createTextNode(c.label || v));
+      return badge;
+    }
+    var span = document.createElement("span");
+    span.className = "ads-fp-label";
+    if (field === "result_indicator") {
+      // Human label in the list; filter value stays the raw API string
+      span.textContent = resultLabel(v);
+      span.title = v;
+      return span;
+    }
+    span.textContent = v;
+    span.title = v;
+    return span;
+  }
+
+  function buildTextPopup(field) {
+    var inp = document.createElement("input");
+    inp.type = "search";
+    inp.className = "ads-fp-search";
+    inp.placeholder = "Filtrar...";
+    inp.autocomplete = "off";
+    inp.value = textFilters[field] || "";
+    var deb = null;
+    inp.addEventListener("input", function () {
+      clearTimeout(deb);
+      deb = setTimeout(function () {
+        textFilters[field] = inp.value;
+        applyFilters();
+      }, 180);
+    });
+    popEl.appendChild(inp);
+
+    var actions = document.createElement("div");
+    actions.className = "ads-fp-actions";
+    actions.appendChild(makeLink("Limpiar", function () {
+      inp.value = "";
+      delete textFilters[field];
+      applyFilters();
+      inp.focus();
+    }));
+    popEl.appendChild(actions);
+  }
+
+  function buildListPopup(field) {
+    var values = getListValues(field);
+    var checkboxes = {};
+
+    var searchInp = null;
+    if (values.length > 10) {           // mini search only when the list is long
+      searchInp = document.createElement("input");
+      searchInp.type = "search";
+      searchInp.className = "ads-fp-search";
+      searchInp.placeholder = "Buscar...";
+      searchInp.autocomplete = "off";
+      popEl.appendChild(searchInp);
+    }
+
+    function selectedSet() {
+      return Array.isArray(listFilters[field]) ? listFilters[field] : null; // null = no filter (all)
+    }
+
+    function syncChecks() {
+      var sel = selectedSet();
+      values.forEach(function (v) {
+        checkboxes[v].checked = sel === null ? true : sel.indexOf(v) > -1;
+      });
+    }
+
+    // B6: live selection count element (defined before commit so commit can call it)
+    var selCountEl = document.createElement("span");
+    selCountEl.style.cssText = "margin-left:auto;font-size:11px;color:#5B6B86;font-weight:600;";
+    function refreshSelCount() {
+      var sel = listFilters[field];
+      if (!Array.isArray(sel) || sel.length === 0 || sel.length === values.length) {
+        selCountEl.textContent = values.length + " seleccionados";
+      } else {
+        selCountEl.textContent = sel.length + " de " + values.length + " selec.";
+      }
+    }
+
+    function commit(selArr) {
+      // Full selection is equivalent to "no filter" => key removed, icon
+      // inactive. An EMPTY selection also filters nothing (inFilter's
+      // [] = no-filter contract); it is kept only as checkbox state so the
+      // user can "Deseleccionar todo" and then tick just a few values.
+      if (selArr === null || selArr.length === values.length) delete listFilters[field];
+      else listFilters[field] = selArr;
+      syncChecks();
+      refreshSelCount(); // B6: update live count
+      applyFilters();
+    }
+
+    var actions = document.createElement("div");
+    actions.className = "ads-fp-actions";
+    actions.appendChild(makeLink("Seleccionar todo", function () { commit(null); }));
+    actions.appendChild(makeLink("Deseleccionar todo", function () { commit([]); }));
+    refreshSelCount();
+    actions.appendChild(selCountEl);
+    popEl.appendChild(actions);
+
+    var listBox = document.createElement("div");
+    listBox.className = "ads-fp-list";
+
+    values.forEach(function (v) {
+      var lab = document.createElement("label");
+      lab.className = "ads-fp-item";
+      lab.dataset.searchKey = norm(v);
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "form-check-input";
+      checkboxes[v] = cb;
+      cb.addEventListener("change", function () {
+        var sel = selectedSet();
+        var next = sel === null ? values.slice() : sel.slice();
+        var idx = next.indexOf(v);
+        if (cb.checked && idx === -1) next.push(v);
+        if (!cb.checked && idx > -1) next.splice(idx, 1);
+        commit(next);
+      });
+      lab.appendChild(cb);
+      lab.appendChild(listLabelNode(field, v));
+      listBox.appendChild(lab);
+    });
+
+    syncChecks();
+    popEl.appendChild(listBox);
+
+    if (searchInp) {
+      searchInp.addEventListener("input", function () {
+        var q = norm(searchInp.value).trim();
+        Array.prototype.forEach.call(listBox.children, function (item) {
+          item.style.display = !q || (item.dataset.searchKey || "").indexOf(q) > -1 ? "" : "none";
+        });
+      });
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Grid init
+  // ----------------------------------------------------------
+  var table = null;
+  var totalRows = 0;
+  var DENSITY_KEY = "adsPautaDensity";
+
+  function assign(target, extra) {
+    Object.keys(extra).forEach(function (k) { target[k] = extra[k]; });
+    return target;
+  }
+
+  // --- Source chip formatter (item A5) ---
+  function sourceFmt(cell) {
+    var v = cell.getValue();
+    if (!v) return NULL_HTML;
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    if (v === "api") {
+      chip.style.backgroundColor = "#E8EEF9";
+      chip.style.color = "#1E4FA3";
+      chip.textContent = "API";
+    } else {
+      chip.style.backgroundColor = "#EEF1F5";
+      chip.style.color = "#475569";
+      chip.textContent = "Excel";
+    }
+    return chip;
+  }
+
+  function buildColumns(rows) {
+    var sumCalc = {
+      bottomCalc: "sum",
+      bottomCalcFormatter: function (cell) {
+        var v = cell.getValue();
+        return v === null || v === undefined ? "—" : NF_INT.format(v);
+      }
+    };
+
+    var moneySumCalc = {
+      bottomCalc: "sum",
+      bottomCalcFormatter: function (cell) {
+        var v = cell.getValue();
+        return v === null || v === undefined ? "—" : NF_MONEY.format(v);
+      }
+    };
+
+    return [
+      {
+        title: "Nombre de la Campaña", field: "campaign_name",
+        frozen: true, width: 280, formatter: dashFmt,
+        headerTooltip: "Nombre de la campaña tal como aparece en Meta Ads Manager",
+        titleFormatter: filterTitle("campaign_name", "Nombre de la Campaña"),
+        bottomCalc: function () { return "Totales (filtrado)"; }
+      },
+      {
+        title: "Producto", field: "product",
+        frozen: true, width: 235, formatter: productFmt,
+        headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña",
+        titleFormatter: filterTitle("product", "Producto")
+      },
+      { title: "País (pauta)", field: "paid_country", width: 130, formatter: dashFmt,
+        headerTooltip: "País de la cuenta publicitaria (quién pagó la pauta)",
+        titleFormatter: filterTitle("paid_country", "País (pauta)") },
+      { title: "País (cliente)", field: "country", width: 130, formatter: dashFmt,
+        headerTooltip: "País del público alcanzado según Meta (desglose geográfico)",
+        titleFormatter: filterTitle("country", "País (cliente)") },
+      // Hidden by default: shows "—" in casi todas las filas; recoverable via Columnas
+      { title: "Entrega", field: "delivery", width: 140, formatter: deliveryFmt, visible: false,
+        headerTooltip: "Estado de entrega actual de la campaña en Meta",
+        titleFormatter: filterTitle("delivery", "Entrega") },
+      assign({ title: "Resultados", field: "results", width: 110, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
+        headerTooltip: "Cantidad de resultados obtenidos según el objetivo de la campaña" }, sumCalc),
+      { title: "Indicador de resultados", field: "result_indicator", width: 200, formatter: resultFmt,
+        headerTooltip: "Métrica que Meta optimizó en esta campaña (leads, mensajes, alcance…)",
+        titleFormatter: filterTitle("result_indicator", "Indicador de resultados") },
+      assign({ title: "Alcance", field: "reach", width: 110, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
+        headerTooltip: "Personas únicas que vieron al menos un anuncio de esta campaña" }, sumCalc),
+      assign({ title: "Impresiones", field: "impressions", width: 120, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
+        headerTooltip: "Total de veces que se mostró el anuncio (incluye repeticiones)" }, sumCalc),
+      assign({ title: "Link Clicks", field: "link_clicks", width: 110, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
+        headerTooltip: "Clics en el enlace del anuncio (destino configurado en Meta)" }, sumCalc),
+      {
+        title: "Costo por Resultados", field: "cost_per_result",
+        width: 150, hozAlign: "right", headerHozAlign: "right", formatter: cprFmt,
+        headerTooltip: "Gasto ÷ resultados. Color = comparación contra campañas del mismo indicador (percentil dentro del grupo)",
+        // Weighted CPR of the FILTERED rows: sum(spend) / sum(results)
+        bottomCalc: function (values, data) {
+          var spend = 0, results = 0;
+          data.forEach(function (r) { spend += (+r.spend || 0); results += (+r.results || 0); });
+          return results ? spend / results : null;
+        },
+        bottomCalcFormatter: function (cell) {
+          var v = cell.getValue();
+          return v === null || v === undefined ? "—" : "CPR pond. " + NF_MONEY.format(v);
+        }
+      },
+      assign({ title: "Importe Gastado", field: "spend", width: 140, hozAlign: "right", headerHozAlign: "right", formatter: spendFmt,
+        headerTooltip: "Gasto total en la moneda de la cuenta publicitaria" }, moneySumCalc),
+      {
+        title: "Mes", field: "month", width: 115, formatter: dashFmt,
+        headerTooltip: "Mes del período de datos (desglose mensual)",
+        sorter: monthSorter,
+        titleFormatter: filterTitle("month", "Mes")
+      },
+      { title: "Inicio", field: "start_date", width: 110, formatter: dateFmt,
+        headerTooltip: "Fecha de inicio configurada de la campaña" },
+      { title: "Fin", field: "end_date", width: 110, formatter: dateFmt,
+        headerTooltip: "Fecha de fin configurada de la campaña" },
+      { title: "Inicio del Informe", field: "report_start", width: 135, formatter: dateFmt,
+        headerTooltip: "Inicio del período que cubre esta fila de datos (mensual)" },
+      { title: "Fin del Informe", field: "report_end", width: 130, formatter: dateFmt,
+        headerTooltip: "Fin del período que cubre esta fila de datos (mensual)" },
+      { title: "ID de la Campaña", field: "campaign_id", width: 150, formatter: dashFmt,
+        headerTooltip: "Identificador único de la campaña en Meta Ads" },
+      { title: "ID de la Cuenta", field: "account_id", width: 140, formatter: dashFmt,
+        headerTooltip: "Identificador de la cuenta publicitaria de Meta" },
+      { title: "Categoría", field: "category", width: 135, formatter: categoryFmt,
+        headerTooltip: "Línea de negocio Goberna (Escuela, Editorial, Consultoría, LifeStyle)",
+        titleFormatter: filterTitle("category", "Categoría") },
+      assign({ title: "Monto Dólares", field: "amount_usd", width: 130, hozAlign: "right", headerHozAlign: "right", formatter: moneyFmt,
+        headerTooltip: "Gasto convertido a USD (vacío si la cuenta no es USD — conversión pendiente)" }, moneySumCalc),
+      // Item A5: Fuente column (hidden by default)
+      { title: "Fuente", field: "source", width: 90, formatter: sourceFmt,
+        headerTooltip: "Origen del dato: API = sincronizado desde Meta Marketing API; Excel = importado del archivo de análisis",
+        visible: false }
+    ];
+  }
+
+  function updateCounter(visibleCount) {
+    var badge = document.getElementById("rowCountBadge");
+    if (badge) badge.textContent = NF_INT.format(visibleCount) + " de " + NF_INT.format(totalRows) + " campañas";
+  }
+
+  function buildColumnsMenu() {
+    var menu = document.getElementById("columnsMenu");
+    if (!menu || !table) return;
+    menu.innerHTML = "";
+    table.getColumns().forEach(function (col) {
+      var def = col.getDefinition();
+      var li = document.createElement("li");
+      var label = document.createElement("label");
+      label.className = "dropdown-item d-flex align-items-center gap-2";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "form-check-input m-0";
+      cb.checked = col.isVisible();
+      cb.addEventListener("change", function () {
+        col.toggle();
+        table.redraw();
+        cb.checked = col.isVisible();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(def.title));
+      li.appendChild(label);
+      menu.appendChild(li);
+    });
+  }
+
+  // --- Density toggle (persisted, NOT part of Tabulator persistence) ---
+  function applyDensity(mode) {
+    var grid = document.getElementById("adsGrid");
+    if (!grid) return;
+    grid.classList.toggle("density-compact", mode === "compact");
+    var bc = document.getElementById("btnDensityCompact");
+    var bf = document.getElementById("btnDensityComfort");
+    if (bc) bc.classList.toggle("active-density", mode === "compact");
+    if (bf) bf.classList.toggle("active-density", mode !== "compact");
+    try { localStorage.setItem(DENSITY_KEY, mode); } catch (e) { /* private mode */ }
+    if (table) table.redraw(true); // row heights changed => recompute virtual DOM
+  }
+
+  function initGrid(rows) {
+    totalRows = rows.length;
+    allRows = rows;          // distinct-value source for popup filter lists
+    listValuesCache = {};
+    annotateRows(rows);
+
+    var stored = null;
+    try { stored = localStorage.getItem(DENSITY_KEY); } catch (e) { /* noop */ }
+    applyDensity(stored === "compact" ? "compact" : "comfort");
+
+    var gridEl = document.getElementById("adsGrid");
+    gridEl.style.display = "";
+
+    var tableOptions = {
+      height: "calc(100vh - 305px)",   // fills viewport below toolbar; required for virtual DOM
+      minHeight: 420,
+      layout: "fitData",
+      renderVertical: "virtual",
+      data: rows,
+      columnHeaderSortMulti: true,
+      placeholder: "Ningún registro coincide con los filtros aplicados.",
+      downloadConfig: { columnCalcs: false },
+
+      // NULLs must export as EMPTY cells. Tabulator's xlsx downloader does
+      // JSON.stringify(col.value) when typeof value === "object", and
+      // typeof null === "object" => the literal text "null" lands in the sheet.
+      columnDefaults: {
+        accessorDownload: function (value) {
+          return value === null || value === undefined ? "" : value;
+        }
+      },
+
+      // Persist column visibility/width + sort. Filters intentionally NOT persisted.
+      persistence: {
+        sort: true,
+        columns: ["width", "visible"]
+      },
+      persistenceID: "adsPauta",
+
+      columns: buildColumns(rows)
+    };
+
+    // Tabulator's persistence reader JSON.parses localStorage with no guard,
+    // and table build is DEFERRED (setTimeout in the constructor), so a
+    // corrupted tabulator-adsPauta-* entry would throw asynchronously and
+    // leave the page stuck on the spinner forever. Pre-validate the persisted
+    // layout and drop any entry that does not parse.
+    ["tabulator-adsPauta-sort", "tabulator-adsPauta-columns"].forEach(function (key) {
+      try {
+        var raw = localStorage.getItem(key);
+        if (raw !== null) JSON.parse(raw);
+      } catch (e) {
+        console.warn("Layout persistido corrupto — se descarta", key, e);
+        try { localStorage.removeItem(key); } catch (e2) { /* private mode */ }
+      }
+    });
+
+    // Second line of defense for any synchronous constructor failure.
+    try {
+      table = new Tabulator("#adsGrid", tableOptions);
+    } catch (e) {
+      try {
+        localStorage.removeItem("tabulator-adsPauta-sort");
+        localStorage.removeItem("tabulator-adsPauta-columns");
+      } catch (e2) { /* private mode */ }
+      table = new Tabulator("#adsGrid", tableOptions);
+    }
+
+    table.on("tableBuilt", function () {
+      var loading = document.getElementById("gridLoading");
+      if (loading) loading.style.display = "none";
+      buildColumnsMenu(); // after persistence restored visibility
+      updateCounter(table.getDataCount("active"));
+    });
+
+    table.on("dataFiltered", function (filters, rowComponents) {
+      updateCounter(rowComponents.length);
+    });
+
+    // --- Toolbar wiring ---
+    var search = document.getElementById("globalSearch");
+    if (search) {
+      var debounce = null;
+      search.addEventListener("input", function () {
+        clearTimeout(debounce);
+        debounce = setTimeout(function () {
+          searchTerm = norm(search.value).trim();
+          applyFilters(); // AND-combined with the popup column filters
+        }, 180);
+      });
+    }
+
+    function clearAllFilters() {
+      if (search) search.value = "";
+      searchTerm = "";
+      textFilters = {};
+      listFilters = {};
+      closeFilterPopup();
+      applyFilters(); // no active conditions => clearFilter() + icons reset
+      // B7: hide strip
+      var strip = document.getElementById("activeFiltersStrip");
+      if (strip) strip.style.display = "none";
+    }
+
+    var btnClear = document.getElementById("btnClearFilters");
+    if (btnClear) btnClear.addEventListener("click", clearAllFilters);
+
+    // B7: active filters strip clear + dismiss
+    var afsClear = document.getElementById("afsClearAll");
+    if (afsClear) {
+      afsClear.addEventListener("click", function (e) {
+        e.preventDefault();
+        clearAllFilters();
+      });
+    }
+    var afsDismiss = document.getElementById("afsDismiss");
+    if (afsDismiss) {
+      afsDismiss.addEventListener("click", function () {
+        var strip = document.getElementById("activeFiltersStrip");
+        if (strip) strip.style.display = "none";
+      });
+    }
+
+    var btnCompact = document.getElementById("btnDensityCompact");
+    var btnComfort = document.getElementById("btnDensityComfort");
+    if (btnCompact) btnCompact.addEventListener("click", function () { applyDensity("compact"); });
+    if (btnComfort) btnComfort.addEventListener("click", function () { applyDensity("comfort"); });
+
+    var btnExport = document.getElementById("btnExport");
+    if (btnExport) {
+      btnExport.addEventListener("click", function () {
+        // Filtered rows ("active") + visible columns only (Tabulator default)
+        var today = new Date().toISOString().slice(0, 10);
+        table.download("xlsx", "pauta_meta_" + today + ".xlsx", { sheetName: "Pauta Meta" }, "active");
+      });
+    }
+  }
+
+  function showError() {
+    var loading = document.getElementById("gridLoading");
+    var error = document.getElementById("gridError");
+    if (loading) loading.style.display = "none";
+    if (error) error.style.display = "";
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Empty-state branch (total == 0): no grid markup, skip init
+    if (!document.getElementById("adsGrid")) return;
+
+    fetch("/ads/?page_size=0", {
+      headers: { "x-requested-with": "XMLHttpRequest" },
+      credentials: "same-origin"
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        initGrid(data.rows || []);
+      })
+      .catch(function (err) {
+        console.error("Error cargando datos de Pauta:", err);
+        showError();
+      });
+  });
+})();
+</script>
+
+</body>
+</html>

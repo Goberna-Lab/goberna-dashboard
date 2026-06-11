@@ -1,0 +1,753 @@
+{% load group_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear campaña · Goberna</title>
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- FontAwesome 6.5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       GOBERNA DESIGN TOKENS (canónico /ads/)
+    ============================================================ */
+    :root {
+      --navy:    #0E2A52;
+      --blue:    #2563EB;
+      --blue-hv: #1D4ED8;
+      --gold:    #FFC800;
+      --gold-ink:#CAA106;
+      --app-bg:  #F5F7FB;
+      --card-bg: #FFFFFF;
+      --border:  #E6EAF2;
+      --ink:     #16213A;
+      --muted:   #5B6B86;
+      --success: #16A34A;
+    }
+    body {
+      background: var(--app-bg);
+      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+    }
+    .page-wrapper {
+      margin-left: 80px;
+      padding: 28px 24px 60px;
+      min-height: 100vh;
+    }
+    /* Columna centrada: evita la media pantalla blanca a la derecha en monitores anchos */
+    .content-col {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* IDs y patrones técnicos: monospace gris, nunca rosa.
+       "body code" (0,0,2) para ganarle al Bootstrap duplicado que carga el sidebar dentro del body. */
+    body code { color: var(--muted); }
+    .perm-banner code { color: #78350F; }
+
+    /* ============================================================
+       PAGE HEADER canónico
+    ============================================================ */
+    .page-header { margin-bottom: 20px; }
+    .page-header h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+    .page-header h1 i { color: var(--blue); }
+    .page-header .sub {
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 2px;
+      margin-bottom: 0;
+    }
+    .btn-back {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .btn-back:hover { color: var(--ink); }
+    .btn-back:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); border-radius: 4px; }
+
+    /* ============================================================
+       BOTONES canónicos Goberna
+    ============================================================ */
+    .btn-gob-primary{background:var(--blue);border:1px solid var(--blue);color:#fff;font-size:.82rem;font-weight:700;padding:8px 16px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background-color .15s ease;}
+    .btn-gob-primary:hover{background:var(--blue-hv);border-color:var(--blue-hv);color:#fff;}
+    .btn-gob-primary:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-primary.btn-sm{font-size:.78rem;padding:5px 14px;} /* table-row actions like Vincular */
+
+    .btn-gob-ghost{background:#fff;border:1px solid var(--border);color:var(--muted);font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+    .btn-gob-ghost:hover{color:var(--ink);background:var(--app-bg);}
+    .btn-gob-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-ghost.is-active{color:var(--blue);border-color:var(--blue);background:#EFF4FE;}
+
+    .btn-gob-alert{background:#FFFBEB;border:1.5px solid #F59E0B;color:#92400E;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+    .btn-gob-alert:hover{background:#FEF3C7;border-color:#D97706;color:#78350F;}
+    .btn-gob-alert:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+
+    /* ============================================================
+       CARD canónica
+    ============================================================ */
+    .gob-card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;box-shadow:0 2px 10px rgba(14,42,82,.07);overflow:hidden;margin-bottom:20px;}
+    .gob-card-header{background:var(--navy);color:#fff;padding:14px 20px;font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+    .gob-card-body{padding:20px;}
+
+    /* ============================================================
+       BANNERS de feedback canónicos
+    ============================================================ */
+    .banner{border-radius:12px;padding:14px 18px;font-size:.84rem;margin-bottom:16px;}
+    .banner-success{background:#ECFDF5;border:1px solid #6EE7B7;color:#065F46;}
+    .banner-warning{background:#FFFBEB;border:1px solid #F59E0B;color:#92400E;}
+    .banner-danger{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;}
+
+    /* Form */
+    label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+    .form-control, .form-select {
+      font-size: 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--app-bg);
+      color: var(--ink);
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+      background: #fff;
+    }
+    .form-control[readonly] {
+      background: #EFF4FE;
+      color: var(--navy);
+      font-weight: 600;
+    }
+    .name-toggle {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--blue);
+      cursor: pointer;
+      text-decoration: underline;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .name-toggle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.25);
+      border-radius: 4px;
+    }
+    .hint-text {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Success state — bloque anidado: radio 12, sin sombra propia */
+    .success-card {
+      background: #ECFDF5;
+      border: 1px solid #6EE7B7;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .success-card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #065F46;
+      margin-bottom: 8px;
+    }
+    .campaign-id-box {
+      font-family: monospace;
+      font-size: 1rem;
+      background: #D1FAE5;
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #065F46;
+      font-weight: 700;
+      display: inline-block;
+      margin: 8px 0;
+    }
+    .paused-note {
+      font-size: 0.8rem;
+      color: #92400E;
+      background: #FFFBEB;
+      border: 1px solid #FCD34D;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 14px;
+    }
+    /* CTA de marca externa (Meta) — única excepción de color permitida */
+    .btn-ads-manager-primary {
+      background: #1877F2;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-ads-manager-primary:hover { background: #1558b0; color: #fff; }
+    .btn-ads-manager-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(24,119,242,.3); }
+
+    /* 3-step explainer */
+    .steps-explainer {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .step-card {
+      flex: 1 1 180px;
+      background: #EFF4FE;
+      border: 1px solid #CDDCF2;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 0.80rem;
+      color: var(--ink);
+      line-height: 1.45;
+    }
+    .step-card .step-num {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: var(--navy);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .step-card strong { color: var(--navy); }
+
+    /* Campaign name preview */
+    .name-preview {
+      background: #EFF4FE;
+      border: 1px dashed #93C5FD;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-top: 8px;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .name-preview .np-placeholder {
+      color: var(--muted);
+      font-weight: 600;
+      font-style: italic;
+    }
+
+    /* Result banners — bloques anidados: radio 12, solo borde */
+    .perm-banner {
+      background: #FFFBEB;
+      border: 1px solid #F59E0B;
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .perm-banner h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #92400E;
+      margin-bottom: 8px;
+    }
+    .perm-banner p {
+      font-size: 0.83rem;
+      color: #78350F;
+      margin: 0;
+    }
+    .error-banner {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .error-banner h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #991B1B;
+      margin-bottom: 8px;
+    }
+    .error-banner p {
+      font-size: 0.83rem;
+      color: #7F1D1D;
+      margin: 0;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+
+{% include 'menu/sidebard.html' %}
+
+<div class="page-wrapper">
+<div class="content-col">
+
+  <!-- Breadcrumb -->
+  <div class="mb-2">
+    <a href="/ads/" class="btn-back">
+      <i class="fas fa-arrow-left me-1"></i>Pauta
+    </a>
+  </div>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <h1><i class="fas fa-plus me-2"></i>Crear campaña</h1>
+    <p class="sub">Creá una nueva campaña en Meta Ads Manager (quedará en estado PAUSADA hasta que configures conjuntos de anuncios).</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- SUCCESS STATE                                                      -->
+  <!-- ================================================================ -->
+  {% if result and result.type == "success" %}
+  <div class="success-card mb-4">
+    <h2><i class="fas fa-circle-check me-2"></i>¡Campaña creada!</h2>
+    <p style="font-size:0.85rem; color:#065F46; margin-bottom:4px;">
+      <strong>{{ result.campaign_name }}</strong>
+    </p>
+    <div class="campaign-id-box">{{ result.campaign_id }}</div>
+    <div class="paused-note">
+      <i class="fas fa-pause-circle me-1"></i>
+      La campaña se creó en estado <strong>PAUSADA</strong>.
+      Ahora andá a Ads Manager a agregar públicos, creativos y presupuesto antes de activarla.
+    </div>
+    <!-- Primary CTA -->
+    <div class="mt-3">
+      <a href="{{ result.ads_manager_url }}" target="_blank" rel="noopener" class="btn-ads-manager-primary">
+        <i class="fab fa-facebook"></i>Abrir en Ads Manager<i class="fas fa-arrow-up-right-from-square" style="font-size:0.72rem; opacity:.85;"></i>
+      </a>
+    </div>
+    <!-- Secondary actions -->
+    <div class="mt-3 d-flex gap-3 flex-wrap">
+      <a href="/ads/crear-campana/" class="btn-back">
+        <i class="fas fa-plus me-1"></i>Crear otra campaña
+      </a>
+      <a href="/ads/" class="btn-back">
+        <i class="fas fa-arrow-left me-1"></i>Volver a Pauta
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ================================================================ -->
+  <!-- PERMISSION ERROR BANNER                                            -->
+  <!-- ================================================================ -->
+  {% if result and result.type == "api_error" and result.is_permission %}
+  <div class="perm-banner mb-4">
+    <h3><i class="fas fa-triangle-exclamation me-2"></i>Permiso insuficiente (ads_read solamente)</h3>
+    <p>
+      El token actual solo tiene permiso de lectura (<code>ads_read</code>).
+      Para crear campañas regenerá el token del system user <strong>goberna-ads</strong>
+      agregando el permiso <code>ads_management</code>, y actualizá
+      <code>META_ACCESS_TOKEN</code> en el <code>.env</code>.
+    </p>
+    {% if result.message %}
+    <p class="mt-2" style="font-size:0.78rem; color:#92400E;">
+      Detalle API: {{ result.message }}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ================================================================ -->
+  <!-- OTHER API ERROR BANNER                                             -->
+  <!-- ================================================================ -->
+  {% if result and result.type == "api_error" and not result.is_permission %}
+  <div class="error-banner mb-4">
+    <h3><i class="fas fa-circle-xmark me-2"></i>Error al crear la campaña</h3>
+    <p>{{ result.message }}</p>
+    {% if result.error_code %}
+    <p class="mt-1" style="font-size:0.78rem;">Código: {{ result.error_code }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ================================================================ -->
+  <!-- VALIDATION ERRORS                                                  -->
+  <!-- ================================================================ -->
+  {% if result and result.type == "validation_error" %}
+  <div class="banner banner-danger">
+    <i class="fas fa-circle-xmark me-2"></i>
+    {% for err in result.errors %}{{ err }}{% if not forloop.last %} &mdash; {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ================================================================ -->
+  <!-- FORM (hidden on success) — el explainer va DESPUÉS de los banners  -->
+  <!-- ================================================================ -->
+  {% if not result or result.type != "success" %}
+
+  <!-- 3-step explainer -->
+  <div class="steps-explainer">
+    <div class="step-card">
+      <span class="step-num">1</span>
+      <strong>Creás acá en pausa</strong><br>
+      La campaña se genera vinculada al producto y a la cuenta que elegís.
+    </div>
+    <div class="step-card">
+      <span class="step-num">2</span>
+      <strong>Aparece al instante</strong><br>
+      Podés verla en tu Ads Manager de Meta en segundos.
+    </div>
+    <div class="step-card">
+      <span class="step-num">3</span>
+      <strong>La completás allá</strong><br>
+      Definí públicos, creativos y presupuesto en Ads Manager, después la activás.
+    </div>
+  </div>
+
+  <!-- Datalist -->
+  <datalist id="productList">
+    {% for p in products %}
+    <option value="{{ p.sku_producto }} — {{ p.nombre_producto }}"
+            data-codigo="{{ p.codigo_producto }}"
+            data-nombre="{{ p.nombre_producto }}"
+            data-sku="{{ p.sku_producto }}"
+            data-negocio="{{ p.codigo_negocio__nombre_negocio|default:'' }}">
+    </option>
+    {% endfor %}
+  </datalist>
+
+  <div class="gob-card">
+    <div class="gob-card-header">
+      <i class="fas fa-bullhorn"></i>
+      Nueva campaña de Meta Ads
+    </div>
+    <div class="gob-card-body">
+      <form method="post" action="/ads/crear-campana/" id="createForm">
+        {% csrf_token %}
+
+        <!-- Hidden fields populated by JS -->
+        <input type="hidden" name="codigo_producto" id="hidCodigo">
+        <input type="hidden" name="product_name"    id="hidNombre">
+        <input type="hidden" name="category"        id="hidCat">
+        <input type="hidden" name="sku"             id="hidSku">
+
+        <!-- Cuenta publicitaria -->
+        <div class="mb-4">
+          <label for="accountSelect">Cuenta publicitaria</label>
+          <select class="form-select" id="accountSelect" name="account_id" required>
+            <option value="">— Seleccioná una cuenta activa —</option>
+            {% for acct in accounts %}
+            <option value="{{ acct.account_id }}"
+                    data-currency="{{ acct.currency }}"
+                    {% if form_data.account_id == acct.account_id %}selected{% endif %}>
+              {{ acct.name }} ({{ acct.currency }})
+            </option>
+            {% endfor %}
+          </select>
+          <div class="hint-text">
+            Solo se muestran las cuentas activas ({{ accounts|length }}).
+          </div>
+        </div>
+
+        <!-- Producto -->
+        <div class="mb-4">
+          <label for="productPicker">Producto</label>
+          <input type="search" list="productList" id="productPicker" class="form-control"
+                 placeholder="Buscá por SKU o nombre de producto…"
+                 autocomplete="off"
+                 value="{{ form_data.product_name|default:'' }}"
+                 required>
+          <div class="hint-text">{{ products|length }} productos disponibles — escribí el SKU o parte del nombre y elegí de la lista.</div>
+          <div class="hint-text mt-1">
+            Vincula la campaña al catálogo para medir ventas y margen en el dashboard.
+          </div>
+          <!-- product invalid feedback -->
+          <div id="productInvalidFeedback" style="display:none; font-size:0.78rem; color:#DC2626; font-weight:600; margin-top:4px;">
+            <i class="fas fa-circle-exclamation me-1"></i>Seleccioná un producto de la lista antes de continuar.
+          </div>
+        </div>
+
+        <!-- Objetivo -->
+        <div class="mb-4">
+          <label for="objectiveSelect">Objetivo de la campaña</label>
+          <select class="form-select" id="objectiveSelect" name="objective" required>
+            <option value="">— Seleccioná un objetivo —</option>
+            {% for val, label in objectives %}
+            <option value="{{ val }}"
+                    {% if form_data.objective == val %}selected{% endif %}>
+              {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Nombre de la campaña -->
+        <div class="mb-4">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <label for="campNameInput" class="mb-0">Nombre de la campaña</label>
+            <div class="d-flex gap-3">
+              <button type="button" class="name-toggle" id="btnEditName">
+                <i class="fas fa-pencil me-1"></i>editar
+              </button>
+              <button type="button" class="name-toggle" id="btnRevertName" style="display:none;">
+                <i class="fas fa-rotate-left me-1"></i>volver al automático
+              </button>
+            </div>
+          </div>
+          <!-- Prominent live preview (replaced by the editable input while editing) -->
+          <div class="name-preview" id="campNamePreview">
+            <i class="fas fa-tag" style="color:#93C5FD; flex-shrink:0;"></i>
+            <span id="campNamePreviewText" class="np-placeholder">Se genera automáticamente al seleccionar producto…</span>
+          </div>
+          <!-- Hidden input carries the real value for POST -->
+          <input type="text" class="form-control" id="campNameInput" name="campaign_name"
+                 value="{{ form_data.campaign_name|default:'' }}"
+                 readonly placeholder="Se genera automáticamente al seleccionar producto…"
+                 maxlength="255" required style="display:none;">
+          <!-- Editable input (shown when user clicks "editar") -->
+          <input type="text" class="form-control mt-2" id="campNameEditable"
+                 maxlength="255" style="display:none;"
+                 placeholder="Nombre personalizado de la campaña">
+          <div class="hint-text" id="nameHint">
+            Patrón: <code>[{{ mes_abrev }}][SKU] nombre corto</code> — hacé clic en "editar" para personalizar.
+          </div>
+        </div>
+
+        <!-- Presupuesto diario (opcional) -->
+        <div class="mb-4">
+          <label for="dailyBudget">Presupuesto diario (opcional)</label>
+          <div class="input-group" style="max-width:260px;">
+            <span class="input-group-text" id="currencySymbol"
+                  style="font-size:0.82rem; border-radius:8px 0 0 8px;">USD</span>
+            <input type="number" class="form-control" id="dailyBudget" name="daily_budget"
+                   min="1" step="0.01" placeholder="0.00"
+                   style="border-radius: 0 8px 8px 0;"
+                   value="{{ form_data.daily_budget|default:'' }}">
+          </div>
+          <div class="hint-text">Opcional. En la moneda de la cuenta; podés definirlo después en Ads Manager.</div>
+          <div class="hint-text mt-1">
+            <i class="fas fa-circle-info me-1"></i>Meta requiere un mínimo de ~1 USD/día. Sin presupuesto, la campaña queda incompleta hasta que lo configures allá.
+          </div>
+        </div>
+
+        <!-- Submit (single primary action of the screen) -->
+        <div class="pt-2">
+          <button type="submit" class="btn-gob-primary" id="btnCrear">
+            <i class="fas fa-plus" id="btnCrearIcon"></i><span id="btnCrearText">Crear campaña</span>
+          </button>
+          <a href="/ads/" class="btn-back ms-3">Cancelar</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /content-col -->
+</div><!-- /page-wrapper -->
+
+<script>
+(function () {
+  var MES_ABREV = "{{ mes_abrev|escapejs }}";
+
+  var allOptions = [];
+  var dl = document.getElementById('productList');
+  if (dl) {
+    allOptions = Array.from(dl.options).map(function (opt) {
+      return {
+        value:   opt.value,
+        codigo:  opt.dataset.codigo || '',
+        nombre:  opt.dataset.nombre || '',
+        sku:     opt.dataset.sku    || '',
+        negocio: opt.dataset.negocio || '',
+      };
+    });
+  }
+
+  var NEGOCIO_MAP = {
+    'Consultoria':  'Consultoría',
+    'consultoria':  'Consultoría',
+    'Escuela':      'Escuela',
+    'Editorial':    'Editorial',
+    'LifeStyle':    'LifeStyle',
+  };
+  function negocioToCategory(neg) { return NEGOCIO_MAP[neg] || neg || ''; }
+
+  function resolveOption(val) {
+    var v = (val || '').trim().toLowerCase();
+    for (var i = 0; i < allOptions.length; i++) {
+      if (allOptions[i].value.toLowerCase() === v) return allOptions[i];
+    }
+    // SKU prefix
+    for (var i = 0; i < allOptions.length; i++) {
+      if (allOptions[i].sku.toLowerCase() === v) return allOptions[i];
+    }
+    return null;
+  }
+
+  function shortName(nombre) {
+    // Take up to 40 chars, trim at word boundary
+    if (!nombre) return '';
+    if (nombre.length <= 40) return nombre;
+    var cut = nombre.lastIndexOf(' ', 40);
+    return cut > 10 ? nombre.slice(0, cut) : nombre.slice(0, 40);
+  }
+
+  function generateCampaignName(opt) {
+    if (!opt) return '';
+    return '[' + MES_ABREV + '][' + opt.sku + '] ' + shortName(opt.nombre);
+  }
+
+  // Update the prominent name preview
+  var namePreviewText = document.getElementById('campNamePreviewText');
+  function updateNamePreview(name) {
+    if (!namePreviewText) return;
+    if (name) {
+      namePreviewText.textContent = name;
+      namePreviewText.classList.remove('np-placeholder');
+    } else {
+      namePreviewText.textContent = 'Se genera automáticamente al seleccionar producto…';
+      namePreviewText.classList.add('np-placeholder');
+    }
+  }
+
+  var nameEditable = false;
+  var picker       = document.getElementById('productPicker');
+  var campName     = document.getElementById('campNameInput');
+  var campEditable = document.getElementById('campNameEditable');
+  var campPreview  = document.getElementById('campNamePreview');
+  var btnEdit      = document.getElementById('btnEditName');
+  var btnRevert    = document.getElementById('btnRevertName');
+  var nameHintEl   = document.getElementById('nameHint');
+  var nameHintOrig = nameHintEl ? nameHintEl.innerHTML : '';
+  var hidCod       = document.getElementById('hidCodigo');
+  var hidNom       = document.getElementById('hidNombre');
+  var hidCat       = document.getElementById('hidCat');
+  var hidSku       = document.getElementById('hidSku');
+  var invalidFB    = document.getElementById('productInvalidFeedback');
+
+  // Restore preview if form had pre-filled value (e.g. re-render after error)
+  if (campName && campName.value) updateNamePreview(campName.value);
+
+  function updateFromPicker() {
+    var opt = resolveOption(picker.value);
+    if (opt) {
+      hidCod.value = opt.codigo;
+      hidNom.value = opt.nombre;
+      hidCat.value = negocioToCategory(opt.negocio);
+      hidSku.value = opt.sku;
+      if (!nameEditable) {
+        var generated = generateCampaignName(opt);
+        campName.value = generated;
+        updateNamePreview(generated);
+      }
+      // Clear invalid state on successful resolution
+      if (picker) { picker.style.borderColor = ''; picker.style.boxShadow = ''; }
+      if (invalidFB) invalidFB.style.display = 'none';
+    } else {
+      hidCod.value = '';
+      hidNom.value = '';
+      hidCat.value = '';
+      hidSku.value = '';
+    }
+  }
+
+  if (picker) {
+    picker.addEventListener('input',  updateFromPicker);
+    picker.addEventListener('change', updateFromPicker);
+  }
+
+  // Keep hidden POST value in sync while the user types a custom name
+  if (campEditable) {
+    campEditable.addEventListener('input', function () {
+      campName.value = campEditable.value;
+      updateNamePreview(campEditable.value);
+    });
+  }
+
+  if (btnEdit) {
+    btnEdit.addEventListener('click', function () {
+      nameEditable = true;
+      // The editable input REPLACES the preview (no duplicated value on screen)
+      if (campEditable) {
+        campEditable.value = campName.value;
+        campEditable.style.display = '';
+        campEditable.focus();
+      }
+      if (campPreview) campPreview.style.display = 'none';
+      btnEdit.style.display = 'none';
+      if (btnRevert) btnRevert.style.display = '';
+      if (nameHintEl) nameHintEl.textContent = 'Nombre personalizado. Será enviado exactamente como lo escribas.';
+    });
+  }
+
+  if (btnRevert) {
+    btnRevert.addEventListener('click', function () {
+      nameEditable = false;
+      if (campEditable) campEditable.style.display = 'none';
+      if (campPreview) campPreview.style.display = '';
+      btnRevert.style.display = 'none';
+      if (btnEdit) btnEdit.style.display = '';
+      if (nameHintEl) nameHintEl.innerHTML = nameHintOrig;
+      // Regenerate the automatic name from the currently selected product
+      var opt = resolveOption(picker ? picker.value : '');
+      var generated = generateCampaignName(opt);
+      campName.value = generated;
+      updateNamePreview(generated);
+    });
+  }
+
+  // Update currency symbol when account changes
+  var acctSelect = document.getElementById('accountSelect');
+  var currSym    = document.getElementById('currencySymbol');
+  if (acctSelect && currSym) {
+    acctSelect.addEventListener('change', function () {
+      var opt = acctSelect.options[acctSelect.selectedIndex];
+      currSym.textContent = (opt && opt.dataset.currency) ? opt.dataset.currency : 'USD';
+    });
+  }
+
+  // Prevent submit without product + disable while posting
+  var form     = document.getElementById('createForm');
+  var btnCrear = document.getElementById('btnCrear');
+  var btnText  = document.getElementById('btnCrearText');
+  var btnIcon  = document.getElementById('btnCrearIcon');
+
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      updateFromPicker();
+      if (!hidCod.value) {
+        e.preventDefault();
+        // Show inline feedback
+        if (picker) {
+          picker.style.borderColor = '#DC2626';
+          picker.style.boxShadow = '0 0 0 2px rgba(220,38,38,0.12)';
+          picker.focus();
+        }
+        if (invalidFB) invalidFB.style.display = '';
+        return;
+      }
+      // Disable submit button while posting
+      if (btnCrear) {
+        btnCrear.disabled = true;
+        btnCrear.style.opacity = '0.7';
+        btnCrear.style.cursor = 'not-allowed';
+      }
+      if (btnIcon) { btnIcon.className = 'fas fa-spinner fa-spin'; }
+      if (btnText) { btnText.textContent = 'Creando…'; }
+    });
+  }
+})();
+</script>
+</body>
+</html>

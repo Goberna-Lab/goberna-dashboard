@@ -1,0 +1,534 @@
+{% load group_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuentas Meta · Goberna</title>
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- FontAwesome 6.5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       GOBERNA DESIGN TOKENS (canónico /ads/)
+    ============================================================ */
+    :root {
+      --navy:    #0E2A52;
+      --blue:    #2563EB;
+      --blue-hv: #1D4ED8;
+      --gold:    #FFC800;
+      --gold-ink:#CAA106;
+      --app-bg:  #F5F7FB;
+      --card-bg: #FFFFFF;
+      --border:  #E6EAF2;
+      --ink:     #16213A;
+      --muted:   #5B6B86;
+      --success: #16A34A;
+    }
+
+    body {
+      background: var(--app-bg);
+      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+    }
+
+    .page-wrapper {
+      margin-left: 80px;
+      padding: 28px 24px 40px;
+      min-height: 100vh;
+    }
+
+    /* IDs y tecnicismos: monospace gris, nunca rosa (el rojo queda para errores).
+       "body code" (0,0,2) para ganarle al Bootstrap duplicado que carga el sidebar dentro del body. */
+    body code { color: var(--muted); }
+
+    /* ============================================================
+       PAGE HEADER canónico
+    ============================================================ */
+    .page-header { margin-bottom: 20px; }
+    .page-header h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+    .page-header h1 i { color: var(--blue); }
+    .page-header .sub {
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 2px;
+      margin-bottom: 0;
+    }
+    .btn-back {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .btn-back:hover { color: var(--ink); }
+    .btn-back:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); border-radius: 4px; }
+
+    /* ============================================================
+       BOTONES canónicos Goberna
+    ============================================================ */
+    .btn-gob-primary{background:var(--blue);border:1px solid var(--blue);color:#fff;font-size:.82rem;font-weight:700;padding:8px 16px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background-color .15s ease;}
+    .btn-gob-primary:hover{background:var(--blue-hv);border-color:var(--blue-hv);color:#fff;}
+    .btn-gob-primary:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-primary.btn-sm{font-size:.78rem;padding:5px 14px;} /* table-row actions like Vincular */
+
+    .btn-gob-ghost{background:#fff;border:1px solid var(--border);color:var(--muted);font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+    .btn-gob-ghost:hover{color:var(--ink);background:var(--app-bg);}
+    .btn-gob-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+    .btn-gob-ghost.is-active{color:var(--blue);border-color:var(--blue);background:#EFF4FE;}
+
+    .btn-gob-alert{background:#FFFBEB;border:1.5px solid #F59E0B;color:#92400E;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+    .btn-gob-alert:hover{background:#FEF3C7;border-color:#D97706;color:#78350F;}
+    .btn-gob-alert:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
+
+    /* ============================================================
+       PILLS y CHIPS canónicos
+    ============================================================ */
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:.74rem;font-weight:700;border:1px solid transparent;white-space:nowrap;}
+    .pill .dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+    .pill-success{background:#E8F6EC;color:#1F7A3F;border-color:#CDEED8;} .pill-success .dot{background:#16A34A;}
+    .pill-warning{background:#FFFBEB;color:#92400E;border-color:#FCD34D;} .pill-warning .dot{background:#F59E0B;}
+    .pill-danger{background:#FEF2F2;color:#991B1B;border-color:#FECACA;} .pill-danger .dot{background:#DC2626;}
+    .pill-neutral{background:var(--app-bg);color:var(--muted);border-color:var(--border);} .pill-neutral .dot{background:var(--muted);}
+    /* alias neutrales para los niveles que entrega la vista (secondary/info/dark) */
+    .pill-secondary,.pill-info,.pill-dark{background:var(--app-bg);color:var(--muted);border-color:var(--border);}
+    .pill-secondary .dot,.pill-info .dot,.pill-dark .dot{background:var(--muted);}
+
+    .badge-gob-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;font-size:.68rem;font-weight:800;border-radius:999px;background:#F59E0B;color:#fff;}
+    .badge-on-navy{background:rgba(255,255,255,.2);color:#fff;font-weight:600;font-size:.78rem;border-radius:999px;padding:2px 8px;}
+
+    /* ============================================================
+       CARD canónica
+    ============================================================ */
+    .gob-card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;box-shadow:0 2px 10px rgba(14,42,82,.07);overflow:hidden;margin-bottom:20px;}
+    .gob-card-header{background:var(--navy);color:#fff;padding:14px 20px;font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+    .gob-card-body{padding:20px;}
+
+    /* ============================================================
+       BANNERS de feedback canónicos
+    ============================================================ */
+    .banner{border-radius:12px;padding:14px 18px;font-size:.84rem;margin-bottom:16px;}
+    .banner-success{background:#ECFDF5;border:1px solid #6EE7B7;color:#065F46;}
+    .banner-warning{background:#FFFBEB;border:1px solid #F59E0B;color:#92400E;}
+    .banner-danger{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;}
+
+    /* Connection status row */
+    .status-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .status-item {
+      min-width: 160px;
+    }
+    .status-item .label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .status-item .value {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* Tables — thead claro: el navy queda reservado al header del card */
+    .table thead th {
+      background: var(--app-bg);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+    .table tbody td {
+      font-size: 0.83rem;
+      vertical-align: middle;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .table tbody tr:last-child td { border-bottom: none; }
+    .table tbody tr:hover td { background: #F0F5FF; }
+
+    /* Spend cols */
+    .spend-num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .spend-empty {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    /* Unlinked warning block — una sola señal: borde izquierdo ámbar */
+    .unlinked-block {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-left: 3px solid #F59E0B;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .unlinked-header {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #92400E;
+      margin-bottom: 6px;
+    }
+    .unlinked-id {
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: var(--navy);
+      font-weight: 700;
+    }
+    .unlinked-approx {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+    .unlinked-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .campaign-sample {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    /* Steps */
+    .steps-list {
+      padding-left: 1.1rem;
+      margin: 0;
+    }
+    .steps-list li {
+      font-size: 0.82rem;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .steps-list code {
+      background: #EFF4FE;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.78rem;
+      color: var(--blue);
+    }
+    .step-tech {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      color: var(--muted);
+    }
+
+    .section-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .empty-note {
+      font-size: 0.84rem;
+      color: var(--muted);
+      padding: 20px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+{% include 'menu/sidebard.html' %}
+
+<div class="page-wrapper">
+
+  <!-- Breadcrumb / back link -->
+  <div class="mb-2">
+    <a href="/ads/" class="btn-back">
+      <i class="fas fa-arrow-left me-1"></i>Pauta
+    </a>
+  </div>
+
+  <!-- Page header — el CTA global de la pantalla vive acá -->
+  <div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-2">
+    <div>
+      <h1><i class="fas fa-building-columns me-2"></i>Cuentas Meta</h1>
+      <p class="sub">Cobertura de portfolios publicitarios · Goberna Analytics BM</p>
+    </div>
+    <a href="/ads/cuentas/?check=1" class="btn-gob-primary">
+      <i class="fas fa-rotate"></i>Verificar conexión
+    </a>
+  </div>
+
+  <!-- Banner from check action -->
+  {% if banner_info %}
+  <div class="alert banner banner-{{ banner_info.1 }} alert-dismissible fade show" role="alert">
+    {% if banner_info.1 == "success" %}
+      <i class="fas fa-circle-check me-2"></i>
+    {% elif banner_info.1 == "warning" %}
+      <i class="fas fa-triangle-exclamation me-2"></i>
+    {% else %}
+      <i class="fas fa-circle-xmark me-2"></i>
+    {% endif %}
+    {{ banner_info.0 }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+  </div>
+  {% endif %}
+
+  <!-- ================================================================ -->
+  <!-- CARD 1: Estado de conexión                                        -->
+  <!-- ================================================================ -->
+  <div class="gob-card">
+    <div class="gob-card-header">
+      <i class="fas fa-plug-circle-check"></i>
+      Estado de conexión
+    </div>
+    <div class="gob-card-body">
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="label">Aplicación</div>
+          <div class="value">Goberna-Labs</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Usuario de sistema</div>
+          <div class="value">goberna-ads</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Token</div>
+          <div class="value">
+            {% if token_present %}
+              <span class="pill pill-success"><span class="dot"></span>Presente</span>
+            {% else %}
+              <span class="pill pill-danger"><span class="dot"></span>No configurado</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="status-item">
+          <div class="label">Versión API</div>
+          <div class="value"><code style="font-size:0.85rem;">{{ api_version }}</code></div>
+        </div>
+        <div class="status-item">
+          <div class="label">Última sincronización</div>
+          <div class="value">
+            {% if last_sync %}
+              {{ last_sync|date:"d/m/Y H:i" }}
+            {% else %}
+              <span style="color:var(--muted);">Nunca</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% if not token_present %}
+      <div class="banner banner-warning mt-3 mb-0">
+        <i class="fas fa-triangle-exclamation me-1"></i>
+        <strong>Token no configurado.</strong> La sincronización y la verificación de conexión
+        están deshabilitadas.
+        <span class="step-tech d-block mt-1">Paso técnico (requiere acceso al servidor):</span>
+        definí <code>META_ACCESS_TOKEN</code> en el archivo <code>.env</code>.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CARD 2: Cuentas vinculadas                                        -->
+  <!-- ================================================================ -->
+  <div class="gob-card">
+    <div class="gob-card-header">
+      <i class="fas fa-building-columns"></i>
+      Cuentas vinculadas
+      <span class="ms-2 badge-on-navy">{{ linked_accounts|length }}</span>
+    </div>
+    <div class="gob-card-body p-0">
+      {% if linked_accounts %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Account ID</th>
+              <th>Moneda</th>
+              <th>Estado</th>
+              <th class="spend-num">Gasto mes actual</th>
+              <th class="spend-num">Gasto mes anterior</th>
+              <th>Última vez vista</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acct in linked_accounts %}
+            <tr>
+              <td style="font-weight:600;">{{ acct.name|default:""|title|default:"—" }}</td>
+              <td><code style="font-size:0.78rem;">{{ acct.account_id }}</code></td>
+              <td>{{ acct.currency|default:"—" }}</td>
+              <td>
+                <span class="pill pill-{{ acct.status_badge }}">
+                  <span class="dot"></span>{{ acct.status_label }}
+                </span>
+              </td>
+              <td class="spend-num">
+                {% if acct.spend_current %}
+                  {% if acct.currency %}{{ acct.currency }} {% endif %}{{ acct.spend_current|floatformat:2 }}
+                {% else %}
+                  <span class="spend-empty">Sin datos del mes</span>
+                {% endif %}
+              </td>
+              <td class="spend-num">
+                {% if acct.spend_prev %}
+                  {% if acct.currency %}{{ acct.currency }} {% endif %}{{ acct.spend_prev|floatformat:2 }}
+                {% else %}
+                  <span class="spend-empty">—</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--muted); font-size:0.78rem;">
+                {% if acct.last_seen %}
+                  {{ acct.last_seen|date:"d/m/Y" }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-note">
+        <i class="fas fa-inbox me-2"></i>Todavía no hay cuentas sincronizadas.
+        Hacé clic en <strong>Verificar conexión</strong> para traerlas.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CARD 3: Posibles portfolios sin vincular                          -->
+  <!-- ================================================================ -->
+  {% if unlinked_portfolios %}
+  <div class="gob-card">
+    <div class="gob-card-header">
+      <i class="fas fa-triangle-exclamation" style="color:#FCD34D;"></i>
+      Posibles portfolios sin vincular
+      <span class="ms-2 badge-gob-count">{{ unlinked_portfolios|length }}</span>
+    </div>
+    <div class="gob-card-body">
+      <p style="font-size:0.83rem; color:var(--muted); margin-bottom:16px;">
+        Los siguientes account IDs aparecen en datos históricos de Pauta (últimos 6 meses)
+        pero su prefijo de 13 dígitos no coincide con ninguna cuenta vinculada.
+        Esto puede indicar cuentas del período Excel que el token actual no puede ver,
+        o cuentas de un Business Manager diferente.
+      </p>
+
+      {% for portfolio in unlinked_portfolios %}
+      <div class="unlinked-block">
+        <div class="unlinked-header">
+          <i class="fas fa-circle-exclamation me-1"></i>
+          Portfolio sin vincular
+        </div>
+        <div class="unlinked-id">
+          {{ portfolio.account_id }}
+          <span class="unlinked-approx">ID aproximado — el Excel redondea el último dígito</span>
+        </div>
+        <div class="unlinked-meta">
+          {{ portfolio.num_campaigns }} campaña{% if portfolio.num_campaigns != 1 %}s{% endif %} reciente{% if portfolio.num_campaigns != 1 %}s{% endif %}
+          &nbsp;·&nbsp;
+          Gasto total ~
+          <strong>{{ portfolio.total_spend|floatformat:0 }}</strong>
+          (moneda de la cuenta)
+        </div>
+        {% if portfolio.sample_campaigns %}
+        <div class="campaign-sample">
+          Muestra de campañas:
+          {% for name in portfolio.sample_campaigns %}
+            "{{ name }}"{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Cómo vincularla (collapsible) -->
+        <div class="mt-3">
+          <button class="btn-gob-ghost"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#vincular-{{ forloop.counter }}"
+                  aria-expanded="false">
+            <i class="fas fa-circle-question"></i>¿Cómo vincularla?
+          </button>
+          <div class="collapse mt-3" id="vincular-{{ forloop.counter }}">
+            <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px;">
+              <p style="font-size:0.82rem; font-weight:700; color:var(--navy); margin-bottom:8px;">
+                Pasos para vincular la cuenta al token goberna-ads:
+              </p>
+              <ol class="steps-list">
+                <li>
+                  <strong>En el Business Manager dueño de la cuenta:</strong>
+                  Configuración del negocio → Cuentas publicitarias → Asignar socios
+                  → Compartir con el Business Manager <code>Goberna Analytics</code> (ID <code>2215435668669289</code>)
+                  con permiso <em>"Ver rendimiento"</em> (mínimo) o <em>"Administrar campañas"</em>.
+                </li>
+                <li>
+                  <strong>En Goberna Analytics BM:</strong>
+                  Configuración del negocio → Usuarios del sistema → <code>goberna-ads</code>
+                  → Asignar activos → Cuentas publicitarias → seleccioná la cuenta recién compartida
+                  → permiso <em>"Administrar campañas"</em>.
+                </li>
+                <li>
+                  Hacé clic en <strong>"Verificar conexión"</strong> en esta página para refrescar
+                  la lista de cuentas visibles.
+                </li>
+                <li>
+                  <span class="step-tech">Paso técnico (requiere acceso al servidor):</span>
+                  corré la sync para traer el historial:
+                  <code>python manage.py sync_meta_ads --months 3</code>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <!-- No unlinked portfolios — positive state -->
+  <div class="gob-card">
+    <div class="gob-card-header">
+      <i class="fas fa-circle-check" style="color:#6EE7B7;"></i>
+      Cobertura completa
+    </div>
+    <div class="gob-card-body">
+      <p style="font-size:0.85rem; color:var(--muted); margin:0;">
+        Todos los account IDs de datos históricos recientes (últimos 6 meses) tienen correspondencia
+        con cuentas vinculadas. No se detectaron portfolios sin vincular.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+</body>
+</html>
