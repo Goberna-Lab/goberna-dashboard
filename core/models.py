@@ -267,6 +267,100 @@ class DetalleVenta(models.Model):
         db_table = 'tb_detalleVenta'
 
 
+class MetaAds(models.Model):
+    """
+    Read model over tb_meta_ads — populated by the import_meta_ads management command.
+    managed=False: Django never creates or migrates this table.
+    """
+    id = models.AutoField(primary_key=True, db_column='id')
+    campaign_name = models.CharField(max_length=255, null=True, blank=True, db_column='campaign_name')
+    campaign_id = models.CharField(max_length=32, null=True, blank=True, db_column='campaign_id')
+    account_id = models.CharField(max_length=32, null=True, blank=True, db_column='account_id')
+    product = models.CharField(max_length=255, null=True, blank=True, db_column='product')
+    category = models.CharField(max_length=100, null=True, blank=True, db_column='category')
+    month = models.CharField(max_length=20, null=True, blank=True, db_column='month')
+    paid_country = models.CharField(max_length=100, null=True, blank=True, db_column='paid_country')
+    country = models.CharField(max_length=100, null=True, blank=True, db_column='country')
+    delivery = models.CharField(max_length=50, null=True, blank=True, db_column='delivery')
+    results = models.IntegerField(null=True, blank=True, db_column='results')
+    result_indicator = models.CharField(max_length=255, null=True, blank=True, db_column='result_indicator')
+    reach = models.IntegerField(null=True, blank=True, db_column='reach')
+    impressions = models.IntegerField(null=True, blank=True, db_column='impressions')
+    link_clicks = models.IntegerField(null=True, blank=True, db_column='link_clicks')
+    cost_per_result = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, db_column='cost_per_result')
+    spend = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, db_column='spend')
+    amount_usd = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, db_column='amount_usd')
+    start_date = models.DateField(null=True, blank=True, db_column='start_date')
+    end_date = models.DateField(null=True, blank=True, db_column='end_date')
+    report_start = models.DateField(null=True, blank=True, db_column='report_start')
+    report_end = models.DateField(null=True, blank=True, db_column='report_end')
+
+    # --- API sync columns (DDL emitted by sync_meta_ads, additive) ---
+    source = models.CharField(max_length=10, default='excel', db_column='source')
+    synced_at = models.DateTimeField(null=True, blank=True, db_column='synced_at')
+    account_currency = models.CharField(max_length=3, null=True, blank=True, db_column='account_currency')
+    effective_status = models.CharField(max_length=20, null=True, blank=True, db_column='effective_status')
+    lifetime_budget = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='lifetime_budget')
+    budget_remaining = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='budget_remaining')
+    daily_budget = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='daily_budget')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_meta_ads'
+
+    def __str__(self):
+        return f"{self.campaign_name} ({self.campaign_id})"
+
+
+class MetaAccount(models.Model):
+    """
+    One row per Meta ad account visible to the system user (from me/adaccounts).
+    Populated / upserted by sync_meta_ads.
+    managed=False: Django never creates or migrates tb_meta_accounts.
+    """
+    account_id     = models.CharField(max_length=32, primary_key=True, db_column='account_id')
+    name           = models.CharField(max_length=255, null=True, blank=True, db_column='name')
+    currency       = models.CharField(max_length=3, null=True, blank=True, db_column='currency')
+    account_status = models.IntegerField(null=True, blank=True, db_column='account_status')
+    first_seen     = models.DateTimeField(auto_now_add=False, db_column='first_seen')
+    last_seen      = models.DateTimeField(null=True, blank=True, db_column='last_seen')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_meta_accounts'
+
+    def __str__(self):
+        return f"{self.name} ({self.account_id})"
+
+
+class MetaCampaignMap(models.Model):
+    """
+    Product-linking map for Meta campaigns.
+    One row per campaign_id; populated by sync_meta_ads (auto) and the
+    /ads/vincular/ view (manual).
+    managed=False: Django never creates or migrates tb_meta_campaign_map.
+    """
+    LINKED_BY_CHOICES = [
+        ('sku',    'SKU en nombre'),
+        ('manual', 'Manual'),
+        ('excel',  'Herencia Excel'),
+    ]
+
+    campaign_id   = models.CharField(max_length=32, primary_key=True, db_column='campaign_id')
+    codigo_producto = models.IntegerField(null=True, blank=True, db_column='codigo_producto')
+    product_name  = models.CharField(max_length=200, null=True, blank=True, db_column='product_name')
+    category      = models.CharField(max_length=60, null=True, blank=True, db_column='category')
+    linked_by     = models.CharField(max_length=10, default='sku', choices=LINKED_BY_CHOICES, db_column='linked_by')
+    linked_at     = models.DateTimeField(auto_now_add=False, db_column='linked_at')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_meta_campaign_map'
+
+    def __str__(self):
+        return f"{self.campaign_id} → {self.product_name or '(sin producto)'} [{self.linked_by}]"
+
+
 class LibroEnPack(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_libro_en_pack')
 
