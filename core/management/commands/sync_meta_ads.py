@@ -259,6 +259,26 @@ def _strip_act(account_id: str) -> str:
     return account_id[4:] if account_id.startswith("act_") else account_id
 
 
+# Max calendar months per insights call. Large accounts reject the full
+# window in one request (HTTP 400 code=100 — result set too large with
+# country breakdown), so long windows are split into month-aligned chunks.
+INSIGHTS_CHUNK_MONTHS = 6
+
+
+def _month_chunks(start: datetime.date, end: datetime.date, chunk_months: int):
+    """Yield (since, until) pairs covering [start, end], month-aligned,
+    at most chunk_months calendar months each. Boundaries never overlap, so
+    time_increment=monthly rows are identical to a single full-window call."""
+    cur = start
+    while cur <= end:
+        year = cur.year + (cur.month - 1 + chunk_months) // 12
+        month = (cur.month - 1 + chunk_months) % 12 + 1
+        next_start = datetime.date(year, month, 1)
+        until = min(end, next_start - datetime.timedelta(days=1))
+        yield cur, until
+        cur = next_start
+
+
 # ---------------------------------------------------------------------------
 # Command
 # ---------------------------------------------------------------------------
@@ -722,25 +742,32 @@ class Command(BaseCommand):
                 )
                 camp_map = {c["id"]: c for c in campaigns}
 
-                time.sleep(SLEEP_BETWEEN_CALLS)
-                insights = self._graph_get_all(
-                    f"{act_id}/insights",
-                    {
-                        "level": "campaign",
-                        "breakdowns": "country",
-                        "fields": INSIGHTS_FIELDS,
-                        "time_increment": "monthly",
-                        "time_range": json.dumps({"since": since, "until": until}),
-                        "limit": "500",
-                        # MAS-5: include spend from archived/deleted campaigns
-                        "filtering": json.dumps([{
-                            "field": "campaign.effective_status",
-                            "operator": "IN",
-                            "value": ["ACTIVE", "PAUSED", "ARCHIVED", "DELETED",
-                                      "IN_PROCESS", "WITH_ISSUES"],
-                        }]),
-                    },
-                )
+                insights = []
+                for c_since, c_until in _month_chunks(
+                    window_start, today, INSIGHTS_CHUNK_MONTHS
+                ):
+                    time.sleep(SLEEP_BETWEEN_CALLS)
+                    insights.extend(self._graph_get_all(
+                        f"{act_id}/insights",
+                        {
+                            "level": "campaign",
+                            "breakdowns": "country",
+                            "fields": INSIGHTS_FIELDS,
+                            "time_increment": "monthly",
+                            "time_range": json.dumps({
+                                "since": c_since.isoformat(),
+                                "until": c_until.isoformat(),
+                            }),
+                            "limit": "500",
+                            # MAS-5: include spend from archived/deleted campaigns
+                            "filtering": json.dumps([{
+                                "field": "campaign.effective_status",
+                                "operator": "IN",
+                                "value": ["ACTIVE", "PAUSED", "ARCHIVED", "DELETED",
+                                          "IN_PROCESS", "WITH_ISSUES"],
+                            }]),
+                        },
+                    ))
             except (RuntimeError, urllib.error.URLError, OSError) as exc:
                 failed_accounts.append((act_id, acct_name, str(exc)))
                 self.stdout.write(self.style.ERROR(f"    ERROR — cuenta saltada: {exc}"))
