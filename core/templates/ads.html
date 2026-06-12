@@ -1011,6 +1011,33 @@
     return badge;
   }
 
+  // Estado (effective_status) — uppercase API values → Spanish badge
+  var STATUS_BADGES = {
+    "ACTIVE":       { label: "Activa",        bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
+    "PAUSED":       { label: "Pausada",       bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
+    "ARCHIVED":     { label: "Archivada",     bg: "#F4F1EA", fg: "#7A7261", bd: "#E7E1D2" },
+    "DELETED":      { label: "Eliminada",     bg: "#334155", fg: "#F1F5F9", bd: "#334155" },
+    "WITH_ISSUES":  { label: "Con problemas", bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#EF4444" },
+    "IN_PROCESS":   { label: "En proceso",    bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4", dot: "#0EA5E9" },
+  };
+
+  function statusFmt(cell) {
+    var v = (cell.getValue() || "").toUpperCase();
+    if (!v) return NULL_HTML;
+    var c = STATUS_BADGES[v] || { label: v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
+    var badge = document.createElement("span");
+    badge.className = "delivery-badge";
+    badge.style.cssText = "background:" + c.bg + ";color:" + c.fg + ";border-color:" + c.bd + ";";
+    if (c.dot) {
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.backgroundColor = c.dot;
+      badge.appendChild(dot);
+    }
+    badge.appendChild(document.createTextNode(c.label));
+    return badge;
+  }
+
   function cprFmt(cell) {
     var v = cell.getValue();
     var el = cell.getElement();
@@ -1670,6 +1697,12 @@
         headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña",
         titleFormatter: filterTitle("product", "Producto")
       },
+      { title: "Estado", field: "effective_status", width: 130, formatter: statusFmt,
+        headerTooltip: "Estado actual de la campaña en Meta (ACTIVE, PAUSED, ARCHIVED…)",
+        titleFormatter: filterTitle("effective_status", "Estado") },
+      { title: "Cuenta", field: "account_name", width: 200, formatter: dashFmt,
+        headerTooltip: "Nombre del administrador de anuncios (ad account) al que pertenece la campaña",
+        titleFormatter: filterTitle("account_name", "Cuenta") },
       { title: "País (pauta)", field: "paid_country", width: 130, formatter: dashFmt,
         headerTooltip: "País de la cuenta publicitaria (quién pagó la pauta)",
         titleFormatter: filterTitle("paid_country", "País (pauta)") },

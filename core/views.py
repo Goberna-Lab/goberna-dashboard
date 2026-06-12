@@ -900,7 +900,7 @@ ADS_COLUMNS = [
 ADS_FIELD_NAMES = [col[0] for col in ADS_COLUMNS]
 
 
-def _serialize_ads_row(obj) -> dict:
+def _serialize_ads_row(obj, account_map=None) -> dict:
     """Serialize a MetaAds instance to a JSON-safe dict for the AJAX payload."""
     def _date_str(d):
         if d is None:
@@ -920,6 +920,8 @@ def _serialize_ads_row(obj) -> dict:
         "paid_country":     obj.paid_country,
         "country":          obj.country,
         "delivery":         obj.delivery,
+        "effective_status": obj.effective_status,
+        "account_name":     (account_map or {}).get(obj.account_id) if obj.account_id else None,
         "results":          obj.results,
         "result_indicator": obj.result_indicator,
         "reach":            obj.reach,
@@ -1033,11 +1035,14 @@ def ads_dashboard(request):
         # Serialization contract (via _serialize_ads_row): DateField -> ISO
         # "YYYY-MM-DD" string, Decimal -> JSON *number* (explicit float()),
         # NULL -> JSON null. The DjangoJSONEncoder never sees raw Decimals.
+        # Build account name lookup once per AJAX call (cheap: ~24 rows)
+        _acct_map = {a.account_id: a.name for a in MetaAccount.objects.only("account_id", "name")}
+
         if (
             request.GET.get("all", "").strip() == "1"
             or request.GET.get("page_size", "").strip() == "0"
         ):
-            rows = [_serialize_ads_row(obj) for obj in qs.order_by("id")]
+            rows = [_serialize_ads_row(obj, _acct_map) for obj in qs.order_by("id")]
             return JsonResponse(
                 {
                     "rows": rows,
@@ -1063,7 +1068,7 @@ def ads_dashboard(request):
         offset = (page - 1) * page_size
         page_qs = qs[offset: offset + page_size]
 
-        rows = [_serialize_ads_row(obj) for obj in page_qs]
+        rows = [_serialize_ads_row(obj, _acct_map) for obj in page_qs]
 
         return JsonResponse(
             {
