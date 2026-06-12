@@ -251,6 +251,34 @@
     .flatpickr-preset-btn:hover { background: #e0e7ff; border-color: #c7d2fe; color: #3730a3; }
     .flatpickr-preset-btn.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
 
+    /* ── ROAS por producto panel ─────────────────────────────── */
+    .roas-panel { background:#fff; border:1px solid var(--border); border-radius:10px; margin-bottom:14px; overflow:hidden; }
+    .roas-head { display:flex; align-items:center; gap:10px; width:100%; background:transparent; border:none; padding:11px 16px; cursor:pointer; font-size:.85rem; color:var(--ink); text-align:left; }
+    .roas-head:hover { background:#FAFBFD; }
+    .roas-head > .fa-chart-line { color:var(--gold-ink); }
+    .roas-title { font-weight:700; }
+    .roas-period { color:#94A3B8; font-size:.76rem; }
+    .roas-summary { margin-left:auto; font-size:.78rem; color:#64748B; font-weight:600; }
+    .roas-chev { color:#94A3B8; font-size:.7rem; transition:transform .18s ease; }
+    .roas-panel.open .roas-chev { transform:rotate(180deg); }
+    .roas-body { border-top:1px solid var(--border); padding:12px 16px 16px; }
+    .roas-note { font-size:.74rem; color:#94A3B8; margin-bottom:10px; }
+    .roas-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+    .roas-table th { text-align:right; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:#64748B; padding:6px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    .roas-table th:first-child { text-align:left; }
+    .roas-table td { padding:7px 10px; border-bottom:1px solid #F1F5F9; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .roas-table td:first-child { text-align:left; max-width:420px; overflow:hidden; text-overflow:ellipsis; }
+    .roas-table tr:last-child td { border-bottom:none; }
+    .roas-table tr:hover td { background:#FAFBFD; }
+    .roas-badge { display:inline-block; min-width:54px; text-align:center; padding:2px 8px; border-radius:999px; font-weight:700; font-size:.75rem; border:1px solid transparent; }
+    .roas-good  { background:#E8F6EC; color:#1F7A3F; border-color:#CDEED8; }
+    .roas-mid   { background:#FBEFD9; color:#92610E; border-color:#F3DFB5; }
+    .roas-bad   { background:#FDECEC; color:#B42318; border-color:#F5C8C4; }
+    .roas-none  { background:#F1F5F9; color:#94A3B8; border-color:#E2E8F0; }
+    .roas-neg   { color:#B42318; }
+    .roas-vincular { color:var(--gold-ink); text-decoration:none; font-weight:600; }
+    .roas-vincular:hover { text-decoration:underline; }
+
     .columns-menu {
       max-height: 340px;
       overflow-y: auto;
@@ -745,6 +773,24 @@
       <span>·</span>
       <a class="afs-clear" id="afsClearAll" href="#">Limpiar todo</a>
       <button type="button" class="afs-dismiss" id="afsDismiss" title="Ocultar aviso">×</button>
+    </div>
+
+    <!-- ROAS por producto (pauta × ventas) -->
+    <div class="roas-panel" id="roasPanel">
+      <button type="button" class="roas-head" id="roasToggle" aria-expanded="false">
+        <i class="fas fa-chart-line"></i>
+        <span class="roas-title">ROAS por producto</span>
+        <span class="roas-period" id="roasPeriod"></span>
+        <span class="roas-summary" id="roasSummary"></span>
+        <i class="fas fa-chevron-down roas-chev" id="roasChev"></i>
+      </button>
+      <div class="roas-body" id="roasBody" style="display:none;">
+        <div class="roas-note">
+          Inversión Meta (USD) vs ventas pagadas (USD) del mismo período, cruzadas por producto.
+          El período sigue al filtro de fechas de la tabla; sin filtro usa el año actual.
+        </div>
+        <div id="roasTableWrap"></div>
+      </div>
     </div>
 
     <!-- Loading state (replaced by the grid once data arrives) -->
@@ -1273,11 +1319,12 @@
       },
       onChange: function(dates) {
         presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach(function(b){ b.classList.remove('active'); });
-        if (!dates.length) { dateFrom = ''; dateTo = ''; applyFilters(); return; }
+        if (!dates.length) { dateFrom = ''; dateTo = ''; applyFilters(); loadRoas(); return; }
         if (dates.length === 2) {
           dateFrom = fmtIso(dates[0]);
           dateTo   = fmtIso(dates[1]);
           applyFilters();
+          loadRoas();
         }
       },
     });
@@ -1298,6 +1345,84 @@
       presetsWrap.appendChild(btn);
     });
   }
+  // ── ROAS por producto ────────────────────────────────────────────────────
+  var NF_USD0 = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
+
+  function escHtml(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function roasBadge(v) {
+    if (v === null || v === undefined) return '<span class="roas-badge roas-none">—</span>';
+    var cls = v >= 3 ? "roas-good" : (v >= 1 ? "roas-mid" : "roas-bad");
+    return '<span class="roas-badge ' + cls + '">' + v.toFixed(2) + '×</span>';
+  }
+
+  function renderRoas(data) {
+    var rows = data.rows || [];
+    var period = document.getElementById("roasPeriod");
+    var summary = document.getElementById("roasSummary");
+    var wrap = document.getElementById("roasTableWrap");
+    period.textContent = data.date_from + " → " + data.date_to;
+
+    var totInv = 0, totVen = 0;
+    rows.forEach(function (r) { totInv += r.inversion || 0; totVen += r.ventas || 0; });
+    var globalRoas = totInv > 0 ? totVen / totInv : null;
+    summary.textContent = rows.length
+      ? "Inv $" + NF_USD0.format(totInv) + " · Ventas $" + NF_USD0.format(totVen) +
+        (globalRoas !== null ? " · ROAS " + globalRoas.toFixed(2) + "×" : "")
+      : "sin gasto en el período";
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="roas-note">No hay inversión Meta en el período seleccionado.</div>';
+      return;
+    }
+    var html = '<table class="roas-table"><thead><tr>' +
+      '<th>Producto</th><th>Inversión</th><th>Ventas</th><th>Utilidad</th><th>ROAS</th>' +
+      '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var prod = (r.codigo === null && r.producto === "Sin producto vinculado")
+        ? escHtml(r.producto) + ' · <a class="roas-vincular" href="/ads/vincular/">vincular →</a>'
+        : escHtml(r.producto);
+      var ven  = r.ventas   === null ? "—" : "$" + NF_USD0.format(r.ventas);
+      var util = r.utilidad === null ? "—"
+        : (r.utilidad < 0 ? '<span class="roas-neg">−$' + NF_USD0.format(Math.abs(r.utilidad)) + '</span>'
+                          : "$" + NF_USD0.format(r.utilidad));
+      html += "<tr><td>" + prod + "</td>" +
+        "<td>$" + NF_USD0.format(r.inversion) + "</td>" +
+        "<td>" + ven + "</td><td>" + util + "</td>" +
+        "<td>" + roasBadge(r.roas) + "</td></tr>";
+    });
+    wrap.innerHTML = html + "</tbody></table>";
+  }
+
+  function loadRoas() {
+    var params = new URLSearchParams({ roas: "1" });
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo)   params.set("date_to", dateTo);
+    fetch("?" + params.toString())
+      .then(function (r) { return r.json(); })
+      .then(renderRoas)
+      .catch(function () {
+        document.getElementById("roasSummary").textContent = "error al cargar ROAS";
+      });
+  }
+
+  function setupRoasPanel() {
+    var panel = document.getElementById("roasPanel");
+    var toggle = document.getElementById("roasToggle");
+    var body = document.getElementById("roasBody");
+    if (!panel || !toggle) return;
+    toggle.addEventListener("click", function () {
+      var open = panel.classList.toggle("open");
+      body.style.display = open ? "" : "none";
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    loadRoas();
+  }
+
   var listValuesCache = {};  // field -> distinct values (built once per load)
   var iconBtns = {};         // field -> funnel <button> element
 
@@ -2033,6 +2158,7 @@
     if (btnClear) btnClear.addEventListener("click", clearAllFilters);
 
     setupAdsDatePicker();
+    setupRoasPanel();
 
     // B7: active filters strip clear + dismiss
     var afsClear = document.getElementById("afsClearAll");

@@ -1028,6 +1028,20 @@ def ads_dashboard(request):
     if export in ("xlsx", "xls"):
         return _export_meta_ads(qs)
 
+    # --- ROAS por producto (JSON) ---
+    if request.GET.get("roas", "").strip() == "1":
+        today = datetime.date.today()
+        try:
+            r_from = datetime.date.fromisoformat(date_from) if date_from else datetime.date(today.year, 1, 1)
+            r_to = datetime.date.fromisoformat(date_to) if date_to else today
+        except ValueError:
+            return JsonResponse({"error": "fecha inválida"}, status=400)
+        return JsonResponse({
+            "date_from": r_from.isoformat(),
+            "date_to": r_to.isoformat(),
+            "rows": _roas_por_producto(r_from, r_to),
+        })
+
     # --- AJAX JSON payload ---
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         # Distinct filter options come from the FULL queryset (no active filters)
@@ -2435,4 +2449,128 @@ def _paid_media_kpis(date_from: datetime.date, date_to: datetime.date) -> dict:
         "rows_sin_usd": rows_sin_usd,
         "por_negocio": por_negocio,
     }
+
+
+def _roas_por_producto(date_from: datetime.date, date_to: datetime.date) -> list[dict]:
+    """
+    ROAS per product for [date_from, date_to]: Meta spend (amount_usd) crossed
+    with paid sales (estado 1/2, medio='pagado') converted to USD.
+
+    Join key: codigo_producto via MetaCampaignMap when available, else exact
+    product-name match against the Producto catalog. Spend with no resolvable
+    product is bucketed under "Sin producto vinculado".
+
+    Only products with spend in the period are returned (the home dashboard
+    already covers the global picture; here the question is campaign ROI).
+    """
+    month_after = date_to.month + 1
+    year_after = date_to.year
+    if month_after > 12:
+        month_after = 1
+        year_after += 1
+    hasta_exclusive = datetime.date(year_after, month_after, 1)
+
+    # ---- Lookups: campaign -> codigo, nombre -> codigo, codigo -> nombre ----
+    cmap = {
+        m.campaign_id: m.codigo_producto
+        for m in MetaCampaignMap.objects.filter(codigo_producto__isnull=False)
+    }
+    name_to_codigo = {}
+    codigo_to_name = {}
+    for cod, nom in Producto.objects.values_list("codigo_producto", "nombre_producto"):
+        codigo_to_name[cod] = nom
+        if nom:
+            name_to_codigo[nom.strip()] = cod
+
+    # ---- Meta side: spend per codigo_producto ----
+    spend_by_codigo: dict = {}
+    spend_sin_producto = 0.0
+    ads_rows = (
+        MetaAds.objects
+        .filter(
+            report_start__gte=date_from,
+            report_start__lte=date_to,
+            amount_usd__isnull=False,
+        )
+        .values("campaign_id", "product")
+        .annotate(spend_usd=Sum("amount_usd"))
+        .order_by()
+    )
+    for row in ads_rows:
+        codigo = cmap.get(row["campaign_id"])
+        if codigo is None and row["product"]:
+            codigo = name_to_codigo.get(row["product"].strip())
+        usd = float(row["spend_usd"] or 0)
+        if codigo is None:
+            spend_sin_producto += usd
+        else:
+            spend_by_codigo[codigo] = spend_by_codigo.get(codigo, 0.0) + usd
+
+    # ---- Sales side: paid sales USD per codigo_producto ----
+    ventas_by_codigo: dict = {}
+    detalles_qs = (
+        DetalleVenta.objects
+        .filter(
+            venta__estado__in=[1, 2],
+            venta__medio="pagado",
+            venta__fecha_venta__gte=timezone.make_aware(
+                datetime.datetime(date_from.year, date_from.month, date_from.day)
+            ),
+            venta__fecha_venta__lt=timezone.make_aware(
+                datetime.datetime(hasta_exclusive.year, hasta_exclusive.month, hasta_exclusive.day)
+            ),
+        )
+        .annotate(
+            tasa_cambio=Coalesce(
+                "venta__radio_multiplicador_usado",
+                "venta__moneda__radioMultiplicador",
+                Value(1),
+                output_field=DecimalField(),
+            )
+        )
+        .annotate(
+            tasa_final=Case(
+                When(tasa_cambio=0, then=Value(1)),
+                default=F("tasa_cambio"),
+                output_field=DecimalField(),
+            )
+        )
+        .annotate(
+            monto_usd=ExpressionWrapper(
+                F("precio_total") / F("tasa_final"),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+        .values("producto__codigo_producto")
+        .annotate(total_usd=Sum("monto_usd"))
+        .order_by()
+    )
+    for row in detalles_qs:
+        cod = row["producto__codigo_producto"]
+        if cod is not None:
+            ventas_by_codigo[cod] = float(row["total_usd"] or 0)
+
+    # ---- Merge: only products with spend in the period ----
+    out = []
+    for codigo, inv in spend_by_codigo.items():
+        ven = ventas_by_codigo.get(codigo, 0.0)
+        out.append({
+            "codigo": codigo,
+            "producto": codigo_to_name.get(codigo) or f"Producto {codigo}",
+            "inversion": round(inv, 2),
+            "ventas": round(ven, 2),
+            "utilidad": round(ven - inv, 2),
+            "roas": round(ven / inv, 2) if inv > 0 else None,
+        })
+    if spend_sin_producto > 0:
+        out.append({
+            "codigo": None,
+            "producto": "Sin producto vinculado",
+            "inversion": round(spend_sin_producto, 2),
+            "ventas": None,
+            "utilidad": None,
+            "roas": None,
+        })
+    out.sort(key=lambda r: -r["inversion"])
+    return out
 
