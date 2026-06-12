@@ -10,6 +10,11 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- Flatpickr (date range picker) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+
   <!-- FontAwesome 6.5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -174,33 +179,77 @@
 
     .toolbar-spacer { flex: 1 1 auto; }
 
-    .date-range-wrap {
+    /* ── Flatpickr date range (same as home) ── */
+    .ads-date-wrap {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 4px 10px;
-      font-size: .8rem;
-      color: var(--muted);
+      padding: 5px 12px;
+      cursor: pointer;
       white-space: nowrap;
     }
-    .date-range-wrap input[type="date"] {
+    .ads-date-wrap i { color: var(--muted); font-size: .8rem; }
+    .ads-date-wrap input {
       border: none;
       outline: none;
       font-size: .8rem;
       color: var(--ink);
       background: transparent;
       cursor: pointer;
-      width: 118px;
-      padding: 1px 0;
+      width: 170px;
+      min-width: 120px;
     }
-    .date-range-wrap input[type="date"]::-webkit-calendar-picker-indicator {
-      opacity: .45;
+    .ads-date-wrap input::placeholder { color: var(--muted); }
+    /* Presets panel (injected by flatpickr onReady) */
+    .flatpickr-calendar.with-presets {
+      display: flex !important;
+      flex-direction: row;
+      align-items: stretch;
+      width: auto !important;
+      max-width: none !important;
+    }
+    .flatpickr-calendar.with-presets .flatpickr-native {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+    }
+    .flatpickr-presets {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 8px;
+      background: #f8fafc;
+      border-right: 1px solid #e2e8f0;
+      min-width: 150px;
+      border-radius: 5px 0 0 5px;
+    }
+    .flatpickr-presets-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 4px 8px 6px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .flatpickr-preset-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      text-align: left;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
       cursor: pointer;
+      color: #1e293b;
+      font-weight: 500;
+      transition: background-color .12s, border-color .12s, color .12s;
     }
-    .date-range-sep { color: var(--muted); font-weight: 600; padding: 0 2px; }
+    .flatpickr-preset-btn:hover { background: #e0e7ff; border-color: #c7d2fe; color: #3730a3; }
+    .flatpickr-preset-btn.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
 
     .columns-menu {
       max-height: 340px;
@@ -629,12 +678,10 @@
         <input type="search" id="globalSearch" placeholder="Buscar campaña, producto o ID..." autocomplete="off">
       </div>
 
-      <!-- Date range filter -->
-      <div class="date-range-wrap">
-        <i class="fas fa-calendar-days" style="font-size:.75rem;"></i>
-        <input type="date" id="dateFrom" title="Fecha desde (report_start)">
-        <span class="date-range-sep">–</span>
-        <input type="date" id="dateTo" title="Fecha hasta (report_start)">
+      <!-- Date range picker (flatpickr, same as home) -->
+      <div class="ads-date-wrap" id="adsDateWrap">
+        <i class="fas fa-calendar-days"></i>
+        <input type="text" id="adsFiltroRango" placeholder="Rango de fechas..." readonly autocomplete="off">
       </div>
 
       <div class="dropdown">
@@ -1082,6 +1129,84 @@
   var listFilters = {};      // field -> ARRAY of selected values; key absent OR empty array = no filter
   var dateFrom   = "";       // ISO date string "YYYY-MM-DD" or ""
   var dateTo     = "";       // ISO date string "YYYY-MM-DD" or ""
+  var adsPickerInst = null;  // flatpickr instance
+
+  // ── Date range picker (flatpickr, same presets as home) ──────────────────
+  var ADS_PRESETS = [
+    { key: 'hoy',          label: 'Hoy',             getRange: function() { var t = new Date(); return [t, new Date(t)]; } },
+    { key: 'ayer',         label: 'Ayer',            getRange: function() { var d = new Date(); d.setDate(d.getDate()-1); return [d, new Date(d)]; } },
+    { key: '7d',           label: 'Últimos 7 días',  getRange: function() { var e=new Date(),s=new Date(); s.setDate(s.getDate()-6); return [s,e]; } },
+    { key: '15d',          label: 'Últimos 15 días', getRange: function() { var e=new Date(),s=new Date(); s.setDate(s.getDate()-14); return [s,e]; } },
+    { key: '30d',          label: 'Últimos 30 días', getRange: function() { var e=new Date(),s=new Date(); s.setDate(s.getDate()-29); return [s,e]; } },
+    { key: '90d',          label: 'Últimos 90 días', getRange: function() { var e=new Date(),s=new Date(); s.setDate(s.getDate()-89); return [s,e]; } },
+    { key: 'mesActual',    label: 'Este mes',         getRange: function() { var t=new Date(); return [new Date(t.getFullYear(),t.getMonth(),1),t]; } },
+    { key: 'mesAnterior',  label: 'Mes anterior',     getRange: function() { var t=new Date(),s=new Date(t.getFullYear(),t.getMonth()-1,1),e=new Date(t.getFullYear(),t.getMonth(),0); return [s,e]; } },
+    { key: 'anioActual',   label: 'Este año',         getRange: function() { var t=new Date(); return [new Date(t.getFullYear(),0,1),t]; } },
+    { key: 'anioAnterior', label: 'Año anterior',     getRange: function() { var t=new Date(); return [new Date(t.getFullYear()-1,0,1),new Date(t.getFullYear()-1,11,31)]; } },
+    { key: '12m',          label: 'Últimos 12 meses', getRange: function() { var e=new Date(),s=new Date(e); s.setFullYear(s.getFullYear()-1); s.setDate(s.getDate()+1); return [s,e]; } },
+  ];
+
+  function fmtIso(d) {
+    if (!(d instanceof Date) || isNaN(d)) return '';
+    var mm = d.getMonth()+1, dd = d.getDate();
+    return d.getFullYear() + '-' + (mm<10?'0':'')+mm + '-' + (dd<10?'0':'')+dd;
+  }
+
+  function setupAdsDatePicker() {
+    if (typeof flatpickr === 'undefined') return;
+    var input = document.getElementById('adsFiltroRango');
+    if (!input) return;
+
+    var presetsWrap = document.createElement('div');
+    presetsWrap.className = 'flatpickr-presets';
+    var presetsTitle = document.createElement('div');
+    presetsTitle.className = 'flatpickr-presets-title';
+    presetsTitle.textContent = 'Atajos';
+    presetsWrap.appendChild(presetsTitle);
+
+    adsPickerInst = flatpickr(input, {
+      mode: 'range',
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'd M Y',
+      locale: flatpickr.l10ns && flatpickr.l10ns.es,
+      showMonths: 2,
+      onReady: function(_sel, _str, instance) {
+        var cal = instance.calendarContainer;
+        cal.classList.add('with-presets');
+        var nativeWrap = document.createElement('div');
+        nativeWrap.className = 'flatpickr-native';
+        while (cal.firstChild) nativeWrap.appendChild(cal.firstChild);
+        cal.appendChild(presetsWrap);
+        cal.appendChild(nativeWrap);
+      },
+      onChange: function(dates) {
+        presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach(function(b){ b.classList.remove('active'); });
+        if (!dates.length) { dateFrom = ''; dateTo = ''; applyFilters(); return; }
+        if (dates.length === 2) {
+          dateFrom = fmtIso(dates[0]);
+          dateTo   = fmtIso(dates[1]);
+          applyFilters();
+        }
+      },
+    });
+
+    ADS_PRESETS.forEach(function(preset) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'flatpickr-preset-btn';
+      btn.dataset.presetKey = preset.key;
+      btn.textContent = preset.label;
+      btn.addEventListener('click', function() {
+        var range = preset.getRange();
+        presetsWrap.querySelectorAll('.flatpickr-preset-btn.active').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        adsPickerInst.setDate(range, true);
+        adsPickerInst.close();
+      });
+      presetsWrap.appendChild(btn);
+    });
+  }
   var listValuesCache = {};  // field -> distinct values (built once per load)
   var iconBtns = {};         // field -> funnel <button> element
 
@@ -1754,10 +1879,7 @@
       textFilters = {};
       listFilters = {};
       dateFrom = ""; dateTo = "";
-      var dfEl = document.getElementById("dateFrom");
-      var dtEl = document.getElementById("dateTo");
-      if (dfEl) dfEl.value = "";
-      if (dtEl) dtEl.value = "";
+      if (adsPickerInst) adsPickerInst.clear();
       closeFilterPopup();
       applyFilters(); // no active conditions => clearFilter() + icons reset
       // B7: hide strip
@@ -1768,10 +1890,7 @@
     var btnClear = document.getElementById("btnClearFilters");
     if (btnClear) btnClear.addEventListener("click", clearAllFilters);
 
-    var dfInput = document.getElementById("dateFrom");
-    var dtInput = document.getElementById("dateTo");
-    if (dfInput) dfInput.addEventListener("change", function () { dateFrom = this.value; applyFilters(); });
-    if (dtInput) dtInput.addEventListener("change", function () { dateTo = this.value; applyFilters(); });
+    setupAdsDatePicker();
 
     // B7: active filters strip clear + dismiss
     var afsClear = document.getElementById("afsClearAll");
