@@ -996,6 +996,8 @@ def ads_dashboard(request):
     pais = request.GET.get("pais", "").strip()
     categoria = request.GET.get("categoria", "").strip()
     producto = request.GET.get("producto", "").strip()
+    date_from = request.GET.get("date_from", "").strip()
+    date_to = request.GET.get("date_to", "").strip()
 
     if mes:
         qs = qs.filter(month=mes)
@@ -1005,6 +1007,10 @@ def ads_dashboard(request):
         qs = qs.filter(category=categoria)
     if producto:
         qs = qs.filter(product=producto)
+    if date_from:
+        qs = qs.filter(report_start__gte=date_from)
+    if date_to:
+        qs = qs.filter(report_start__lte=date_to)
 
     # --- Export ---
     export = request.GET.get("export", "").strip().lower()

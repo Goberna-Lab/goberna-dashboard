@@ -174,6 +174,34 @@
 
     .toolbar-spacer { flex: 1 1 auto; }
 
+    .date-range-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: .8rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .date-range-wrap input[type="date"] {
+      border: none;
+      outline: none;
+      font-size: .8rem;
+      color: var(--ink);
+      background: transparent;
+      cursor: pointer;
+      width: 118px;
+      padding: 1px 0;
+    }
+    .date-range-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: .45;
+      cursor: pointer;
+    }
+    .date-range-sep { color: var(--muted); font-weight: 600; padding: 0 2px; }
+
     .columns-menu {
       max-height: 340px;
       overflow-y: auto;
@@ -599,6 +627,14 @@
       <div class="search-box">
         <i class="fas fa-magnifying-glass"></i>
         <input type="search" id="globalSearch" placeholder="Buscar campaña, producto o ID..." autocomplete="off">
+      </div>
+
+      <!-- Date range filter -->
+      <div class="date-range-wrap">
+        <i class="fas fa-calendar-days" style="font-size:.75rem;"></i>
+        <input type="date" id="dateFrom" title="Fecha desde (report_start)">
+        <span class="date-range-sep">–</span>
+        <input type="date" id="dateTo" title="Fecha hasta (report_start)">
       </div>
 
       <div class="dropdown">
@@ -1044,6 +1080,8 @@
   var searchTerm = "";       // global toolbar search (normalized)
   var textFilters = {};      // field -> raw input string ("like" filter)
   var listFilters = {};      // field -> ARRAY of selected values; key absent OR empty array = no filter
+  var dateFrom   = "";       // ISO date string "YYYY-MM-DD" or ""
+  var dateTo     = "";       // ISO date string "YYYY-MM-DD" or ""
   var listValuesCache = {};  // field -> distinct values (built once per load)
   var iconBtns = {};         // field -> funnel <button> element
 
@@ -1116,6 +1154,9 @@
     var activeColNames = [];
     likeTerms.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
     listConds.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
+    if (dateFrom || dateTo) {
+      activeColNames.push("Período: " + (dateFrom || "…") + " → " + (dateTo || "hoy"));
+    }
     var strip = document.getElementById("activeFiltersStrip");
     var colList = document.getElementById("afsColList");
     if (strip && colList) {
@@ -1127,12 +1168,12 @@
       }
     }
 
-    if (!searchTerm && !likeTerms.length && !listConds.length) {
+    if (!searchTerm && !likeTerms.length && !listConds.length && !dateFrom && !dateTo) {
       table.clearFilter();
       return;
     }
 
-    var t0 = searchTerm;
+    var t0 = searchTerm, d0 = dateFrom, d1 = dateTo;
     table.setFilter(function (data) {
       if (t0 &&
           norm(data.campaign_name).indexOf(t0) === -1 &&
@@ -1144,6 +1185,10 @@
       for (var j = 0; j < listConds.length; j++) {
         if (!inFilter(listConds[j][1], data[listConds[j][0]])) return false;
       }
+      // Date range — compare ISO strings (YYYY-MM-DD sorts lexicographically)
+      var rs = data.report_start || "";
+      if (d0 && rs && rs < d0) return false;
+      if (d1 && rs && rs > d1) return false;
       return true;
     });
   }
@@ -1708,6 +1753,11 @@
       searchTerm = "";
       textFilters = {};
       listFilters = {};
+      dateFrom = ""; dateTo = "";
+      var dfEl = document.getElementById("dateFrom");
+      var dtEl = document.getElementById("dateTo");
+      if (dfEl) dfEl.value = "";
+      if (dtEl) dtEl.value = "";
       closeFilterPopup();
       applyFilters(); // no active conditions => clearFilter() + icons reset
       // B7: hide strip
@@ -1717,6 +1767,11 @@
 
     var btnClear = document.getElementById("btnClearFilters");
     if (btnClear) btnClear.addEventListener("click", clearAllFilters);
+
+    var dfInput = document.getElementById("dateFrom");
+    var dtInput = document.getElementById("dateTo");
+    if (dfInput) dfInput.addEventListener("change", function () { dateFrom = this.value; applyFilters(); });
+    if (dtInput) dtInput.addEventListener("change", function () { dateTo = this.value; applyFilters(); });
 
     // B7: active filters strip clear + dismiss
     var afsClear = document.getElementById("afsClearAll");
