@@ -900,7 +900,7 @@ ADS_COLUMNS = [
 ADS_FIELD_NAMES = [col[0] for col in ADS_COLUMNS]
 
 
-def _serialize_ads_row(obj, account_map=None) -> dict:
+def _serialize_ads_row(obj, account_map=None, campaign_status_map=None) -> dict:
     """Serialize a MetaAds instance to a JSON-safe dict for the AJAX payload."""
     def _date_str(d):
         if d is None:
@@ -914,14 +914,23 @@ def _serialize_ads_row(obj, account_map=None) -> dict:
             return None
         return float(v)
 
+    acct = (account_map or {}).get(obj.account_id) if obj.account_id else None
+
+    # effective_status: use own value if present, else fall back to any API row
+    # with the same campaign_id (covers Excel rows not yet backfilled).
+    eff_status = obj.effective_status
+    if not eff_status and obj.campaign_id and campaign_status_map:
+        eff_status = campaign_status_map.get(obj.campaign_id)
+
     return {
         "campaign_name":    obj.campaign_name,
         "product":          obj.product,
         "paid_country":     obj.paid_country,
         "country":          obj.country,
         "delivery":         obj.delivery,
-        "effective_status": obj.effective_status,
-        "account_name":     (account_map or {}).get(obj.account_id) if obj.account_id else None,
+        "effective_status": eff_status,
+        "account_name":     acct["name"] if acct else None,
+        "account_status":   acct["account_status"] if acct else None,
         "results":          obj.results,
         "result_indicator": obj.result_indicator,
         "reach":            obj.reach,
@@ -1035,14 +1044,25 @@ def ads_dashboard(request):
         # Serialization contract (via _serialize_ads_row): DateField -> ISO
         # "YYYY-MM-DD" string, Decimal -> JSON *number* (explicit float()),
         # NULL -> JSON null. The DjangoJSONEncoder never sees raw Decimals.
-        # Build account name lookup once per AJAX call (cheap: ~24 rows)
-        _acct_map = {a.account_id: a.name for a in MetaAccount.objects.only("account_id", "name")}
+        # account_map: account_id -> {name, account_status}
+        _acct_map = {
+            a.account_id: {"name": a.name, "account_status": a.account_status}
+            for a in MetaAccount.objects.only("account_id", "name", "account_status")
+        }
+        # campaign_status_map: campaign_id -> effective_status (from API rows only)
+        # Used to fill in effective_status for Excel rows that have no API data yet.
+        _campaign_status_map = {
+            row["campaign_id"]: row["effective_status"]
+            for row in MetaAds.objects.filter(
+                source="api", effective_status__isnull=False, campaign_id__isnull=False
+            ).values("campaign_id", "effective_status")
+        }
 
         if (
             request.GET.get("all", "").strip() == "1"
             or request.GET.get("page_size", "").strip() == "0"
         ):
-            rows = [_serialize_ads_row(obj, _acct_map) for obj in qs.order_by("id")]
+            rows = [_serialize_ads_row(obj, _acct_map, _campaign_status_map) for obj in qs.order_by("id")]
             return JsonResponse(
                 {
                     "rows": rows,
@@ -1068,7 +1088,7 @@ def ads_dashboard(request):
         offset = (page - 1) * page_size
         page_qs = qs[offset: offset + page_size]
 
-        rows = [_serialize_ads_row(obj, _acct_map) for obj in page_qs]
+        rows = [_serialize_ads_row(obj, _acct_map, _campaign_status_map) for obj in page_qs]
 
         return JsonResponse(
             {

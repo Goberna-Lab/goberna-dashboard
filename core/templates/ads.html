@@ -1021,21 +1021,44 @@
     "IN_PROCESS":   { label: "En proceso",    bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4", dot: "#0EA5E9" },
   };
 
-  function statusFmt(cell) {
-    var v = (cell.getValue() || "").toUpperCase();
-    if (!v) return NULL_HTML;
-    var c = STATUS_BADGES[v] || { label: v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
+  function _makeBadge(label, bg, fg, bd, dot) {
     var badge = document.createElement("span");
     badge.className = "delivery-badge";
-    badge.style.cssText = "background:" + c.bg + ";color:" + c.fg + ";border-color:" + c.bd + ";";
-    if (c.dot) {
-      var dot = document.createElement("span");
-      dot.className = "dot";
-      dot.style.backgroundColor = c.dot;
-      badge.appendChild(dot);
+    badge.style.cssText = "background:" + bg + ";color:" + fg + ";border-color:" + bd + ";";
+    if (dot) {
+      var d = document.createElement("span");
+      d.className = "dot";
+      d.style.backgroundColor = dot;
+      badge.appendChild(d);
     }
-    badge.appendChild(document.createTextNode(c.label));
+    badge.appendChild(document.createTextNode(label));
     return badge;
+  }
+
+  function statusFmt(cell) {
+    var v = (cell.getValue() || "").toUpperCase();
+    if (!v) {
+      // Sin status después del match server-side: Excel sin campaña en la API
+      if ((cell.getData() || {}).source === "excel") {
+        return _makeBadge("Sin sync", "#F8FAFC", "#94A3B8", "#E2E8F0", null);
+      }
+      return NULL_HTML;
+    }
+    var c = STATUS_BADGES[v] || { label: v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
+    return _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
+  }
+
+  var ACCT_STATUS = {
+    1: { label: "Activa",        bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
+    2: { label: "Deshabilitada", bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
+    3: { label: "Sin fondos",    bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#EF4444" },
+  };
+
+  function acctStatusFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined) return NULL_HTML;
+    var c = ACCT_STATUS[+v] || { label: "Estado " + v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
+    return _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
   }
 
   function cprFmt(cell) {
@@ -1066,6 +1089,47 @@
       if (d._spendStep >= 4) el.style.fontWeight = "700";
     }
     return NF_MONEY.format(v);
+  }
+
+  // ── Métricas calculadas ──────────────────────────────────────────────────
+  var NF_PCT  = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var NF_FREQ = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var NF_CPM  = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function ctrFmt(cell) {
+    var d = cell.getData() || {};
+    var clicks = +(d.link_clicks) || 0, imp = +(d.impressions) || 0;
+    if (!imp) return NULL_HTML;
+    return NF_PCT.format(clicks / imp * 100) + "%";
+  }
+  function cpmFmt(cell) {
+    var d = cell.getData() || {};
+    var spend = +(d.spend) || 0, imp = +(d.impressions) || 0;
+    if (!imp) return NULL_HTML;
+    return "$" + NF_CPM.format(spend / imp * 1000);
+  }
+  function freqFmt(cell) {
+    var d = cell.getData() || {};
+    var imp = +(d.impressions) || 0, reach = +(d.reach) || 0;
+    if (!reach) return NULL_HTML;
+    return NF_FREQ.format(imp / reach) + "×";
+  }
+
+  // bottom calc helpers for derived metrics
+  function calcBottomCTR(_vals, data) {
+    var clicks = 0, imp = 0;
+    data.forEach(function(r) { clicks += (+r.link_clicks||0); imp += (+r.impressions||0); });
+    return imp ? clicks / imp * 100 : null;
+  }
+  function calcBottomCPM(_vals, data) {
+    var spend = 0, imp = 0;
+    data.forEach(function(r) { spend += (+r.spend||0); imp += (+r.impressions||0); });
+    return imp ? spend / imp * 1000 : null;
+  }
+  function calcBottomFreq(_vals, data) {
+    var imp = 0, reach = 0;
+    data.forEach(function(r) { imp += (+r.impressions||0); reach += (+r.reach||0); });
+    return reach ? imp / reach : null;
   }
 
   // ----------------------------------------------------------
@@ -1697,12 +1761,9 @@
         headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña",
         titleFormatter: filterTitle("product", "Producto")
       },
-      { title: "Estado", field: "effective_status", width: 130, formatter: statusFmt,
-        headerTooltip: "Estado actual de la campaña en Meta (ACTIVE, PAUSED, ARCHIVED…)",
-        titleFormatter: filterTitle("effective_status", "Estado") },
-      { title: "Cuenta", field: "account_name", width: 200, formatter: dashFmt,
-        headerTooltip: "Nombre del administrador de anuncios (ad account) al que pertenece la campaña",
-        titleFormatter: filterTitle("account_name", "Cuenta") },
+      { title: "Estado Campaña", field: "effective_status", width: 145, formatter: statusFmt,
+        headerTooltip: "Estado actual de la campaña en Meta (ACTIVE, PAUSED, ARCHIVED…). Para filas Excel sin sync, se hereda del campaign_id si existe en la API.",
+        titleFormatter: filterTitle("effective_status", "Estado Campaña") },
       { title: "País (pauta)", field: "paid_country", width: 130, formatter: dashFmt,
         headerTooltip: "País de la cuenta publicitaria (quién pagó la pauta)",
         titleFormatter: filterTitle("paid_country", "País (pauta)") },
@@ -1725,6 +1786,26 @@
       assign({ title: "Link Clicks", field: "link_clicks", width: 110, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
         headerTooltip: "Clics en el enlace del anuncio (destino configurado en Meta)" }, sumCalc),
       {
+        title: "CTR", field: "link_clicks", width: 85, hozAlign: "right", headerHozAlign: "right",
+        formatter: ctrFmt,
+        headerTooltip: "Click-through rate = Clics ÷ Impresiones × 100",
+        bottomCalc: calcBottomCTR,
+        bottomCalcFormatter: function(cell) {
+          var v = cell.getValue();
+          return (v == null) ? "—" : NF_PCT.format(v) + "%";
+        }
+      },
+      {
+        title: "Frecuencia", field: "impressions", width: 105, hozAlign: "right", headerHozAlign: "right",
+        formatter: freqFmt,
+        headerTooltip: "Impresiones ÷ Alcance — cuántas veces vio el anuncio cada persona única",
+        bottomCalc: calcBottomFreq,
+        bottomCalcFormatter: function(cell) {
+          var v = cell.getValue();
+          return (v == null) ? "—" : NF_FREQ.format(v) + "×";
+        }
+      },
+      {
         title: "Costo por Resultados", field: "cost_per_result",
         width: 150, hozAlign: "right", headerHozAlign: "right", formatter: cprFmt,
         headerTooltip: "Gasto ÷ resultados. Color = comparación contra campañas del mismo indicador (percentil dentro del grupo)",
@@ -1741,6 +1822,16 @@
       },
       assign({ title: "Importe Gastado", field: "spend", width: 140, hozAlign: "right", headerHozAlign: "right", formatter: spendFmt,
         headerTooltip: "Gasto total en la moneda de la cuenta publicitaria" }, moneySumCalc),
+      {
+        title: "CPM", field: "spend", width: 95, hozAlign: "right", headerHozAlign: "right",
+        formatter: cpmFmt,
+        headerTooltip: "Costo por mil impresiones = Gasto ÷ Impresiones × 1000",
+        bottomCalc: calcBottomCPM,
+        bottomCalcFormatter: function(cell) {
+          var v = cell.getValue();
+          return (v == null) ? "—" : "$" + NF_CPM.format(v);
+        }
+      },
       {
         title: "Mes", field: "month", width: 115, formatter: dashFmt,
         headerTooltip: "Mes del período de datos (desglose mensual)",
@@ -1759,6 +1850,24 @@
         headerTooltip: "Identificador único de la campaña en Meta Ads" },
       { title: "ID de la Cuenta", field: "account_id", width: 140, formatter: dashFmt,
         headerTooltip: "Identificador de la cuenta publicitaria de Meta" },
+      { title: "Nombre Cuenta", field: "account_name", width: 200,
+        headerTooltip: "Nombre del administrador de anuncios (ad account) al que pertenece la campaña",
+        titleFormatter: filterTitle("account_name", "Nombre Cuenta"),
+        formatter: function(cell) {
+          var v = cell.getValue();
+          if (v) return v;
+          var id = (cell.getData() || {}).account_id;
+          if (id) {
+            var el = document.createElement("span");
+            el.style.cssText = "color:#94A3B8;font-size:.78rem;font-family:monospace;";
+            el.textContent = id;
+            return el;
+          }
+          return NULL_HTML;
+        }
+      },
+      { title: "Estado Cuenta", field: "account_status", width: 145, formatter: acctStatusFmt,
+        headerTooltip: "Estado del ad account en Meta: 1=Activa, 2=Deshabilitada, 3=Sin fondos" },
       { title: "Categoría", field: "category", width: 135, formatter: categoryFmt,
         headerTooltip: "Línea de negocio Goberna (Escuela, Editorial, Consultoría, LifeStyle)",
         titleFormatter: filterTitle("category", "Categoría") },
@@ -1851,7 +1960,7 @@
         sort: true,
         columns: ["width", "visible"]
       },
-      persistenceID: "adsPauta",
+      persistenceID: "adsPauta-v2",
 
       columns: buildColumns(rows)
     };
@@ -1861,7 +1970,7 @@
     // corrupted tabulator-adsPauta-* entry would throw asynchronously and
     // leave the page stuck on the spinner forever. Pre-validate the persisted
     // layout and drop any entry that does not parse.
-    ["tabulator-adsPauta-sort", "tabulator-adsPauta-columns"].forEach(function (key) {
+    ["tabulator-adsPauta-v2-sort", "tabulator-adsPauta-v2-columns"].forEach(function (key) {
       try {
         var raw = localStorage.getItem(key);
         if (raw !== null) JSON.parse(raw);
@@ -1876,8 +1985,8 @@
       table = new Tabulator("#adsGrid", tableOptions);
     } catch (e) {
       try {
-        localStorage.removeItem("tabulator-adsPauta-sort");
-        localStorage.removeItem("tabulator-adsPauta-columns");
+        localStorage.removeItem("tabulator-adsPauta-v2-sort");
+        localStorage.removeItem("tabulator-adsPauta-v2-columns");
       } catch (e2) { /* private mode */ }
       table = new Tabulator("#adsGrid", tableOptions);
     }
