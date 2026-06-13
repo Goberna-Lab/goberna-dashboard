@@ -2483,6 +2483,14 @@ def _roas_por_producto(date_from: datetime.date, date_to: datetime.date) -> list
             name_to_codigo[nom.strip()] = cod
 
     # ---- Meta side: spend per codigo_producto ----
+    # BOB-billed accounts have amount_usd=NULL; convert spend (BOB) -> USD
+    # on the fly using the moneda BOB ratio (codigo_moneda=3), with a
+    # hardcoded fallback to the current rate if not configured.
+    bob_ratio = Moneda.objects.filter(pk=3).values_list(
+        "radioMultiplicador", flat=True
+    ).first()
+    bob_ratio = bob_ratio or Decimal("9.07")
+
     spend_by_codigo: dict = {}
     spend_sin_producto = 0.0
     ads_rows = (
@@ -2490,10 +2498,23 @@ def _roas_por_producto(date_from: datetime.date, date_to: datetime.date) -> list
         .filter(
             report_start__gte=date_from,
             report_start__lte=date_to,
-            amount_usd__isnull=False,
+        )
+        .annotate(
+            gasto_usd=Case(
+                When(amount_usd__isnull=False, then=F("amount_usd")),
+                When(
+                    amount_usd__isnull=True, account_currency="BOB",
+                    then=ExpressionWrapper(
+                        F("spend") / Value(bob_ratio, output_field=DecimalField()),
+                        output_field=DecimalField(max_digits=14, decimal_places=4),
+                    ),
+                ),
+                default=Value(0),
+                output_field=DecimalField(max_digits=14, decimal_places=4),
+            )
         )
         .values("campaign_id", "product")
-        .annotate(spend_usd=Sum("amount_usd"))
+        .annotate(spend_usd=Sum("gasto_usd"))
         .order_by()
     )
     for row in ads_rows:

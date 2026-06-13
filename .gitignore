@@ -20,3 +20,5 @@ venv/
 
 # Playwright
 .playwright-mcp/
+core/__pycache__/
+.claude
