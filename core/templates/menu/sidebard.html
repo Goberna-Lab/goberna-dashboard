@@ -446,10 +446,16 @@
 
       {% show_ads_link as can_see_ads %}
       {% if can_see_ads %}
-      <li class="nav-item {% if '/ads' in request.path %}active-indicator{% endif %}">
-        <a class="nav-link {% if '/ads' in request.path %}active{% endif %}" href="/ads/">
+      <li class="nav-item {% if '/ads' in request.path and '/ads/cursos' not in request.path %}active-indicator{% endif %}">
+        <a class="nav-link {% if '/ads' in request.path and '/ads/cursos' not in request.path %}active{% endif %}" href="/ads/">
           <i class="fas fa-bullhorn"></i>
           <span>Ads / Pauta</span>
+        </a>
+      </li>
+      <li class="nav-item {% if '/ads/cursos' in request.path %}active-indicator{% endif %}">
+        <a class="nav-link {% if '/ads/cursos' in request.path %}active{% endif %}" href="/ads/cursos/">
+          <i class="fas fa-graduation-cap"></i>
+          <span>Pautas y Ventas</span>
         </a>
       </li>
       {% endif %}
