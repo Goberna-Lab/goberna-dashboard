@@ -1468,7 +1468,7 @@ def _get_all_products():
         Producto.objects.select_related("codigo_negocio")
         .order_by("sku_producto")
         .values("codigo_producto", "sku_producto", "nombre_producto",
-                "codigo_negocio__nombre_negocio")
+                "codigo_negocio__nombre_negocio", "fecha_registro")
     )
 
 
@@ -1980,7 +1980,7 @@ def ads_vincular(request):
     # data but do not appear here (user decision: LINKING_SCOPE_FROM = 2026-01-01).
     # Meta renames campaigns across months, so the same campaign_id can appear
     # with several names — consolidate by campaign_id keeping the most recent name.
-    from django.db.models import Max, Sum as DSum
+    from django.db.models import Max, Min, Sum as DSum
     campaign_qs = (
         MetaAds.objects
         .exclude(campaign_id__isnull=True)
@@ -1990,6 +1990,8 @@ def ads_vincular(request):
             recent_spend=DSum("spend"),
             months_seen=Count("month", distinct=True),
             last_seen=Max("report_start"),
+            date_start=Min("report_start"),
+            date_end=Max("report_end"),
         )
         .order_by("-recent_spend")
     )
@@ -2006,11 +2008,17 @@ def ads_vincular(request):
                 "account_id":    row["account_id"],
                 "recent_spend":  spend,
                 "months_seen":   row["months_seen"],
+                "date_start":    row["date_start"],
+                "date_end":      row["date_end"],
                 "_last_seen":    row["last_seen"],
             }
         else:
             cur["recent_spend"] += spend
             cur["months_seen"] += row["months_seen"]
+            if row["date_start"] and (cur["date_start"] is None or row["date_start"] < cur["date_start"]):
+                cur["date_start"] = row["date_start"]
+            if row["date_end"] and (cur["date_end"] is None or row["date_end"] > cur["date_end"]):
+                cur["date_end"] = row["date_end"]
             if row["last_seen"] and (cur["_last_seen"] is None or row["last_seen"] > cur["_last_seen"]):
                 cur["campaign_name"] = row["campaign_name"] or cid
                 cur["account_id"] = row["account_id"]

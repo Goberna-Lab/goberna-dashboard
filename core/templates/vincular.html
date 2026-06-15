@@ -318,6 +318,10 @@
       letter-spacing: .03em;
       color: var(--muted);
     }
+    .ac-item-fecha {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
     .ac-empty {
       padding: 10px 10px;
       color: var(--muted);
@@ -567,7 +571,8 @@
     <option value="{{ p.sku_producto }} — {{ p.nombre_producto }}"
             data-codigo="{{ p.codigo_producto }}"
             data-nombre="{{ p.nombre_producto }}"
-            data-negocio="{{ p.codigo_negocio__nombre_negocio|default:'' }}">
+            data-negocio="{{ p.codigo_negocio__nombre_negocio|default:'' }}"
+            data-fecha-registro="{{ p.fecha_registro|date:'d/m/Y'|default:'' }}">
     </option>
     {% endfor %}
   </datalist>
@@ -623,6 +628,7 @@
                   {% else %}
                   <span class="camp-id">{{ g.members.0.campaign_id }}</span>
                   <span class="pill pill-warning"><span class="dot"></span>1 campaña</span>
+                  <span class="camp-id">{{ g.members.0.date_start|date:"d/m/Y"|default:"—" }} – {{ g.members.0.date_end|date:"d/m/Y"|default:"—" }}</span>
                   {% endif %}
                   <span class="group-spend" title="En la moneda de cada cuenta">Gasto: {{ g.total_spend|floatformat:2 }}</span>
                 </div>
@@ -685,6 +691,8 @@
                     <th>Cuenta</th>
                     <th class="spend-num" title="En la moneda de cada cuenta">Gasto</th>
                     <th>Meses</th>
+                    <th>Fecha inicio</th>
+                    <th>Fecha fin</th>
                     <th style="min-width:300px;">Vincular esta campaña a otro producto</th>
                   </tr>
                 </thead>
@@ -707,6 +715,8 @@
                     <td style="font-size:0.78rem;color:var(--muted);">{{ m.account_id|default:"Cuenta desconocida" }}</td>
                     <td class="spend-num">{% if m.recent_spend %}{{ m.recent_spend|floatformat:2 }}{% else %}—{% endif %}</td>
                     <td style="text-align:center;">{{ m.months_seen }}</td>
+                    <td style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">{{ m.date_start|date:"d/m/Y"|default:"—" }}</td>
+                    <td style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">{{ m.date_end|date:"d/m/Y"|default:"—" }}</td>
                     <td>
                       <form method="post" action="/ads/vincular/" class="d-flex flex-wrap align-items-center gap-2 link-form">
                         {% csrf_token %}
@@ -858,10 +868,11 @@
   if (dl) {
     allOptions = Array.from(dl.options).map(function (opt) {
       return {
-        value:   opt.value,
-        codigo:  opt.dataset.codigo || '',
-        nombre:  opt.dataset.nombre || '',
-        negocio: opt.dataset.negocio || '',
+        value:        opt.value,
+        codigo:       opt.dataset.codigo || '',
+        nombre:       opt.dataset.nombre || '',
+        negocio:      opt.dataset.negocio || '',
+        fechaRegistro: opt.dataset.fechaRegistro || '',
       };
     });
   }
@@ -985,6 +996,12 @@
           skuEl.className = 'ac-item-sku';
           skuEl.textContent = sku;
           textWrap.appendChild(skuEl);
+        }
+        if (opt.fechaRegistro) {
+          var fechaEl = document.createElement('div');
+          fechaEl.className = 'ac-item-fecha';
+          fechaEl.textContent = 'Registrado: ' + opt.fechaRegistro;
+          textWrap.appendChild(fechaEl);
         }
         item.appendChild(textWrap);
 
