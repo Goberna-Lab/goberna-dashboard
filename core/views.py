@@ -872,13 +872,34 @@ def _export_cuotas(queryset, fmt: str = "csv"):
 # Ads / Pauta — Meta Ads view
 # ---------------------------------------------------------------------------
 
-# Column order for the 21-column Pauta table (APV-3)
+# Meta effective_status → simplified 3-state Delivery, matching Ads Manager's
+# new "Active / Pending / Inactive" column. The raw Meta value stays available
+# (effective_status in the payload) for the cell tooltip.
+_DELIVERY_PENDING = {
+    "PENDING_REVIEW", "IN_PROCESS", "PENDING_BILLING_INFO", "PREAPPROVED",
+}
+_DELIVERY_LABELS = {"active": "Activa", "pending": "Pendiente", "inactive": "Inactiva"}
+
+
+def _delivery_bucket(effective_status):
+    """Map a Meta effective_status to 'active' | 'pending' | 'inactive' | None."""
+    if not effective_status:
+        return None
+    s = str(effective_status).upper()
+    if s == "ACTIVE":
+        return "active"
+    if s in _DELIVERY_PENDING:
+        return "pending"
+    return "inactive"
+
+
+# Column order for the Pauta table / XLSX export
 ADS_COLUMNS = [
     ("campaign_name",   "Nombre de la Campaña"),
     ("product",         "Producto"),
     ("paid_country",    "País Pagado"),
     ("country",         "País"),
-    ("delivery",        "Entrega"),
+    ("delivery_status", "Entrega"),
     ("results",         "Resultados"),
     ("result_indicator","Indicador de resultados"),
     ("reach",           "Alcance"),
@@ -929,6 +950,7 @@ def _serialize_ads_row(obj, account_map=None, campaign_status_map=None) -> dict:
         "country":          obj.country,
         "delivery":         obj.delivery,
         "effective_status": eff_status,
+        "delivery_status":  _delivery_bucket(eff_status),
         "account_name":     acct["name"] if acct else None,
         "account_status":   acct["account_status"] if acct else None,
         "results":          obj.results,
@@ -973,7 +995,10 @@ def _export_meta_ads(queryset):
     for obj in queryset:
         row = []
         for field, _ in ADS_COLUMNS:
-            val = getattr(obj, field, None)
+            if field == "delivery_status":
+                val = _DELIVERY_LABELS.get(_delivery_bucket(obj.effective_status))
+            else:
+                val = getattr(obj, field, None)
             if val is None:
                 row.append(em_dash)
             elif hasattr(val, "isoformat"):
