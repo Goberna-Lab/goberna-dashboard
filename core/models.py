@@ -223,7 +223,7 @@ class Producto(models.Model):
         if ruta.startswith(("http://", "https://")):
             return ruta
 
-        main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.pe").rstrip("/") + "/"
+        main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.us").rstrip("/") + "/"
         media_url = getattr(settings, "MEDIA_URL", "/media/")
 
         # Si viene como /media/... se respeta esa ruta en el dominio principal

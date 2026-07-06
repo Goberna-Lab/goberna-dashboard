@@ -117,12 +117,12 @@ MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 # MEDIA_ROOT no sirve en Vercel para escritura, solo lectura si se despliegan assets
 
 # SESIÓN COMPARTIDA (CLAVE PARA EL LOGIN)
-# Ajustar esto al dominio real, ej: ".goberna.pe"
-SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', '.goberna.pe') 
+# Ajustar esto al dominio real, ej: ".goberna.us"
+SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', '.goberna.us')
 SESSION_ENGINE = 'django.contrib.sessions.backends.db' # Comparte sesión por DB
 
 # URLs EXTERNAS (Para los links del dashboard)
-MAIN_APP_URL = os.getenv('MAIN_APP_URL', 'https://app.goberna.pe')
+MAIN_APP_URL = os.getenv('MAIN_APP_URL', 'https://app.goberna.us')
 LOGIN_URL = f"{MAIN_APP_URL}/ingresar/"  # Redirigir al login principal si falta sesión
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

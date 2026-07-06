@@ -89,7 +89,7 @@ def _resolve_media_url(path_value: str) -> str:
     if path.startswith(("http://", "https://")):
         return path
 
-    main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.pe").rstrip("/") + "/"
+    main_app_url = getattr(settings, "MAIN_APP_URL", "https://app.goberna.us").rstrip("/") + "/"
     media_url = getattr(settings, "MEDIA_URL", "/media/")
 
     if path.startswith("/"):
