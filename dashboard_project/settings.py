@@ -22,9 +22,14 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = ['*'] # Vercel usa dominios dinámicos, restringir en prod si se desea
 
 # SESSION SHARING SETTINGS
-SESSION_COOKIE_DOMAIN = ".goberna.pe"
+# (SESSION_COOKIE_DOMAIN real esta mas abajo, leido de env var -- no duplicar aca)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Detras de un reverse proxy (nginx) que termina TLS y reenvia por HTTP:
+# sin esto Django cree que la conexion es insegura (request.is_secure() = False),
+# generando URLs http:// (ej. el "next=" del redirect a login) en vez de https://.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'django.contrib.admin', # Opcional, quizás para debug
