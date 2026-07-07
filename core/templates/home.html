@@ -479,6 +479,10 @@
       .modal-sales-filters {
         grid-template-columns: 1fr;
       }
+      .all-product-modal-head,
+      .all-product-modal-summary {
+        grid-template-columns: 1fr;
+      }
     }
     .pack-trend-sale-amount {
       font-size: 15px;
@@ -845,6 +849,15 @@
       width: 10%;
       white-space: nowrap;
     }
+    #tableAllProducts tbody tr {
+      cursor: pointer;
+    }
+    #tableAllProducts tbody tr:hover {
+      background: #f8fbff;
+    }
+    .all-products-toolbar {
+      min-width: 220px;
+    }
     .all-product-cell {
       display: flex;
       align-items: center;
@@ -868,6 +881,64 @@
       line-height: 1.25;
       white-space: normal;
       word-break: break-word;
+    }
+    .all-product-modal-head {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 14px;
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .all-product-modal-img {
+      width: 76px;
+      height: 76px;
+      border-radius: 12px;
+      border: 1px solid #dbe4ee;
+      object-fit: cover;
+      background: #eef2f7;
+    }
+    .all-product-modal-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .all-product-modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .all-product-modal-meta span,
+    .all-product-sale-metric {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid #dbe4ee;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .all-product-modal-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .all-product-modal-summary .stat-card {
+      padding: 12px 14px;
+      border-radius: 12px;
+    }
+    .all-product-modal-summary .stat-value {
+      font-size: 18px;
     }
     .compact-chart { padding: 12px 14px; }
     .compact-chart .section-title { margin-bottom: 6px; }
@@ -2104,6 +2175,10 @@
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Ventas de todos los productos</span>
             <div class="d-flex align-items-center gap-2">
+              <div class="search-box all-products-toolbar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="filtroBuscarTodosProductos" placeholder="Buscar producto...">
+              </div>
               <select id="filtroOrdenTodosProductos" class="form-select form-select-sm" style="max-width: 160px;">
                 <option value="monto" selected>Monto</option>
                 <option value="cantidad">Cantidad</option>
@@ -2591,6 +2666,7 @@
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
     let selectedAllProductsSort = 'monto'; // 'monto' | 'cantidad'
+    let selectedAllProductsSearch = '';
     let selectedVendorSort = 'cantidad'; // 'cantidad' | 'monto'
     let selectedVendorSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedSchoolSortOrder = 'desc'; // 'asc' | 'desc'
@@ -2610,6 +2686,7 @@
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
+    const ventasByIdMap = new Map();
     const ventaProductosMap = new Map();
     const productNameToIdsMap = new Map();
     const PACK_TRENDS_ORDER = [
@@ -2977,8 +3054,13 @@
     }
 
     function rebuildVentaProductosMap() {
+      ventasByIdMap.clear();
       ventaProductosMap.clear();
       productNameToIdsMap.clear();
+      (ventasDetalle || []).forEach(v => {
+        const ventaId = Number(v?.id || 0);
+        if (ventaId > 0) ventasByIdMap.set(ventaId, v);
+      });
       (detallesCategoria || []).forEach(d => {
         const ventaId = String(d.venta_id || '');
         const producto = String(d.producto__nombre_producto || '').trim();
@@ -4505,6 +4587,8 @@
             totalAmount += amount;
 
             const tr = document.createElement('tr');
+            tr.tabIndex = 0;
+            tr.title = 'Ver detalle de ventas del producto';
             tr.innerHTML = `
                 <td>
                   <div class="all-product-cell">
@@ -4517,6 +4601,12 @@
                 <td class="text-end"><span class="badge bg-light text-dark border">${formatearTickCantidad(qty)}</span></td>
                 <td class="text-end text-success fw-bold small">${formatearMonto(amount)}</td>
             `;
+            tr.addEventListener('click', () => showAllProductSalesModal(d));
+            tr.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                showAllProductSalesModal(d);
+            });
             tbody.appendChild(tr);
         });
 
@@ -5446,6 +5536,7 @@
     }
 
     function updateAllProductsTable(ventaIds, productosSeleccionados) {
+        const searchTerm = normalizeSearchTerm(selectedAllProductsSearch || '');
         const allProductDetails = detallesCategoria.filter(d => {
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
@@ -5454,7 +5545,8 @@
 
         const productMap = new Map();
         allProductDetails.forEach((d) => {
-            const productId = d.producto__codigo_producto || '';
+            const productId = Number(d.producto__codigo_producto || 0) || '';
+            const ventaId = Number(d.venta_id || 0);
             const name = String(d.producto__nombre_producto || 'Sin producto').trim() || 'Sin producto';
             const category = String(d.producto__codigo_categoria__nombre_categoria || 'Sin categoria').trim() || 'Sin categoria';
             const business = String(d.producto__codigo_negocio__nombre_negocio || 'Sin negocio').trim() || 'Sin negocio';
@@ -5462,16 +5554,63 @@
             const key = productId ? `id:${productId}` : `${name}|${category}|${business}`;
 
             if (!productMap.has(key)) {
-                productMap.set(key, { name, category, business, imageUrl, qty: 0, amount: 0 });
+                productMap.set(key, {
+                    productId,
+                    name,
+                    category,
+                    business,
+                    imageUrl,
+                    qty: 0,
+                    amount: 0,
+                    ventas: new Set(),
+                    salesMap: new Map(),
+                });
             }
 
             const entry = productMap.get(key);
             if (!entry.imageUrl && imageUrl) entry.imageUrl = imageUrl;
-            entry.qty += toNumber(d.cantidad || 0);
-            entry.amount += toNumber(d.monto_usd || 0);
+            const qty = toNumber(d.cantidad || 0);
+            const amount = toNumber(d.monto_usd || 0);
+            entry.qty += qty;
+            entry.amount += amount;
+
+            if (ventaId > 0) {
+                entry.ventas.add(ventaId);
+                const venta = ventasByIdMap.get(ventaId) || {};
+                if (!entry.salesMap.has(ventaId)) {
+                    entry.salesMap.set(ventaId, {
+                        venta_id: ventaId,
+                        folio: venta.folio_venta || `Venta ${ventaId}`,
+                        fecha: venta.fecha_venta || '',
+                        vendedor: venta.vendedor || venta.usuario__username || 'Sin vendedor',
+                        pais: venta.pais_cliente || 'Sin pais',
+                        medio: venta.medio_label || medioLabel(venta.medio),
+                        estado: venta.estado,
+                        qty: 0,
+                        amount: 0,
+                    });
+                }
+                const saleEntry = entry.salesMap.get(ventaId);
+                saleEntry.qty += qty;
+                saleEntry.amount += amount;
+            }
         });
 
         const allProductsList = Array.from(productMap.values())
+            .map((item) => ({
+                ...item,
+                ventas_count: item.ventas instanceof Set ? item.ventas.size : 0,
+                sales: Array.from(item.salesMap.values()).sort((a, b) => {
+                    const dateA = a.fecha ? new Date(a.fecha).getTime() : 0;
+                    const dateB = b.fecha ? new Date(b.fecha).getTime() : 0;
+                    if (dateA !== dateB) return dateB - dateA;
+                    return String(a.folio || '').localeCompare(String(b.folio || ''), 'es', { numeric: true });
+                }),
+            }))
+            .filter((item) => {
+                if (!searchTerm) return true;
+                return normalizeSearchTerm(`${item.name} ${item.category} ${item.business}`).includes(searchTerm);
+            })
             .sort((a, b) => {
                 const base = selectedAllProductsSort === 'cantidad'
                     ? compareByOrder(a.qty, b.qty, selectedAllProductsSortOrder)
@@ -5481,6 +5620,118 @@
             });
 
         renderAllProductsTable(allProductsList);
+    }
+
+    function renderAllProductSaleRows(sales) {
+        return (sales || []).map((sale) => {
+            const urlVenta = sale.venta_id ? buildMainAppPath(`${VENTA_DETALLE_PATH}${sale.venta_id}/`) : '';
+            const folioHtml = urlVenta
+                ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
+                : `<span>${escapeHtml(sale.folio)}</span>`;
+            const estadoLabel = estadoLabels[sale.estado] || 'Sin estado';
+            const estadoClass = getVentaStatusTagClass(sale.estado);
+
+            return `
+              <div class="pack-trend-sale-row school-sale-row">
+                <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
+                <div class="pack-trend-sale-folio">
+                  ${folioHtml}
+                  <div class="pack-trend-sale-tags">
+                    <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
+                    <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
+                    <span class="pack-trend-sale-tag">Pais: <strong>${escapeHtml(sale.pais)}</strong></span>
+                    <span class="pack-trend-sale-tag ${estadoClass}">Estado: <strong>${escapeHtml(estadoLabel)}</strong></span>
+                  </div>
+                </div>
+                <div class="pack-trend-sale-books">${formatearTickCantidad(sale.qty)} unidades</div>
+                <div class="pack-trend-sale-amount">${formatearMonto(sale.amount)}</div>
+              </div>
+            `;
+        }).join('');
+    }
+
+    function showAllProductSalesModal(item) {
+        const titleEl = document.getElementById('allProductModalTitle');
+        const bodyEl = document.getElementById('allProductModalBody');
+        const modalEl = document.getElementById('allProductModal');
+        if (!modalEl || !bodyEl || !item) return;
+
+        const imageUrl = item.imageUrl || LOGO_URL_FALLBACK;
+        const sales = Array.isArray(item.sales) ? item.sales : [];
+        const totalQty = toNumber(item.qty || 0);
+        const totalAmount = toNumber(item.amount || 0);
+        const countries = Array.from(new Set(sales.map((sale) => String(sale.pais || '').trim()).filter(Boolean)));
+        const vendors = Array.from(new Set(sales.map((sale) => String(sale.vendedor || '').trim()).filter(Boolean)));
+        const rowsHtml = renderAllProductSaleRows(sales);
+
+        if (titleEl) {
+            titleEl.innerHTML = `<i class="fas fa-box-open"></i> Detalle de producto`;
+        }
+
+        bodyEl.innerHTML = `
+          <div class="all-product-modal-head">
+            <img class="all-product-modal-img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name || 'Producto')}">
+            <div>
+              <h3 class="all-product-modal-title">${escapeHtml(item.name || 'Sin producto')}</h3>
+              <div class="all-product-modal-meta">
+                <span><i class="fas fa-layer-group"></i> ${escapeHtml(item.category || 'Sin categoria')}</span>
+                <span><i class="fas fa-briefcase"></i> ${escapeHtml(item.business || 'Sin negocio')}</span>
+              </div>
+            </div>
+          </div>
+          <div class="all-product-modal-summary">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearMonto(totalAmount)}</div>
+                <div class="stat-label">Ganancia total</div>
+              </div>
+              <span class="icon-badge success"><i class="fas fa-dollar-sign"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(totalQty)}</div>
+                <div class="stat-label">Unidades</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-boxes-stacked"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(sales.length)}</div>
+                <div class="stat-label">Ventas</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-receipt"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(countries.length)}</div>
+                <div class="stat-label">Paises</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-globe-americas"></i></span>
+            </div>
+          </div>
+          <div class="pack-trend-detail-head">
+            <div>
+              <div class="pack-trend-detail-title">Ventas relacionadas</div>
+              <div class="pack-trend-sale-meta">${formatearTickCantidad(vendors.length)} vendedor${vendors.length === 1 ? '' : 'es'} - ${formatearTickCantidad(countries.length)} pais${countries.length === 1 ? '' : 'es'} - respeta los filtros activos del dashboard.</div>
+            </div>
+          </div>
+          <div class="pack-trend-sales">
+            ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este producto con los filtros actuales.</div>'}
+          </div>
+        `;
+
+        const imgEl = bodyEl.querySelector('.all-product-modal-img');
+        if (imgEl) {
+            imgEl.onerror = () => {
+                imgEl.onerror = null;
+                imgEl.src = LOGO_URL_FALLBACK;
+            };
+        }
+
+        const modalInstance = typeof bootstrap !== 'undefined' && bootstrap.Modal
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : null;
+        if (modalInstance) modalInstance.show();
     }
 
     function computeHeatmapData(vendorUser) {
@@ -6697,6 +6948,11 @@
       selectedAllProductsSortOrder = filtroOrdenTodosProductosDir.value === 'asc' ? 'asc' : 'desc';
       aplicarFiltros();
     });
+    const filtroBuscarTodosProductos = document.getElementById('filtroBuscarTodosProductos');
+    filtroBuscarTodosProductos?.addEventListener('input', debounce(() => {
+      selectedAllProductsSearch = filtroBuscarTodosProductos.value || '';
+      aplicarFiltros();
+    }, 180));
 
     const filtroOrdenVendedores = document.getElementById('filtroOrdenVendedores');
     filtroOrdenVendedores?.addEventListener('change', () => {
@@ -6800,6 +7056,9 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
+      const allProductsSearch = document.getElementById('filtroBuscarTodosProductos');
+      selectedAllProductsSearch = '';
+      if (allProductsSearch) allProductsSearch.value = '';
       syncRangeDatePicker('', '');
       const medioAll = document.getElementById('filtroMedioAll');
       if (medioAll) medioAll.checked = true;
@@ -6947,6 +7206,22 @@
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
 </script>
+<div class="modal fade pack-trend-modal" id="allProductModal" tabindex="-1" aria-labelledby="allProductModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allProductModalTitle">
+          <i class="fas fa-box-open"></i>
+          Detalle de producto
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="allProductModalBody">
+        <div class="pack-trend-empty">Selecciona un producto para ver sus ventas.</div>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal fade pack-trend-modal" id="packTrendModal" tabindex="-1" aria-labelledby="packTrendModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
