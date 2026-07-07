@@ -815,6 +815,60 @@
     #tablePackBooks th:nth-child(4) {
       white-space: nowrap;
     }
+    #tableAllProducts {
+      min-width: 100%;
+      table-layout: fixed;
+    }
+    #tableAllProducts th,
+    #tableAllProducts td {
+      vertical-align: middle;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    #tableAllProducts thead th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #fff;
+      box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+    #tableAllProducts th:nth-child(1),
+    #tableAllProducts td:nth-child(1) { width: 58%; }
+    #tableAllProducts th:nth-child(2),
+    #tableAllProducts td:nth-child(2) { width: 12%; }
+    #tableAllProducts th:nth-child(3),
+    #tableAllProducts td:nth-child(3) { width: 12%; }
+    #tableAllProducts th:nth-child(4),
+    #tableAllProducts td:nth-child(4) { width: 8%; }
+    #tableAllProducts th:nth-child(5),
+    #tableAllProducts td:nth-child(5) {
+      width: 10%;
+      white-space: nowrap;
+    }
+    .all-product-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .all-product-thumb {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid #dbe4ee;
+      object-fit: cover;
+      background: #eef2f7;
+      flex: 0 0 auto;
+    }
+    .all-product-name {
+      min-width: 0;
+      color: #1f2937;
+      font-size: 0.78rem;
+      font-weight: 800;
+      line-height: 1.25;
+      white-space: normal;
+      word-break: break-word;
+    }
     .compact-chart { padding: 12px 14px; }
     .compact-chart .section-title { margin-bottom: 6px; }
     .compact-serie { padding: 6px 8px; }
@@ -4446,12 +4500,18 @@
         data.forEach((d) => {
             const qty = toNumber(d.qty || 0);
             const amount = toNumber(d.amount || 0);
+            const imageUrl = d.imageUrl || LOGO_URL_FALLBACK;
             totalQty += qty;
             totalAmount += amount;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><small class="fw-bold text-dark">${escapeHtml(d.name || 'Sin producto')}</small></td>
+                <td>
+                  <div class="all-product-cell">
+                    <img class="all-product-thumb" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(d.name || 'Producto')}" loading="lazy">
+                    <div class="all-product-name">${escapeHtml(d.name || 'Sin producto')}</div>
+                  </div>
+                </td>
                 <td><small class="text-secondary">${escapeHtml(d.category || 'Sin categoria')}</small></td>
                 <td><small class="text-secondary">${escapeHtml(d.business || 'Sin negocio')}</small></td>
                 <td class="text-end"><span class="badge bg-light text-dark border">${formatearTickCantidad(qty)}</span></td>
@@ -5398,13 +5458,15 @@
             const name = String(d.producto__nombre_producto || 'Sin producto').trim() || 'Sin producto';
             const category = String(d.producto__codigo_categoria__nombre_categoria || 'Sin categoria').trim() || 'Sin categoria';
             const business = String(d.producto__codigo_negocio__nombre_negocio || 'Sin negocio').trim() || 'Sin negocio';
+            const imageUrl = String(d.producto_imagen_url || '').trim();
             const key = productId ? `id:${productId}` : `${name}|${category}|${business}`;
 
             if (!productMap.has(key)) {
-                productMap.set(key, { name, category, business, qty: 0, amount: 0 });
+                productMap.set(key, { name, category, business, imageUrl, qty: 0, amount: 0 });
             }
 
             const entry = productMap.get(key);
+            if (!entry.imageUrl && imageUrl) entry.imageUrl = imageUrl;
             entry.qty += toNumber(d.cantidad || 0);
             entry.amount += toNumber(d.monto_usd || 0);
         });
