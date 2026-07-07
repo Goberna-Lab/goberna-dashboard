@@ -855,9 +855,6 @@
     #tableAllProducts tbody tr:hover {
       background: #f8fbff;
     }
-    .all-products-toolbar {
-      min-width: 220px;
-    }
     .all-product-cell {
       display: flex;
       align-items: center;
@@ -2175,10 +2172,6 @@
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Ventas de todos los productos</span>
             <div class="d-flex align-items-center gap-2">
-              <div class="search-box all-products-toolbar">
-                <i class="fas fa-search"></i>
-                <input type="text" id="filtroBuscarTodosProductos" placeholder="Buscar producto...">
-              </div>
               <select id="filtroOrdenTodosProductos" class="form-select form-select-sm" style="max-width: 160px;">
                 <option value="monto" selected>Monto</option>
                 <option value="cantidad">Cantidad</option>
@@ -2666,7 +2659,6 @@
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
     let selectedAllProductsSort = 'monto'; // 'monto' | 'cantidad'
-    let selectedAllProductsSearch = '';
     let selectedVendorSort = 'cantidad'; // 'cantidad' | 'monto'
     let selectedVendorSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedSchoolSortOrder = 'desc'; // 'asc' | 'desc'
@@ -5536,7 +5528,6 @@
     }
 
     function updateAllProductsTable(ventaIds, productosSeleccionados) {
-        const searchTerm = normalizeSearchTerm(selectedAllProductsSearch || '');
         const allProductDetails = detallesCategoria.filter(d => {
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
@@ -5607,10 +5598,6 @@
                     return String(a.folio || '').localeCompare(String(b.folio || ''), 'es', { numeric: true });
                 }),
             }))
-            .filter((item) => {
-                if (!searchTerm) return true;
-                return normalizeSearchTerm(`${item.name} ${item.category} ${item.business}`).includes(searchTerm);
-            })
             .sort((a, b) => {
                 const base = selectedAllProductsSort === 'cantidad'
                     ? compareByOrder(a.qty, b.qty, selectedAllProductsSortOrder)
@@ -6948,11 +6935,6 @@
       selectedAllProductsSortOrder = filtroOrdenTodosProductosDir.value === 'asc' ? 'asc' : 'desc';
       aplicarFiltros();
     });
-    const filtroBuscarTodosProductos = document.getElementById('filtroBuscarTodosProductos');
-    filtroBuscarTodosProductos?.addEventListener('input', debounce(() => {
-      selectedAllProductsSearch = filtroBuscarTodosProductos.value || '';
-      aplicarFiltros();
-    }, 180));
 
     const filtroOrdenVendedores = document.getElementById('filtroOrdenVendedores');
     filtroOrdenVendedores?.addEventListener('change', () => {
@@ -7056,9 +7038,6 @@
       document.getElementById('filtroHasta').value = '';
       document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
-      const allProductsSearch = document.getElementById('filtroBuscarTodosProductos');
-      selectedAllProductsSearch = '';
-      if (allProductsSearch) allProductsSearch.value = '';
       syncRangeDatePicker('', '');
       const medioAll = document.getElementById('filtroMedioAll');
       if (medioAll) medioAll.checked = true;
