@@ -820,7 +820,7 @@
       white-space: nowrap;
     }
     #tableAllProducts {
-      min-width: 100%;
+      width: 100%;
       table-layout: fixed;
     }
     #tableAllProducts th,
@@ -837,16 +837,12 @@
       box-shadow: inset 0 -1px 0 #dee2e6;
     }
     #tableAllProducts th:nth-child(1),
-    #tableAllProducts td:nth-child(1) { width: 58%; }
+    #tableAllProducts td:nth-child(1) { width: 55%; }
     #tableAllProducts th:nth-child(2),
-    #tableAllProducts td:nth-child(2) { width: 12%; }
+    #tableAllProducts td:nth-child(2) { width: 15%; }
     #tableAllProducts th:nth-child(3),
-    #tableAllProducts td:nth-child(3) { width: 12%; }
-    #tableAllProducts th:nth-child(4),
-    #tableAllProducts td:nth-child(4) { width: 8%; }
-    #tableAllProducts th:nth-child(5),
-    #tableAllProducts td:nth-child(5) {
-      width: 10%;
+    #tableAllProducts td:nth-child(3) {
+      width: 30%;
       white-space: nowrap;
     }
     #tableAllProducts tbody tr {
@@ -1970,6 +1966,40 @@
                 </details>
               </div>
             </div>
+            <div class="filter-chip">
+              <i class="fas fa-briefcase"></i>
+              <div class="filter-body">
+                <span class="filter-label">Negocio</span>
+                <details class="multi-check" id="filtroNegocioDropdown">
+                  <summary id="filtroNegocioSummary">Todos los negocios</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroNegocioAll" checked>
+                      <span>Todos los negocios</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroNegocioOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div class="filter-chip">
+              <i class="fas fa-sitemap"></i>
+              <div class="filter-body">
+                <span class="filter-label">División</span>
+                <details class="multi-check" id="filtroDivisionDropdown">
+                  <summary id="filtroDivisionSummary">Todas las divisiones</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroDivisionAll" checked>
+                      <span>Todas las divisiones</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroDivisionOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
+              </div>
+            </div>
             <div class="filter-chip" style="grid-column: span 2;">
               <i class="fas fa-calendar"></i>
               <div class="filter-body">
@@ -2168,7 +2198,7 @@
           </div>
         </div>
 
-        <div class="chart-card" style="grid-column: 1 / -1;">
+        <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Ventas de todos los productos</span>
             <div class="d-flex align-items-center gap-2">
@@ -2182,13 +2212,11 @@
               </select>
             </div>
           </div>
-          <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+          <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
             <table class="table table-sm table-hover mb-0" id="tableAllProducts">
               <thead class="text-secondary small-header">
                 <tr>
                   <th>Producto</th>
-                  <th>Categoria</th>
-                  <th>Negocio</th>
                   <th class="text-end">Cant.</th>
                   <th class="text-end">Ganancia (USD)</th>
                 </tr>
@@ -2196,7 +2224,7 @@
               <tbody></tbody>
               <tfoot class="table-light fw-bold small" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2; font-size: 0.78rem;">
                 <tr>
-                  <td class="text-uppercase text-secondary" colspan="3">Total</td>
+                  <td class="text-uppercase text-secondary">Total</td>
                   <td class="text-end"><span class="badge bg-light text-dark border" id="tableAllProductsTotalQty">0</span></td>
                   <td class="text-end text-success" id="tableAllProductsTotalAmount">$0</td>
                 </tr>
@@ -2680,6 +2708,8 @@
     let cuotasFiltradasCache = [];
     const ventasByIdMap = new Map();
     const ventaProductosMap = new Map();
+    const ventaNegociosMap = new Map();
+    const ventaDivisionesMap = new Map();
     const productNameToIdsMap = new Map();
     const PACK_TRENDS_ORDER = [
       'Pack de 02 Libros Goberna',
@@ -2804,6 +2834,8 @@
       vendedoresSeleccionados = new Set(),
       productosSeleccionados = new Set(),
       paisesSeleccionados = new Set(),
+      negociosSeleccionados = new Set(),
+      divisionesSeleccionadas = new Set(),
       texto = '',
       ignorarFecha = false,
     } = {}) {
@@ -2837,6 +2869,32 @@
           }
         }
         if (!hasAnyProduct) return false;
+      }
+
+      if (negociosSeleccionados.size) {
+        const negociosVenta = ventaNegociosMap.get(String(v?.id || ''));
+        if (!negociosVenta) return false;
+        let hasAnyNegocio = false;
+        for (const negocio of negociosSeleccionados) {
+          if (negociosVenta.has(negocio)) {
+            hasAnyNegocio = true;
+            break;
+          }
+        }
+        if (!hasAnyNegocio) return false;
+      }
+
+      if (divisionesSeleccionadas.size) {
+        const divisionesVenta = ventaDivisionesMap.get(String(v?.id || ''));
+        if (!divisionesVenta) return false;
+        let hasAnyDivision = false;
+        for (const division of divisionesSeleccionadas) {
+          if (divisionesVenta.has(division)) {
+            hasAnyDivision = true;
+            break;
+          }
+        }
+        if (!hasAnyDivision) return false;
       }
 
       const folio = String(v?.folio_venta || '').toLowerCase();
@@ -3048,6 +3106,8 @@
     function rebuildVentaProductosMap() {
       ventasByIdMap.clear();
       ventaProductosMap.clear();
+      ventaNegociosMap.clear();
+      ventaDivisionesMap.clear();
       productNameToIdsMap.clear();
       (ventasDetalle || []).forEach(v => {
         const ventaId = Number(v?.id || 0);
@@ -3061,6 +3121,18 @@
           ventaProductosMap.set(ventaId, new Set());
         }
         ventaProductosMap.get(ventaId).add(producto);
+
+        const negocio = String(d.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+        if (!ventaNegociosMap.has(ventaId)) {
+          ventaNegociosMap.set(ventaId, new Set());
+        }
+        ventaNegociosMap.get(ventaId).add(negocio);
+
+        const division = String(d.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+        if (!ventaDivisionesMap.has(ventaId)) {
+          ventaDivisionesMap.set(ventaId, new Set());
+        }
+        ventaDivisionesMap.get(ventaId).add(division);
 
         const productoId = Number(d.producto__codigo_producto || 0);
         if (productoId > 0) {
@@ -3087,6 +3159,18 @@
       const nombreProducto = String(detalle?.producto__nombre_producto || '').trim();
       if (!nombreProducto) return false;
       return productosSeleccionados.has(nombreProducto);
+    }
+
+    function detalleCoincideNegocioSeleccionado(detalle, negociosSeleccionados) {
+      if (!negociosSeleccionados || !negociosSeleccionados.size) return true;
+      const nombreNegocio = String(detalle?.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+      return negociosSeleccionados.has(nombreNegocio);
+    }
+
+    function detalleCoincideDivisionSeleccionada(detalle, divisionesSeleccionadas) {
+      if (!divisionesSeleccionadas || !divisionesSeleccionadas.size) return true;
+      const nombreDivision = String(detalle?.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+      return divisionesSeleccionadas.has(nombreDivision);
     }
 
     function seleccionarProductosEnFiltro(productNames) {
@@ -3267,6 +3351,80 @@
       allCheckbox.checked = !hasAnySelected;
       updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
       applyMultiSearchFilter('filtroProductoBuscar', 'filtroProductoOptions');
+    }
+
+    function populateBusinessFilter() {
+      const optionsContainer = document.getElementById('filtroNegocioOptions');
+      const allCheckbox = document.getElementById('filtroNegocioAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const prevSelected = getCheckedValues('filtroNegocioOptions');
+      const negocios = new Set();
+      (detallesCategoria || []).forEach(d => {
+        const nombre = String(d.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+        negocios.add(nombre);
+      });
+
+      const sorted = Array.from(negocios).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      optionsContainer.innerHTML = '';
+      sorted.forEach(nombre => {
+        const label = document.createElement('label');
+        label.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = nombre;
+        input.dataset.label = nombre;
+        input.checked = prevSelected.has(nombre);
+        const span = document.createElement('span');
+        span.textContent = nombre;
+        label.appendChild(input);
+        label.appendChild(span);
+        optionsContainer.appendChild(label);
+      });
+
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroNegocioSummary', 'filtroNegocioOptions', 'Todos los negocios');
+    }
+
+    function populateDivisionFilter() {
+      const optionsContainer = document.getElementById('filtroDivisionOptions');
+      const allCheckbox = document.getElementById('filtroDivisionAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const prevSelected = getCheckedValues('filtroDivisionOptions');
+      const divisiones = new Set();
+      (detallesCategoria || []).forEach(d => {
+        const nombre = String(d.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+        divisiones.add(nombre);
+      });
+
+      const sorted = Array.from(divisiones).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      optionsContainer.innerHTML = '';
+      sorted.forEach(nombre => {
+        const label = document.createElement('label');
+        label.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = nombre;
+        input.dataset.label = nombre;
+        input.checked = prevSelected.has(nombre);
+        const span = document.createElement('span');
+        span.textContent = nombre;
+        label.appendChild(input);
+        label.appendChild(span);
+        optionsContainer.appendChild(label);
+      });
+
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroDivisionSummary', 'filtroDivisionOptions', 'Todas las divisiones');
     }
 
     function populateCountryFilter(data = ventasDetalle) {
@@ -4563,7 +4721,7 @@
         tbody.innerHTML = '';
 
         if (!data || !data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin datos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
             if (totalQtyEl) totalQtyEl.textContent = '0';
             if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
             return;
@@ -4588,8 +4746,6 @@
                     <div class="all-product-name">${escapeHtml(d.name || 'Sin producto')}</div>
                   </div>
                 </td>
-                <td><small class="text-secondary">${escapeHtml(d.category || 'Sin categoria')}</small></td>
-                <td><small class="text-secondary">${escapeHtml(d.business || 'Sin negocio')}</small></td>
                 <td class="text-end"><span class="badge bg-light text-dark border">${formatearTickCantidad(qty)}</span></td>
                 <td class="text-end text-success fw-bold small">${formatearMonto(amount)}</td>
             `;
@@ -5527,10 +5683,12 @@
         renderBooksTable(booksTableList);
     }
 
-    function updateAllProductsTable(ventaIds, productosSeleccionados) {
+    function updateAllProductsTable(ventaIds, productosSeleccionados, negociosSeleccionados = new Set(), divisionesSeleccionadas = new Set()) {
         const allProductDetails = detallesCategoria.filter(d => {
             if (ventaIds && !ventaIds.has(d.venta_id)) return false;
             if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
+            if (!detalleCoincideNegocioSeleccionado(d, negociosSeleccionados)) return false;
+            if (!detalleCoincideDivisionSeleccionada(d, divisionesSeleccionadas)) return false;
             return true;
         });
 
@@ -6049,7 +6207,9 @@
       productosSeleccionados = getCheckedValues('filtroProductoOptions'),
       ventaMontoFiltradoMapArg = null,
       usarMontoPorProductoArg = null,
-      ventaScopeContextArg = null
+      ventaScopeContextArg = null,
+      negociosSeleccionados = getCheckedValues('filtroNegocioOptions'),
+      divisionesSeleccionadas = getCheckedValues('filtroDivisionOptions')
     ) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
@@ -6193,7 +6353,7 @@
       // Update Books Table con filtros superiores
       updateBooksTable(ventaIds, productosSeleccionados);
       // Update All Products Table con filtros superiores
-      updateAllProductsTable(ventaIds, productosSeleccionados);
+      updateAllProductsTable(ventaIds, productosSeleccionados, negociosSeleccionados, divisionesSeleccionadas);
       // Update Pack Books Table con filtros superiores
       updatePackBooksTable(ventaIds, productosSeleccionados);
       // Update Pack Courses Table con filtros superiores
@@ -6310,6 +6470,8 @@
       const mediosSeleccionados = getCheckedValues('filtroMedioOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
       const paisesSeleccionados = getCheckedValues('filtroPaisOptions');
+      const negociosSeleccionados = getCheckedValues('filtroNegocioOptions');
+      const divisionesSeleccionadas = getCheckedValues('filtroDivisionOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       const fechaDesdeKey = String(desde || '').trim();
       const fechaHastaKey = String(hasta || '').trim();
@@ -6319,6 +6481,8 @@
         vendedoresSeleccionados,
         productosSeleccionados,
         paisesSeleccionados,
+        negociosSeleccionados,
+        divisionesSeleccionadas,
         texto,
       };
 
@@ -6425,14 +6589,18 @@
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
       const medioLabel = summarizeMultiSelection(getCheckedLabels('filtroMedioOptions'), '');
       const paisLabel = summarizeMultiSelection(getCheckedLabels('filtroPaisOptions'), '');
+      const negocioLabel = summarizeMultiSelection(getCheckedLabels('filtroNegocioOptions'), '');
+      const divisionLabel = summarizeMultiSelection(getCheckedLabels('filtroDivisionOptions'), '');
 
-      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel });
+      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel, negocio: negocioLabel, division: divisionLabel });
       updateCharts(
         ventasFil,
         productosSeleccionados,
         ventaMontoFiltradoMap,
         usarMontoPorProducto,
-        ventaScopeContext
+        ventaScopeContext,
+        negociosSeleccionados,
+        divisionesSeleccionadas
       );
       initCuotasPendientes(ventasFil, ventaScopeContext.byFolio, usarMontoPorProducto);
       renderTabla(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
@@ -6862,6 +7030,8 @@
       
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
+            populateBusinessFilter();
+            populateDivisionFilter();
             populateMediumFilter(ventasDetalle);
             populateCountryFilter(ventasDetalle);
             initCuotasPendientes(ventasDetalle);
@@ -7055,6 +7225,14 @@
       if (paisAll) paisAll.checked = true;
       document.querySelectorAll('#filtroPaisOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
       updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
+      const negocioAll = document.getElementById('filtroNegocioAll');
+      if (negocioAll) negocioAll.checked = true;
+      document.querySelectorAll('#filtroNegocioOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroNegocioSummary', 'filtroNegocioOptions', 'Todos los negocios');
+      const divisionAll = document.getElementById('filtroDivisionAll');
+      if (divisionAll) divisionAll.checked = true;
+      document.querySelectorAll('#filtroDivisionOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroDivisionSummary', 'filtroDivisionOptions', 'Todas las divisiones');
       setEstadoChip('');
       aplicarFiltros();
     });
@@ -7083,6 +7261,8 @@
       if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
       if (filters.pais) chips.push(`<span class="summary-chip"><i class="fas fa-earth-americas"></i> País: ${filters.pais}</span>`);
+      if (filters.negocio) chips.push(`<span class="summary-chip"><i class="fas fa-briefcase"></i> Negocio: ${filters.negocio}</span>`);
+      if (filters.division) chips.push(`<span class="summary-chip"><i class="fas fa-sitemap"></i> División: ${filters.division}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
       if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
@@ -7139,6 +7319,18 @@
       optionsId: 'filtroPaisOptions',
       summaryId: 'filtroPaisSummary',
       defaultText: 'Todos los países',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroNegocioAll',
+      optionsId: 'filtroNegocioOptions',
+      summaryId: 'filtroNegocioSummary',
+      defaultText: 'Todos los negocios',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroDivisionAll',
+      optionsId: 'filtroDivisionOptions',
+      summaryId: 'filtroDivisionSummary',
+      defaultText: 'Todas las divisiones',
     });
     wireMultiSearch({
       inputId: 'filtroProductoBuscar',

@@ -635,7 +635,7 @@ def home_dashboard(request):
         # Pero ventas_qs es QuerySet, asi que podemos reconstruir detalles query rapido:
         
         detalles_export = DetalleVenta.objects.filter(venta__in=ventas_qs).select_related(
-            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio'
+            'venta', 'venta__moneda', 'producto__codigo_categoria', 'producto__codigo_negocio', 'producto__codigo_division'
         ).annotate(
             tasa_cambio=Coalesce('venta__radio_multiplicador_usado', 'venta__moneda__radioMultiplicador', 1, output_field=DecimalField())
         ).annotate(
@@ -645,12 +645,13 @@ def home_dashboard(request):
         ).values(
             "venta_id", 
             "producto__codigo_producto",
-            "producto__codigo_categoria__nombre_categoria", 
-            "producto__codigo_categoria__nombre_categoria", 
+            "producto__codigo_categoria__nombre_categoria",
             "monto_usd",
             "producto__codigo_categoria", # Para filtrar ID en JS
             "producto__codigo_negocio",
             "producto__codigo_negocio__nombre_negocio",
+            "producto__codigo_division",
+            "producto__codigo_division__nombre_division",
             "producto__nombre_producto",
             "producto__imagen_producto",
             "cantidad"
