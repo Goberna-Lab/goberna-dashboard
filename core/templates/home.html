@@ -7375,7 +7375,7 @@
       });
     });
 
-    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .estado-chip, .summary-chip, .filter-chip, .flatpickr-calendar';
+    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .summary-chip, .filter-chip, .flatpickr-calendar';
     document.addEventListener('dblclick', (evt) => {
       const target = evt.target;
       if (!(target instanceof Element)) return;
