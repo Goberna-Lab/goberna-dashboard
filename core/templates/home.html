@@ -1126,13 +1126,40 @@
       cursor: pointer;
     }
     .multi-check-row:hover { background: #f8fafc; }
-    .multi-check-row input[type="checkbox"],
-    .multi-check-row input[type="radio"] {
+    .multi-check-row input[type="checkbox"] {
       width: 15px;
       height: 15px;
       accent-color: #193b59;
       margin: 0;
       flex: 0 0 auto;
+    }
+    .multi-check-row input[type="radio"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      flex: 0 0 auto;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      background: #fff;
+      position: relative;
+      cursor: pointer;
+    }
+    .multi-check-row input[type="radio"]:checked {
+      background: #193b59;
+      border-color: #193b59;
+    }
+    .multi-check-row input[type="radio"]:checked::after {
+      content: "\f00c";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 9px;
+      color: #fff;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
     .multi-check-divider {
       height: 1px;
