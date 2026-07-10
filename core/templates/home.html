@@ -87,7 +87,19 @@
     .pack-trends-subtitle { color: #64748b; font-size: 12px; margin-top: 2px; }
     .pack-trends-controls { display: inline-flex; align-items: center; gap: 8px; }
     .pack-trends-controls .form-select { min-width: 120px; max-width: 140px; }
-    .pack-trends-list { display: grid; gap: 8px; margin-top: 4px; }
+    .pack-trends-list { display: grid; gap: 8px; margin-top: 4px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+    .trend-card-half .pack-trend-row { grid-template-columns: 1fr; gap: 8px; }
+    .trend-card-half .pack-trend-metric-cell { min-width: 0; }
+    .trend-card-half .pack-trend-spark { justify-content: flex-start; }
+    .trend-card-half .pack-trend-icon { display: none; }
+    .trend-card-half .school-trend-row { grid-template-columns: 30px 48px minmax(0, 1fr); gap: 10px; }
+    .trend-card-half .school-trend-side {
+      grid-column: 2 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 96px;
+      gap: 10px;
+      align-items: center;
+    }
     .pack-trend-empty {
       text-align: center;
       color: #64748b;
@@ -2215,7 +2227,7 @@
           </div>
         </div>
 
-        <div class="chart-card school-trends-card" style="grid-column: 1 / -1;">
+        <div class="chart-card school-trends-card trend-card-half" style="grid-column: span 2;">
           <div class="section-title school-trends-head">
             <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
             <div class="school-trends-controls">
@@ -2241,7 +2253,7 @@
           </div>
         </div>
 
-        <div class="chart-card pack-trends-card" style="grid-column: 1 / -1;">
+        <div class="chart-card pack-trends-card trend-card-half" style="grid-column: span 2;">
           <div class="pack-trends-head">
             <div class="pack-trends-head-left">
               <div class="section-title mb-0 d-flex align-items-center gap-2">
