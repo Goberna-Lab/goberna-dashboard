@@ -2345,7 +2345,7 @@
           <canvas id="chartCuotas" height="180"></canvas>
         </div>
 
-        <!-- Serie temporal full width, justo antes de Últimas ventas -->
+        <!-- Serie temporal full width -->
         <div class="chart-card compact-serie" style="grid-column: 1 / -1;">
           <div class="d-flex align-items-center gap-2">
             <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-chart-area text-primary"></i> Serie temporal (ventas por mes)</div>
@@ -2367,35 +2367,6 @@
             </span>
           </div>
           <canvas id="chartVentasSerie" height="70" title="Arrastrá para seleccionar un rango y filtrar el dashboard"></canvas>
-        </div>
-
-        <div class="table-card" style="grid-column: 1 / -1;">
-          <div class="p-3 d-flex justify-content-between align-items-center">
-            <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
-            <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
-          </div>
-          <div class="px-3 pb-2">
-            <!-- <div class="summary-chips" id="chipsResumen"></div> -->
-
-
-             <div class="d-none">
-              <span id="ventasFiltradas">0</span>
-              <span id="montoFiltrado">$ 0.00</span>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Folio</th>
-                  <th>Fecha</th>
-                  <th>Monto</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="tablaVentas"></tbody>
-            </table>
-          </div>
         </div>
 
         <div class="dual-card">
@@ -6535,8 +6506,10 @@
         (acc, v) => acc + getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto),
         0
       );
-      document.getElementById('ventasFiltradas').innerText = ventasFil.length;
-      document.getElementById('montoFiltrado').innerText = formatearMonto(total);
+      const ventasFiltradasEl = document.getElementById('ventasFiltradas');
+      if (ventasFiltradasEl) ventasFiltradasEl.innerText = ventasFil.length;
+      const montoFiltradoEl = document.getElementById('montoFiltrado');
+      if (montoFiltradoEl) montoFiltradoEl.innerText = formatearMonto(total);
       // cache para exportación local
       ventasFiltradasCache = ventasFil.slice();
       cuotasFiltradasCache = buildCuotasFiltradas(ventasFil);
@@ -6631,7 +6604,6 @@
         divisionesSeleccionadas
       );
       initCuotasPendientes(ventasFil, ventaScopeContext.byFolio, usarMontoPorProducto);
-      renderTabla(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
       updatePrintHeader();
       updateFilterChipSelectionStates();
     }
@@ -7040,14 +7012,11 @@
 
     async function loadData() {
         try {
-            document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-2 text-muted">Cargando datos...</p></td></tr>';
-            
             const response = await fetch(window.location.href, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             if (!response.ok) {
                 console.error("Error HTTP cargando datos", response.status);
-                document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar datos.</td></tr>';
                 return;
             }
 
@@ -7081,7 +7050,6 @@
             aplicarFiltros(); 
         } catch (error) {
             console.error("Error de red/parseo", error);
-            document.getElementById('tablaVentas').innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -7308,33 +7276,6 @@
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
       if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
       cont.innerHTML = chips.join('') || '<span class="stat-label">Sin filtros aplicados</span>';
-    }
-
-    function renderTabla(ventasFil, ventaMontoFiltradoMap = null, usarMontoPorProducto = false) {
-      const tbody = document.getElementById('tablaVentas');
-      if (!tbody) return;
-      
-      const visibleItems = ventasFil.slice(0, 50);
-      
-      const filas = visibleItems.map(v => {
-        const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        const estado = estadoLabels[v.estado] || '---';
-        const urlVenta = buildMainAppPath(`${VENTA_DETALLE_PATH}${v.id}/`);
-        
-        return `
-          <tr>
-            <td><a href="${urlVenta}" target="_blank" class="text-decoration-none fw-semibold">${v.folio_venta}</a></td>
-            <td>${fecha}</td>
-            <td>${formatearMonto(getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto))}</td>
-            <td><span class="pill ${v.estado === 1 ? 'pill-success' : 'pill-danger'}">${estado}</span></td>
-          </tr>
-        `;
-      }).join('') || '<tr><td colspan="4" class="text-muted text-center">Sin ventas registradas</td></tr>';
-      tbody.innerHTML = filas;
-      const scopeLabel = document.getElementById('scopeLabel');
-      if (scopeLabel) {
-        scopeLabel.innerText = IS_ADMIN ? 'Todas las ventas' : 'Solo tus ventas';
-      }
     }
 
     wireMultiFilterDropdown({
