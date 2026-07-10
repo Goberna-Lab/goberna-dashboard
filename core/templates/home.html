@@ -1037,14 +1037,30 @@
       border-radius: 12px;
       padding: 10px 12px;
       border: 1px solid var(--home-border);
+      border-left: 3px solid transparent;
       display: flex;
       gap: 10px;
       align-items: center;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: box-shadow 0.15s ease, background-color 0.15s ease, border-left-color 0.15s ease;
+    }
+    .filter-chip:hover {
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
+    }
+    .filter-chip.has-selection {
+      background: #fff;
+      border-left-color: #193b59;
     }
     .filter-chip i { color: #475569; font-size: 1rem; }
     .filter-chip .filter-body { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-    .filter-chip .filter-label { font-weight: 700; color: #0f172a; font-size: 13px; margin: 0; }
+    .filter-chip .filter-label {
+      font-weight: 600;
+      color: #64748b;
+      font-size: 11px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
     .filter-chip input,
     .filter-chip select {
       background: transparent;
@@ -1052,7 +1068,8 @@
       box-shadow: none;
       padding: 0;
       height: auto;
-      font-size: 0.95rem;
+      font-size: 14px;
+      font-weight: 600;
       color: #0f172a;
     }
     .filter-chip input:focus,
@@ -1064,7 +1081,8 @@
     .multi-check summary {
       list-style: none;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 14px;
+      font-weight: 600;
       color: #0f172a;
       display: flex;
       align-items: center;
@@ -1108,7 +1126,8 @@
       cursor: pointer;
     }
     .multi-check-row:hover { background: #f8fafc; }
-    .multi-check-row input[type="checkbox"] {
+    .multi-check-row input[type="checkbox"],
+    .multi-check-row input[type="radio"] {
       width: 15px;
       height: 15px;
       accent-color: #193b59;
@@ -1153,46 +1172,6 @@
       pointer-events: none;
     }
     .filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
-    .status-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 12px;
-      overflow: visible;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-    }
-    .estado-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--home-border);
-      background: #fff;
-      color: #0f172a;
-      font-weight: 800;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .estado-chip .dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      border: 3px solid #cbd5e1;
-      background: #fff;
-      box-shadow: inset 0 0 0 2px #fff;
-    }
-    .estado-chip.active {
-      border-color: var(--home-primary);
-      box-shadow: 0 12px 26px rgba(25, 59, 89, 0.18);
-    }
-    .chip-all .dot { border-color: #d1d5db; background: #f8fafc; }
-    .chip-pagado .dot { border-color: #198754; background: #e6f4ec; }
-    .chip-pendiente .dot { border-color: #f59e0b; background: #fef3c7; }
-    .chip-no-val .dot { border-color: #6c757d; background: #e2e8f0; }
-    .chip-anulado .dot { border-color: #dc3545; background: #fde2e1; }
     .filter-search {
       display: flex;
       gap: 12px;
@@ -1560,7 +1539,6 @@
     body.fullscreen-dash .search-box .icon,
     body.fullscreen-dash .filter-chip i,
     body.fullscreen-dash i { color: #e5e7eb !important; }
-    body.fullscreen-dash .status-pills .estado-chip { background:#ffffff; color:#e5e7eb; border-color:#ffffff; }
     body.fullscreen-dash input,
     body.fullscreen-dash select,
     body.fullscreen-dash textarea,
@@ -1838,26 +1816,6 @@
         </div>
 
 
-        <div class="chart-card" style="grid-column: 1 / -1; padding: 14px 16px;">
-          <div class="status-pills">
-            <button class="estado-chip chip-all active" data-estado="">
-              <span class="dot"></span> Todos
-            </button>
-            <button class="estado-chip chip-pagado" data-estado="1">
-              <span class="dot"></span> Pagado
-          </button>
-          <button class="estado-chip chip-pendiente" data-estado="2">
-            <span class="dot"></span> Pendiente
-          </button>
-          <button class="estado-chip chip-no-val" data-estado="3">
-            <span class="dot"></span> No validado
-          </button>
-            <button class="estado-chip chip-anulado" data-estado="4">
-              <span class="dot"></span> Anulado
-            </button>
-          </div>
-        </div>
-
         <div class="chart-card filters-card" style="grid-column: 1 / -1;">
           <div class="section-title d-flex justify-content-between align-items-center mb-2">
             <span>Filtros</span>
@@ -1879,13 +1837,36 @@
             <div class="filter-chip">
               <i class="fas fa-layer-group"></i>
               <div class="filter-body">
-                <select id="filtroEstado">
-                  <option value="">Todos los estados</option>
-                  <option value="1">Pagado</option>
-                  <option value="2">Pendiente</option>
-                  <option value="3">No validado</option>
-                  <option value="4">Anulado</option>
-                </select>
+                <span class="filter-label">Estado</span>
+                <details class="multi-check" id="filtroEstadoDropdown">
+                  <summary id="filtroEstadoSummary">Todos los estados</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="radio" name="filtroEstadoRadio" value="" id="filtroEstadoOptAll" checked>
+                      <span>Todos los estados</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroEstadoOptions" class="multi-check-list">
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="1" data-label="Pagado">
+                        <span>Pagado</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="2" data-label="Pendiente">
+                        <span>Pendiente</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="3" data-label="No validado">
+                        <span>No validado</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="4" data-label="Anulado">
+                        <span>Anulado</span>
+                      </label>
+                    </div>
+                  </div>
+                </details>
+                <input type="hidden" id="filtroEstado" value="">
               </div>
             </div>
 
@@ -6461,11 +6442,7 @@
     function aplicarFiltros() {
       const desde = document.getElementById('filtroDesde').value;
       const hasta = document.getElementById('filtroHasta').value;
-      const chipActivo = document.querySelector('.estado-chip.active');
-      const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
-      
-      document.getElementById('filtroEstado').value = estado;
-      document.getElementById('filtroEstado').value = estado;
+      const estado = document.getElementById('filtroEstado').value;
       const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
       const mediosSeleccionados = getCheckedValues('filtroMedioOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
@@ -6605,6 +6582,19 @@
       initCuotasPendientes(ventasFil, ventaScopeContext.byFolio, usarMontoPorProducto);
       renderTabla(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
       updatePrintHeader();
+      updateFilterChipSelectionStates();
+    }
+
+    function updateFilterChipSelectionStates() {
+      const estadoHidden = document.getElementById('filtroEstado');
+      const estadoDropdown = document.getElementById('filtroEstadoDropdown');
+      estadoDropdown?.closest('.filter-chip')?.classList.toggle('has-selection', Boolean(estadoHidden?.value));
+
+      ['filtroMedio', 'filtroVendedor', 'filtroProducto', 'filtroPais', 'filtroNegocio', 'filtroDivision'].forEach((prefix) => {
+        const dropdown = document.getElementById(`${prefix}Dropdown`);
+        const hasSelection = getCheckedValues(`${prefix}Options`).size > 0;
+        dropdown?.closest('.filter-chip')?.classList.toggle('has-selection', hasSelection);
+      });
     }
 
     function initCuotasPendientes(ventasLocales, scopeByFolio = null, usarMontoPorProducto = false) {
@@ -7203,10 +7193,6 @@
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
       document.getElementById('filtroDesde').value = '';
       document.getElementById('filtroHasta').value = '';
-      document.getElementById('filtroEstado').value = '';
-      document.getElementById('filtroBuscar').value = '';
-      document.getElementById('filtroHasta').value = '';
-      document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
       syncRangeDatePicker('', '');
       const medioAll = document.getElementById('filtroMedioAll');
@@ -7233,24 +7219,28 @@
       if (divisionAll) divisionAll.checked = true;
       document.querySelectorAll('#filtroDivisionOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
       updateMultiSummary('filtroDivisionSummary', 'filtroDivisionOptions', 'Todas las divisiones');
-      setEstadoChip('');
+      setEstadoRadio('');
       aplicarFiltros();
     });
 
-    const estadoChips = document.querySelectorAll('.estado-chip');
-    function setEstadoChip(val) {
-      estadoChips.forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.estado || '') === val);
+    function setEstadoRadio(val) {
+      const hidden = document.getElementById('filtroEstado');
+      const dropdown = document.getElementById('filtroEstadoDropdown');
+      if (hidden) hidden.value = val;
+      dropdown?.querySelectorAll('input[type="radio"]').forEach((radio) => {
+        radio.checked = radio.value === val;
       });
-      document.getElementById('filtroEstado').value = val;
+      const selectedRadio = dropdown?.querySelector('input[type="radio"]:checked');
+      const summary = document.getElementById('filtroEstadoSummary');
+      if (summary) summary.textContent = val ? (selectedRadio?.dataset.label || 'Todos los estados') : 'Todos los estados';
     }
-    estadoChips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        setEstadoChip(chip.dataset.estado || '');
+    document.getElementById('filtroEstadoDropdown')?.querySelectorAll('input[type="radio"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        setEstadoRadio(radio.value);
         aplicarFiltros();
       });
     });
-    setEstadoChip(document.querySelector('.estado-chip.active')?.dataset.estado || '');
+    setEstadoRadio(document.getElementById('filtroEstado')?.value || '');
 
     function renderChipsResumen(filters) {
       const cont = document.getElementById('chipsResumen');
