@@ -577,7 +577,8 @@
       font-weight: 700;
     }
     .school-trends-card {
-      grid-column: span 2;
+      /* grid-column ya no se define aquí: la tarjeta vive dentro de un wrapper .dual-card
+         que controla el ancho/posición del par (Escuela + Tendencias de packs). */
       padding: 16px;
       border-radius: 16px;
       border-color: #e2e8f0;
@@ -1703,7 +1704,7 @@
       .chart-card { box-shadow: none !important; }
     }
     @media (max-width: 1300px) {
-      .school-trends-card { grid-column: span 2; }
+      /* grid-column removido: ahora lo controla el wrapper .dual-card, no esta regla */
       .school-trend-row { grid-template-columns: 30px 48px minmax(0, 1fr); }
       .school-trend-side {
         grid-column: 2 / -1;
@@ -1727,7 +1728,7 @@
       .pack-trend-sale-books,
       .pack-trend-book-qty,
       .pack-trend-book-amount { text-align: left; }
-      .school-trends-card { grid-column: 1 / -1; padding: 14px; border-radius: 16px; }
+      .school-trends-card { padding: 14px; border-radius: 16px; } /* grid-column: lo maneja .dual-card */
       .school-trends-head { align-items: flex-start; margin-bottom: 10px; }
       .school-trends-heading { gap: 8px; font-size: 17px; }
       .school-trends-icon { width: 26px; height: 26px; border-radius: 8px; }
@@ -2157,7 +2158,14 @@
           </div>
         </div>
 
-        <div class="chart-card" style="grid-column: span 2;">
+        <!-- Envueltos en .dual-card (patrón ya usado en la sección de heatmap más abajo)
+             para que el par se mantenga SIEMPRE junto en la misma fila y con el mismo ancho,
+             sin depender del número de columnas que auto-fit calcule en el .grid exterior
+             (con 6-8 columnas en pantallas muy anchas, "grid-column: span 2" ya no garantizaba
+             que estas dos tarjetas cayeran en la misma fila). También resuelve el mobile: al
+             no caber 2 columnas de 320px, .dual-card colapsa a 1 columna automáticamente. -->
+        <div class="dual-card">
+        <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</span>
             <div class="d-flex align-items-center gap-2">
@@ -2192,7 +2200,7 @@
           </div>
         </div>
 
-        <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Ventas de todos los productos</span>
             <div class="d-flex align-items-center gap-2">
@@ -2226,8 +2234,11 @@
             </table>
           </div>
         </div>
+        </div>
 
-        <div class="chart-card school-trends-card trend-card-half" style="grid-column: span 2;">
+        <!-- Mismo patrón dual-card para el par Escuela + Tendencias de packs -->
+        <div class="dual-card">
+        <div class="chart-card school-trends-card trend-card-half">
           <div class="section-title school-trends-head">
             <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
             <div class="school-trends-controls">
@@ -2253,7 +2264,7 @@
           </div>
         </div>
 
-        <div class="chart-card pack-trends-card trend-card-half" style="grid-column: span 2;">
+        <div class="chart-card pack-trends-card trend-card-half">
           <div class="pack-trends-head">
             <div class="pack-trends-head-left">
               <div class="section-title mb-0 d-flex align-items-center gap-2">
@@ -2274,6 +2285,7 @@
             <div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>
           </div>
           <div id="packTrendsFooter" class="pack-trends-footer">Total: 0 packs activos - 0 libros - $ 0.00 USD</div>
+        </div>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
