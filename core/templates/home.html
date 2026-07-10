@@ -2145,32 +2145,6 @@
           </div>
         </div>
 
-        <div class="chart-card school-trends-card">
-          <div class="section-title school-trends-head">
-            <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
-            <div class="school-trends-controls">
-              <select id="filtroOrdenEscuela" class="form-select">
-                <option value="monto" selected>Monto</option>
-                <option value="cantidad">Cantidad</option>
-              </select>
-              <select id="filtroOrdenEscuelaDir" class="form-select">
-                <option value="desc" selected>Descendente</option>
-                <option value="asc">Ascendente</option>
-              </select>
-            </div>
-          </div>
-          <div class="school-trends-list" id="schoolTrendsList">
-            <div class="pack-trend-empty">Sin datos de escuela.</div>
-          </div>
-          <div class="school-trends-footer">
-            <span class="school-total-icon"><i class="fas fa-chart-simple"></i></span>
-            <span class="school-total-label">Total:</span>
-            <span><span id="tableSchoolTotalQty">0</span> unidades</span>
-            <span class="school-total-dot">-</span>
-            <strong><span id="tableSchoolTotalAmount">$0</span> USD</strong>
-          </div>
-        </div>
-
         <div class="chart-card" style="grid-column: span 2;">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</span>
@@ -2238,6 +2212,32 @@
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+
+        <div class="chart-card school-trends-card" style="grid-column: 1 / -1;">
+          <div class="section-title school-trends-head">
+            <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
+            <div class="school-trends-controls">
+              <select id="filtroOrdenEscuela" class="form-select">
+                <option value="monto" selected>Monto</option>
+                <option value="cantidad">Cantidad</option>
+              </select>
+              <select id="filtroOrdenEscuelaDir" class="form-select">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
+          </div>
+          <div class="school-trends-list" id="schoolTrendsList">
+            <div class="pack-trend-empty">Sin datos de escuela.</div>
+          </div>
+          <div class="school-trends-footer">
+            <span class="school-total-icon"><i class="fas fa-chart-simple"></i></span>
+            <span class="school-total-label">Total:</span>
+            <span><span id="tableSchoolTotalQty">0</span> unidades</span>
+            <span class="school-total-dot">-</span>
+            <strong><span id="tableSchoolTotalAmount">$0</span> USD</strong>
           </div>
         </div>
 
