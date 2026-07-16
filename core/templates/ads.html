@@ -84,6 +84,26 @@
       margin-bottom: 0;
     }
 
+    /* Title/status left · data actions + primary CTA right — moved up here
+       so the toolbar below only has to hold filter/view controls */
+    .page-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .page-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 640px) {
+      .page-header-actions { width: 100%; }
+      .page-header-actions .btn-gob-primary { width: 100%; justify-content: center; }
+    }
+
     /* ============================================================
        CARD — canonical Goberna card shell (shared spec)
     ============================================================ */
@@ -109,38 +129,47 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .search-box {
-      position: relative;
-      flex: 0 1 240px;
-      min-width: 170px;
-    }
-
-    .search-box i {
-      position: absolute;
-      left: 11px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
-      font-size: 0.75rem;
-      pointer-events: none;
-    }
-
-    .search-box input {
-      width: 100%;
-      font-size: 0.8rem;
-      padding: 7px 10px 7px 30px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+    /* ── Filter chips — icon + small uppercase label + control, same
+       pattern as the Producto/Vendedor/País filters in home.html, so every
+       toolbar filter visibly says what it does instead of relying only on
+       the title="" tooltip ── */
+    .filter-chip {
       background: var(--app-bg);
+      border-radius: 10px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    .filter-chip i { color: var(--muted); font-size: 0.8rem; }
+    .filter-chip .filter-body { display: flex; flex-direction: column; gap: 1px; }
+    .filter-chip .filter-label {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 10px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+    .filter-chip input,
+    .filter-chip .multi-check summary {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+      height: auto;
+      font-size: 0.8rem;
+      font-weight: 600;
       color: var(--ink);
+      width: 100%;
     }
-
-    .search-box input:focus {
-      outline: none;
-      border-color: var(--blue);
-      background: #fff;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-    }
+    .filter-chip input::placeholder { color: var(--muted); font-weight: 400; }
+    .filter-chip input:focus { outline: none; box-shadow: none; }
+    .filter-chip .search-box-input { min-width: 150px; }
 
     /* ============================================================
        CANONICAL BUTTON SYSTEM (shared Goberna spec)
@@ -153,8 +182,7 @@
     .btn-gob-ghost{background:#fff;border:1px solid var(--border);color:var(--muted);font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
     .btn-gob-ghost:hover{color:var(--ink);background:var(--app-bg);}
     .btn-gob-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25);}
-    .btn-gob-ghost.is-active,
-    .btn-gob-ghost.active-density{color:var(--blue);border-color:var(--blue);background:#EFF4FE;} /* .active-density = legacy hook the inline script toggles */
+    .btn-gob-ghost.is-active{color:var(--blue);border-color:var(--blue);background:#EFF4FE;}
 
     .btn-gob-alert{background:#FFFBEB;border:1.5px solid #F59E0B;color:#92400E;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:8px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
     .btn-gob-alert:hover{background:#FEF3C7;border-color:#D97706;color:#78350F;}
@@ -177,32 +205,149 @@
     .badge-gob-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;font-size:.68rem;font-weight:800;border-radius:999px;background:#F59E0B;color:#fff;}
     .badge-on-navy{background:rgba(255,255,255,.2);color:#fff;font-weight:600;font-size:.78rem;border-radius:999px;padding:2px 8px;} /* shared set: count chips on navy card headers */
 
-    .toolbar-spacer { flex: 1 1 auto; }
-
-    /* ── Flatpickr date range (same as home) ── */
-    .ads-date-wrap {
+    /* ── Toolbar groups — logical clusters, not one long row ──
+       filters (qué mirar) | view (cómo se ve la tabla) — data actions and
+       the primary CTA live in .page-header-actions now, not here. */
+    .toolbar-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+    }
+    .toolbar-group-view {
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
+    /* Toolbar buttons double as filter triggers (Producto) — reuse the same
+       active/count treatment as the grid's header funnel buttons */
+    .btn-gob-ghost.ads-hf-active {
+      color: var(--blue);
+      border-color: var(--blue);
+      background: #EFF4FE;
+    }
+    .btn-gob-ghost .ads-hf-count {
+      color: var(--blue);
+      margin-left: 2px;
+    }
+
+    @media (max-width: 900px) {
+      .toolbar-group-view {
+        border-left: none;
+        padding-left: 0;
+      }
+      .grid-toolbar { row-gap: 10px; }
+    }
+
+    @media (max-width: 640px) {
+      .search-box { flex: 1 1 100%; }
+      .toolbar-group { width: 100%; flex-wrap: wrap; }
+    }
+
+    /* ============================================================
+       PRODUCT FILTER — details.multi-check
+       Ported 1:1 (classes + behavior) from the Producto/Vendedor/País
+       filters in home.html so both screens share the same dropdown
+       pattern. NOTE: this is currently duplicated between home.html
+       and ads.html — a good candidate to extract into a shared CSS
+       partial if a third screen needs it.
+    ============================================================ */
+    .multi-check { position: relative; }
+    .toolbar-group-filters .multi-check { flex: 0 0 auto; }
+    .multi-check summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    .multi-check summary::-webkit-details-marker { display: none; }
+    .multi-check summary::after {
+      content: "\f078";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 10px;
+      margin-left: 6px;
+      transition: transform .15s ease;
+    }
+    .multi-check[open] summary::after { transform: rotate(180deg); }
+    .multi-check-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 320px;
+      max-width: 420px;
       background: #fff;
       border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(14, 42, 82, 0.16);
+      padding: 8px;
+      z-index: 500;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .multi-check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--ink);
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .multi-check-row:hover { background: var(--app-bg); }
+    .multi-check-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--blue);
+      margin: 0;
+      flex: 0 0 auto;
+    }
+    .multi-check-divider { height: 1px; background: var(--border); margin: 6px 0; }
+    .multi-check-list { display: grid; gap: 2px; }
+    .multi-check-search {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #fff;
+      padding-bottom: 6px;
+    }
+    .multi-check-search input {
+      width: 100%;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 5px 12px;
+      background: var(--app-bg);
+      padding: 6px 8px 6px 28px;
+      font-size: 12.5px;
+      color: var(--ink);
+    }
+    .multi-check-search input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .15);
+      background: #fff;
+    }
+    .multi-check-search .icon {
+      position: absolute;
+      left: 9px;
+      top: 7px;
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* ── Flatpickr date range (same as home) — lives inside a .filter-chip
+       now, so it no longer needs its own border/background, just the
+       clickable cursor and input sizing ── */
+    .ads-date-wrap {
       cursor: pointer;
       white-space: nowrap;
     }
-    .ads-date-wrap i { color: var(--muted); font-size: .8rem; }
     .ads-date-wrap input {
-      border: none;
       outline: none;
-      font-size: .8rem;
-      color: var(--ink);
-      background: transparent;
       cursor: pointer;
-      width: 170px;
+      width: 150px;
       min-width: 120px;
     }
-    .ads-date-wrap input::placeholder { color: var(--muted); }
     /* Presets panel (injected by flatpickr onReady) */
     .flatpickr-calendar.with-presets {
       display: flex !important;
@@ -278,19 +423,6 @@
     .roas-neg   { color:#B42318; }
     .roas-vincular { color:var(--gold-ink); text-decoration:none; font-weight:600; }
     .roas-vincular:hover { text-decoration:underline; }
-
-    .columns-menu {
-      max-height: 340px;
-      overflow-y: auto;
-      font-size: 0.8rem;
-      min-width: 240px;
-    }
-
-    .columns-menu .dropdown-item {
-      cursor: pointer;
-      padding-top: 4px;
-      padding-bottom: 4px;
-    }
 
     /* ============================================================
        TABULATOR — GOBERNA THEME
@@ -614,51 +746,11 @@
       box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
     }
 
-    .ads-fp-actions button:focus-visible,
-    #activeFiltersStrip .afs-clear:focus-visible,
-    #activeFiltersStrip .afs-dismiss:focus-visible {
+    .ads-fp-actions button:focus-visible {
       outline: none;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
       border-radius: 4px;
     }
-
-    /* ============================================================
-       ACTIVE FILTERS STRIP (item B7)
-    ============================================================ */
-    #activeFiltersStrip {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 8px 18px;
-      background: #EFF4FE;
-      border-bottom: 1px solid #CDDCF2;
-      font-size: 0.78rem;
-      color: var(--navy);
-      font-weight: 600;
-    }
-
-    #activeFiltersStrip .afs-label { color: var(--muted); font-weight: 600; }
-    #activeFiltersStrip .afs-cols  { color: var(--navy); }
-    #activeFiltersStrip .afs-clear {
-      color: var(--blue);
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      margin-left: 4px;
-    }
-    #activeFiltersStrip .afs-clear:hover { color: var(--blue-hv); }
-    #activeFiltersStrip .afs-dismiss {
-      margin-left: auto;
-      background: none;
-      border: none;
-      font-size: 0.8rem;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 0 4px;
-      line-height: 1;
-    }
-    #activeFiltersStrip .afs-dismiss:hover { color: var(--ink); }
   </style>
 </head>
 
@@ -668,18 +760,55 @@
 
 <div class="page-wrapper">
 
-  <!-- Page header -->
+  <!-- Page header: title/status left · data actions + primary CTA right —
+       keeps the toolbar below free for filter/view controls only -->
   <div class="page-header">
-    <div class="d-flex align-items-center gap-3 flex-wrap">
-      <h1><i class="fas fa-bullhorn me-2"></i>Pauta — Meta Ads</h1>
-      {% if freshness_label %}
-      <span class="pill pill-{{ freshness_level }}"
-            title="Última sincronización: {{ freshness_title }}">
-        <span class="dot"></span>{{ freshness_label }}
-      </span>
+    <div class="page-header-row">
+      <div class="page-header-titles">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h1><i class="fas fa-bullhorn me-2"></i>Pauta — Meta Ads</h1>
+          {% if freshness_label %}
+          <span class="pill pill-{{ freshness_level }}"
+                title="Última sincronización: {{ freshness_title }}">
+            <span class="dot"></span>{{ freshness_label }}
+          </span>
+          {% endif %}
+        </div>
+        <p class="sub">Campañas publicitarias de Meta · datos sincronizados desde Meta Marketing API</p>
+      </div>
+
+      {% if total != 0 %}
+      <div class="page-header-actions">
+        <!-- Cuentas Meta link -->
+        <a href="/ads/cuentas/" class="btn-gob-ghost" title="Ver cuentas Meta vinculadas">
+          <i class="fas fa-building-columns me-1"></i>Cuentas
+        </a>
+
+        <!-- Vincular productos -->
+        {% if unlinked_count %}
+        <a href="/ads/vincular/" class="btn-gob-alert"
+           title="{{ unlinked_count }} campaña{% if unlinked_count != 1 %}s{% endif %} sin producto asignado — {{ pct_spend_unlinked }}% del gasto sin identificar">
+          <i class="fas fa-link"></i>Vincular productos
+          <span class="badge-gob-count">{{ unlinked_count }}</span>
+        </a>
+        {% else %}
+        <a href="/ads/vincular/" class="btn-gob-ghost" title="Vincular campañas a productos del catálogo">
+          <i class="fas fa-link me-1"></i>Vincular productos
+        </a>
+        {% endif %}
+
+        <!-- Export: secondary action over the filtered data -->
+        <button type="button" id="btnExport" class="btn-gob-ghost" title="Descargar las filas filtradas y columnas visibles en Excel">
+          <i class="fas fa-file-excel me-1"></i>Exportar XLSX
+        </button>
+
+        <!-- SOLE primary CTA of the screen -->
+        <a href="/ads/crear-campana/" class="btn-gob-primary" title="Crear nueva campaña en Meta Ads">
+          <i class="fas fa-plus me-1"></i>Crear campaña
+        </a>
+      </div>
       {% endif %}
     </div>
-    <p class="sub">Campañas publicitarias de Meta · datos sincronizados desde Meta Marketing API</p>
   </div>
 
   <!-- ------------------------------------------------------------------ -->
@@ -701,78 +830,78 @@
     <!-- Toolbar: grid controls left · navigation/actions right ·
          ONE primary CTA on this screen: "+ Crear campaña" -->
     <div class="grid-toolbar">
-      <div class="search-box">
-        <i class="fas fa-magnifying-glass"></i>
-        <input type="search" id="globalSearch" placeholder="Buscar campaña, producto o ID..." autocomplete="off">
+
+      <!-- Grupo 1: FILTROS — qué subconjunto de campañas mirar. Cada filtro
+           es un .filter-chip (icono + etiqueta corta + control), mismo
+           patrón que home.html, para que se entienda qué hace cada uno de
+           un vistazo y no solo al pasar el mouse (title="" sigue ahí de
+           refuerzo). -->
+      <div class="toolbar-group toolbar-group-filters">
+        <div class="filter-chip">
+          <i class="fas fa-magnifying-glass"></i>
+          <div class="filter-body">
+            <span class="filter-label">Buscar</span>
+            <input type="search" id="globalSearch" class="search-box-input" placeholder="Campaña, producto o ID..." autocomplete="off"
+                   title="Busca en Nombre de la Campaña, Producto e ID de la Campaña al mismo tiempo, en toda la tabla">
+          </div>
+        </div>
+
+        <!-- Producto: multi-check dropdown — mismo patrón visual y de
+             comportamiento que los filtros Producto/Vendedor/País de
+             home.html (details.multi-check + checkbox "Todos"). Comparte
+             el estado listFilters.product con el funnel de la columna
+             "Producto" de la grilla (la columna sigue usando su propio
+             popup ads-filter-pop vía iconBtns/registerFilterBtn; ambos
+             disparadores leen/escriben el mismo listFilters.product y se
+             resincronizan en cada applyFilters()) — ver script al pie. -->
+        <div class="filter-chip">
+          <i class="fas fa-tag"></i>
+          <div class="filter-body">
+            <span class="filter-label">Producto</span>
+            <details class="multi-check" id="productFilterDropdown">
+              <summary id="btnProductFilter"
+                       title="Filtrá las campañas por uno o varios productos del catálogo vinculado">
+                <span id="productFilterSummaryText">Todos los productos</span>
+              </summary>
+              <div class="multi-check-menu">
+                <div class="multi-check-search">
+                  <i class="fas fa-search icon"></i>
+                  <input type="text" id="productFilterSearch" placeholder="Buscar producto..." autocomplete="off">
+                </div>
+                <label class="multi-check-row">
+                  <input type="checkbox" id="productFilterAll" checked>
+                  <span>Todos los productos</span>
+                </label>
+                <div class="multi-check-divider"></div>
+                <div id="productFilterOptions" class="multi-check-list"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Date range picker (flatpickr, same as home) -->
+        <div class="filter-chip">
+          <i class="fas fa-calendar-days"></i>
+          <div class="filter-body">
+            <span class="filter-label">Fechas</span>
+            <div class="ads-date-wrap" id="adsDateWrap"
+                 title="Filtrá las campañas por el período del informe (fecha de inicio del reporte mensual)">
+              <input type="text" id="adsFiltroRango" placeholder="Rango de fechas..." readonly autocomplete="off">
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Date range picker (flatpickr, same as home) -->
-      <div class="ads-date-wrap" id="adsDateWrap">
-        <i class="fas fa-calendar-days"></i>
-        <input type="text" id="adsFiltroRango" placeholder="Rango de fechas..." readonly autocomplete="off">
-      </div>
-
-      <div class="dropdown">
-        <button class="btn-gob-ghost dropdown-toggle" type="button" id="btnColumns"
-                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-          <i class="fas fa-table-columns me-1"></i>Columnas
+      <!-- Grupo 2: VISTA DE TABLA — cómo se muestran los datos -->
+      <div class="toolbar-group toolbar-group-view">
+        <button type="button" class="btn-gob-ghost" id="btnClearFilters"
+                title="Quita la búsqueda, el producto, el rango de fechas y todos los filtros de columna aplicados">
+          <i class="fas fa-filter-circle-xmark me-1"></i>Limpiar filtros
         </button>
-        <ul class="dropdown-menu columns-menu" id="columnsMenu" aria-labelledby="btnColumns"></ul>
+
+        <span class="pill pill-neutral" id="rowCountBadge"
+              title="Campañas visibles según los filtros aplicados, sobre el total de campañas cargadas">Cargando…</span>
       </div>
-
-      <div class="btn-group" role="group" aria-label="Densidad">
-        <button type="button" class="btn-gob-ghost" id="btnDensityCompact" title="Filas compactas">
-          <i class="fas fa-bars"></i>
-        </button>
-        <button type="button" class="btn-gob-ghost" id="btnDensityComfort" title="Filas cómodas">
-          <i class="fas fa-bars-staggered"></i>
-        </button>
-      </div>
-
-      <button type="button" class="btn-gob-ghost" id="btnClearFilters">
-        <i class="fas fa-filter-circle-xmark me-1"></i>Limpiar filtros
-      </button>
-
-      <span class="pill pill-neutral" id="rowCountBadge">Cargando…</span>
-
-      <span class="toolbar-spacer"></span>
-
-      <!-- Cuentas Meta link -->
-      <a href="/ads/cuentas/" class="btn-gob-ghost" title="Ver cuentas Meta vinculadas">
-        <i class="fas fa-building-columns me-1"></i>Cuentas
-      </a>
-
-      <!-- Vincular productos -->
-      {% if unlinked_count %}
-      <a href="/ads/vincular/" class="btn-gob-alert"
-         title="{{ unlinked_count }} campaña{% if unlinked_count != 1 %}s{% endif %} sin producto asignado — {{ pct_spend_unlinked }}% del gasto sin identificar">
-        <i class="fas fa-link"></i>Vincular productos
-        <span class="badge-gob-count">{{ unlinked_count }}</span>
-      </a>
-      {% else %}
-      <a href="/ads/vincular/" class="btn-gob-ghost" title="Vincular campañas a productos del catálogo">
-        <i class="fas fa-link me-1"></i>Vincular productos
-      </a>
-      {% endif %}
-
-      <!-- Export: secondary action over the filtered data -->
-      <button type="button" id="btnExport" class="btn-gob-ghost" title="Descargar las filas filtradas y columnas visibles en Excel">
-        <i class="fas fa-file-excel me-1"></i>Exportar XLSX
-      </button>
-
-      <!-- SOLE primary CTA of the screen -->
-      <a href="/ads/crear-campana/" class="btn-gob-primary" title="Crear nueva campaña en Meta Ads">
-        <i class="fas fa-plus me-1"></i>Crear campaña
-      </a>
-    </div>
-
-    <!-- Active filters strip (item B7) — shown/hidden by JS -->
-    <div id="activeFiltersStrip">
-      <span class="afs-label">Filtros activos:</span>
-      <span class="afs-cols" id="afsColList"></span>
-      <span>·</span>
-      <a class="afs-clear" id="afsClearAll" href="#">Limpiar todo</a>
-      <button type="button" class="afs-dismiss" id="afsDismiss" title="Ocultar aviso">×</button>
     </div>
 
     <!-- ROAS por producto (pauta × ventas) -->
@@ -1208,7 +1337,12 @@
     return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b, "es"); });
   }
 
-  var TEXT_FILTER_COLS = ["campaign_name", "product"];
+  // "product" was a free-text "like" filter here; it now uses the same
+  // exact-match multi-select checklist as the other catalog columns
+  // (Categoría, Entrega, etc.) — see buildListPopup / getListValues below —
+  // so both the column funnel AND the dedicated toolbar "Producto" button
+  // filter against the real distinct product values, not substring text.
+  var TEXT_FILTER_COLS = ["campaign_name"];
 
   var allRows = [];          // loaded dataset — source for distinct values
   var searchTerm = "";       // global toolbar search (normalized)
@@ -1374,7 +1508,10 @@
   }
 
   var listValuesCache = {};  // field -> distinct values (built once per load)
-  var iconBtns = {};         // field -> funnel <button> element
+  var iconBtns = {};         // field -> ARRAY of trigger <button> elements
+                             // (a column's funnel button AND, for "product",
+                             // the dedicated toolbar button both register here
+                             // so both stay in sync with the same filter state)
 
   function getListValues(field) {
     if (!listValuesCache[field]) {
@@ -1385,10 +1522,14 @@
     return listValuesCache[field];
   }
 
+  function registerFilterBtn(field, btn) {
+    (iconBtns[field] = iconBtns[field] || []).push(btn);
+  }
+
   // --- Active-filter icon state (blue + tiny count/dot) ---
   function refreshIcon(field) {
-    var btn = iconBtns[field];
-    if (!btn) return;
+    var btns = iconBtns[field];
+    if (!btns || !btns.length) return;
     var active = false, count = null;
     if (TEXT_FILTER_COLS.indexOf(field) > -1) {
       active = !!(textFilters[field] && textFilters[field].trim());
@@ -1396,36 +1537,27 @@
       active = true;                 // empty selection = no filter => icon stays inactive
       count = listFilters[field].length;
     }
-    btn.classList.toggle("ads-hf-active", active);
-    var cEl = btn.querySelector(".ads-hf-count");
-    if (cEl) cEl.remove();
-    if (active) {
-      var c = document.createElement("span");
-      c.className = "ads-hf-count";
-      c.textContent = count === null ? "•" : String(count);
-      btn.appendChild(c);
-    }
+    btns.forEach(function (btn) {
+      btn.classList.toggle("ads-hf-active", active);
+      var cEl = btn.querySelector(".ads-hf-count");
+      if (cEl) cEl.remove();
+      if (active) {
+        var c = document.createElement("span");
+        c.className = "ads-hf-count";
+        c.textContent = count === null ? "•" : String(count);
+        btn.appendChild(c);
+      }
+    });
   }
 
   function refreshAllIcons() {
     Object.keys(iconBtns).forEach(refreshIcon);
   }
 
-  // --- Column human names for active-filters strip (B7) ---
-  var COL_TITLES = {
-    campaign_name:    "Nombre de la Campaña",
-    product:          "Producto",
-    paid_country:     "País (pauta)",
-    country:          "País (cliente)",
-    delivery_status:  "Entrega",
-    result_indicator: "Indicador de resultados",
-    month:            "Mes",
-    category:         "Categoría"
-  };
-
   // --- AND-composed programmatic filter (drives Tabulator setFilter) ---
   function applyFilters() {
     refreshAllIcons();
+    syncProductFilterMenu(); // keep the toolbar Producto dropdown aligned with listFilters.product
     if (!table) return;
 
     var likeTerms = [];
@@ -1440,24 +1572,6 @@
       // NOT "hide everything" — same semantics as the old header filters.
       if (Array.isArray(sel) && sel.length) listConds.push([f, sel]);
     });
-
-    // B7: update active filters strip
-    var activeColNames = [];
-    likeTerms.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
-    listConds.forEach(function (p) { activeColNames.push(COL_TITLES[p[0]] || p[0]); });
-    if (dateFrom || dateTo) {
-      activeColNames.push("Período: " + (dateFrom || "…") + " → " + (dateTo || "hoy"));
-    }
-    var strip = document.getElementById("activeFiltersStrip");
-    var colList = document.getElementById("afsColList");
-    if (strip && colList) {
-      if (activeColNames.length > 0) {
-        colList.textContent = activeColNames.join(", ");
-        strip.style.display = "flex";
-      } else {
-        strip.style.display = "none";
-      }
-    }
 
     if (!searchTerm && !likeTerms.length && !listConds.length && !dateFrom && !dateTo) {
       table.clearFilter();
@@ -1508,7 +1622,7 @@
       });
       wrap.appendChild(btn);
 
-      iconBtns[field] = btn;
+      registerFilterBtn(field, btn);
       refreshIcon(field);
       return wrap;
     };
@@ -1762,11 +1876,134 @@
   }
 
   // ----------------------------------------------------------
+  // Toolbar "Producto" filter — details.multi-check dropdown
+  // (same visual + behavior pattern as home.html's Producto/Vendedor/
+  // País filters: single "Todos los productos" checkbox, search box,
+  // divider, checklist — no separate "select all/deselect all" links).
+  // Reads/writes the same listFilters.product state the column funnel
+  // popup (buildListPopup) already uses, so both stay consistent.
+  // ----------------------------------------------------------
+  function summarizeProductSelection(labels) {
+    if (!labels.length) return "Todos los productos";
+    if (labels.length === 1) return labels[0];
+    if (labels.length === 2) return labels[0] + ", " + labels[1];
+    return labels[0] + ", " + labels[1] + " +" + (labels.length - 2);
+  }
+
+  function buildProductFilterOptions() {
+    var box = document.getElementById("productFilterOptions");
+    if (!box) return;
+    var values = getListValues("product");
+    box.innerHTML = "";
+    values.forEach(function (v) {
+      var label = document.createElement("label");
+      label.className = "multi-check-row";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = v;
+      label.appendChild(cb);
+      var span = document.createElement("span");
+      span.textContent = v;
+      label.appendChild(span);
+      box.appendChild(label);
+    });
+  }
+
+  // Keeps the "Todos los productos" checkbox, the individual checkboxes and
+  // the summary text aligned with the current listFilters.product state —
+  // called after ANY change to that state, from either this dropdown or the
+  // column funnel popup, so the two triggers never disagree.
+  function syncProductFilterMenu() {
+    var box = document.getElementById("productFilterOptions");
+    var allCb = document.getElementById("productFilterAll");
+    var summaryText = document.getElementById("productFilterSummaryText");
+    if (!box || !allCb) return;
+    var sel = Array.isArray(listFilters.product) ? listFilters.product : [];
+    var selSet = {};
+    sel.forEach(function (v) { selSet[v] = true; });
+    var any = false;
+    Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (cb) {
+      cb.checked = !!selSet[cb.value];
+      if (cb.checked) any = true;
+    });
+    allCb.checked = !any;
+    if (summaryText) summaryText.textContent = summarizeProductSelection(sel);
+  }
+
+  function setupProductFilterMenu() {
+    var details = document.getElementById("productFilterDropdown");
+    var allCb = document.getElementById("productFilterAll");
+    var box = document.getElementById("productFilterOptions");
+    var search = document.getElementById("productFilterSearch");
+    if (!details || !allCb || !box) return;
+
+    buildProductFilterOptions();
+    syncProductFilterMenu();
+
+    details.addEventListener("toggle", function () {
+      if (details.open) {
+        syncProductFilterMenu();
+        if (search) requestAnimationFrame(function () { search.focus(); });
+      } else if (search && search.value) {
+        search.value = "";
+        Array.prototype.forEach.call(box.querySelectorAll(".multi-check-row"), function (row) {
+          row.style.display = "";
+        });
+      }
+    });
+
+    allCb.addEventListener("change", function () {
+      if (!allCb.checked) return; // unchecking "Todos" alone does nothing — same as home.html
+      delete listFilters.product;
+      applyFilters(); // -> syncProductFilterMenu() via refreshAllIcons hook below
+    });
+
+    box.addEventListener("change", function (evt) {
+      var t = evt.target;
+      if (!t || t.type !== "checkbox") return;
+      var values = getListValues("product");
+      var checked = [];
+      Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]:checked"), function (cb) {
+        checked.push(cb.value);
+      });
+      // Full selection == no filter, same contract as the column popup's commit()
+      if (!checked.length || checked.length === values.length) delete listFilters.product;
+      else listFilters.product = checked;
+      applyFilters();
+    });
+
+    if (search) {
+      search.addEventListener("input", function () {
+        var q = norm(search.value).trim();
+        Array.prototype.forEach.call(box.querySelectorAll(".multi-check-row"), function (row) {
+          var cb = row.querySelector("input");
+          var label = (cb && cb.value) || "";
+          row.style.display = !q || norm(label).indexOf(q) > -1 ? "" : "none";
+        });
+      });
+    }
+  }
+
+  // Close any open multi-check dropdown on outside click / Escape
+  // (native <details> has no such behavior built in).
+  document.addEventListener("click", function (evt) {
+    var target = evt.target;
+    Array.prototype.forEach.call(document.querySelectorAll("details.multi-check[open]"), function (d) {
+      if (!d.contains(target)) d.open = false;
+    });
+  });
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Escape") return;
+    Array.prototype.forEach.call(document.querySelectorAll("details.multi-check[open]"), function (d) {
+      d.open = false;
+    });
+  });
+
+  // ----------------------------------------------------------
   // Grid init
   // ----------------------------------------------------------
   var table = null;
   var totalRows = 0;
-  var DENSITY_KEY = "adsPautaDensity";
 
   function assign(target, extra) {
     Object.keys(extra).forEach(function (k) { target[k] = extra[k]; });
@@ -1817,10 +2054,14 @@
         bottomCalc: function () { return "Totales (filtrado)"; }
       },
       {
+        // No funnel button on this column header — Producto ya se filtra
+        // desde el chip dedicado del toolbar (#productFilterDropdown), que
+        // comparte el mismo estado listFilters.product. Tener dos disparadores
+        // de filtro distintos para el mismo campo era la fuente de "rastro"
+        // de filtro duplicado que el usuario pidió limpiar.
         title: "Producto", field: "product",
         frozen: true, width: 235, formatter: productFmt,
-        headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña",
-        titleFormatter: filterTitle("product", "Producto")
+        headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña — filtrable desde el chip \"Producto\" del toolbar"
       },
       { title: "Entrega", field: "delivery_status", width: 130, formatter: delivery3Fmt,
         headerTooltip: "Estado de entrega (Delivery) de la campaña en Meta: Activa / Pendiente / Inactiva. El estado detallado de Meta (ACTIVE, PAUSED, IN_PROCESS…) aparece en el tooltip de cada celda.",
@@ -1940,55 +2181,14 @@
     if (badge) badge.textContent = NF_INT.format(visibleCount) + " de " + NF_INT.format(totalRows) + " campañas";
   }
 
-  function buildColumnsMenu() {
-    var menu = document.getElementById("columnsMenu");
-    if (!menu || !table) return;
-    menu.innerHTML = "";
-    table.getColumns().forEach(function (col) {
-      var def = col.getDefinition();
-      var li = document.createElement("li");
-      var label = document.createElement("label");
-      label.className = "dropdown-item d-flex align-items-center gap-2";
-      var cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "form-check-input m-0";
-      cb.checked = col.isVisible();
-      cb.addEventListener("change", function () {
-        col.toggle();
-        table.redraw();
-        cb.checked = col.isVisible();
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(def.title));
-      li.appendChild(label);
-      menu.appendChild(li);
-    });
-  }
-
-  // --- Density toggle (persisted, NOT part of Tabulator persistence) ---
-  function applyDensity(mode) {
-    var grid = document.getElementById("adsGrid");
-    if (!grid) return;
-    grid.classList.toggle("density-compact", mode === "compact");
-    var bc = document.getElementById("btnDensityCompact");
-    var bf = document.getElementById("btnDensityComfort");
-    if (bc) bc.classList.toggle("active-density", mode === "compact");
-    if (bf) bf.classList.toggle("active-density", mode !== "compact");
-    try { localStorage.setItem(DENSITY_KEY, mode); } catch (e) { /* private mode */ }
-    if (table) table.redraw(true); // row heights changed => recompute virtual DOM
-  }
-
   function initGrid(rows) {
     totalRows = rows.length;
     allRows = rows;          // distinct-value source for popup filter lists
     listValuesCache = {};
     annotateRows(rows);
 
-    var stored = null;
-    try { stored = localStorage.getItem(DENSITY_KEY); } catch (e) { /* noop */ }
-    applyDensity(stored === "compact" ? "compact" : "comfort");
-
     var gridEl = document.getElementById("adsGrid");
+    gridEl.classList.add("density-compact"); // fixed compact density — density toggle removed, always compact
     gridEl.style.display = "";
 
     var tableOptions = {
@@ -2049,7 +2249,6 @@
     table.on("tableBuilt", function () {
       var loading = document.getElementById("gridLoading");
       if (loading) loading.style.display = "none";
-      buildColumnsMenu(); // after persistence restored visibility
       updateCounter(table.getDataCount("active"));
     });
 
@@ -2079,37 +2278,19 @@
       if (adsPickerInst) adsPickerInst.clear();
       closeFilterPopup();
       applyFilters(); // no active conditions => clearFilter() + icons reset
-      // B7: hide strip
-      var strip = document.getElementById("activeFiltersStrip");
-      if (strip) strip.style.display = "none";
     }
 
     var btnClear = document.getElementById("btnClearFilters");
     if (btnClear) btnClear.addEventListener("click", clearAllFilters);
 
+    // Toolbar "Producto" selector — details.multi-check dropdown (same
+    // pattern/behavior as home.html). Shares listFilters.product with the
+    // "Producto" column funnel (buildListPopup); syncProductFilterMenu()
+    // keeps both in sync regardless of which trigger changed the filter.
+    setupProductFilterMenu();
+
     setupAdsDatePicker();
     setupRoasPanel();
-
-    // B7: active filters strip clear + dismiss
-    var afsClear = document.getElementById("afsClearAll");
-    if (afsClear) {
-      afsClear.addEventListener("click", function (e) {
-        e.preventDefault();
-        clearAllFilters();
-      });
-    }
-    var afsDismiss = document.getElementById("afsDismiss");
-    if (afsDismiss) {
-      afsDismiss.addEventListener("click", function () {
-        var strip = document.getElementById("activeFiltersStrip");
-        if (strip) strip.style.display = "none";
-      });
-    }
-
-    var btnCompact = document.getElementById("btnDensityCompact");
-    var btnComfort = document.getElementById("btnDensityComfort");
-    if (btnCompact) btnCompact.addEventListener("click", function () { applyDensity("compact"); });
-    if (btnComfort) btnComfort.addEventListener("click", function () { applyDensity("comfort"); });
 
     var btnExport = document.getElementById("btnExport");
     if (btnExport) {
