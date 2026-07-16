@@ -16,160 +16,251 @@
 
   <!-- Estilos Sidebar (Inlined) -->
   <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --sb-bg:     #0C1521;
+  --sb-border: rgba(255,255,255,0.07);
+  --sb-text:   #6A8EAD;
+  --sb-hi:     #C8DCF2;
+  --sb-gold:   #F2C300;
+  --sb-label:  #2E4560;
+  --sb-hover:  rgba(255,255,255,0.06);
+}
 
 /* =====================
-   SIDEBAR BASE
+   SIDEBAR BASE (ancho fijo: 80px / 240px)
+   NOTA: no cambiar estos anchos sin actualizar el
+   margin-left que replican home.html/ads.html/etc.
 ===================== */
 .sidebar {
   width: 80px;
-  background: linear-gradient(to bottom, #1f2d3d, #263544);
+  background: var(--sb-bg);
   color: white;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   position: fixed;
   top: 0;
   left: 0;
   z-index: 1050;
-  font-family: 'Montserrat', sans-serif;
-  border-right: 1px solid #3a4756;
-  transition: width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+  border-right: 1px solid var(--sb-border);
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.32s ease;
   overflow-x: hidden;
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar:hover {
+  width: 240px;
+  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.4);
 }
 
 /* =====================
    LOGO
 ===================== */
 .sidebar .logo {
-  padding: 20px 14px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid #3a4756;
-  transition: all 0.3s ease;
-  min-height: 77px;
+  border-bottom: 1px solid var(--sb-border);
+  transition: justify-content 0s 0.15s, padding 0.32s ease;
+  min-height: 62px;
+  flex-shrink: 0;
+}
+
+.sidebar:hover .logo {
+  justify-content: flex-start;
+  padding-left: 16px;
+  transition: justify-content 0s, padding 0.32s ease;
 }
 
 .sidebar .logo-img {
-  height: 36px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
+  border-radius: 7px;
+  flex-shrink: 0;
   transition: transform 0.3s ease;
 }
 
-.sidebar .logo-text {
-  display: none;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-left: 10px;
-  letter-spacing: 1px;
-  color: #ffc107;
+.sidebar:hover .logo-img {
+  transform: scale(1.06);
+}
+
+.sidebar .logo-copy {
+  display: flex;
+  flex-direction: column;
   white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  margin-left: 0;
+  transition: max-width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s ease 0.08s,
+              margin-left 0.32s ease;
+}
+
+.sidebar:hover .logo-copy {
+  max-width: 200px;
+  opacity: 1;
+  margin-left: 12px;
+}
+
+.sidebar .logo-name {
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: 0.14em;
+  color: #fff;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.sidebar .logo-sub {
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: var(--sb-gold);
+  text-transform: uppercase;
+  opacity: 0.88;
+  line-height: 1.25;
+}
+
+/* =====================
+   SECTION LABELS (ocultos al colapsar)
+===================== */
+.sidebar .sb-label {
+  display: none;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0 10px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sb-label);
+  user-select: none;
+  list-style: none;
+  white-space: nowrap;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+}
+
+.sidebar:hover .sb-label {
+  display: block;
+  max-height: 28px;
+  opacity: 1;
+  margin: 8px 0 2px;
 }
 
 /* =====================
    NAV LINKS
 ===================== */
 .sidebar .nav {
-  padding: 20px 0;
+  padding: 12px 6px;
   flex-grow: 1;
   width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
+
+/* Neutralizar herencia de .sidebar .nav en los submenús (también tienen clase .nav) */
+.sidebar .nav.nav-submenu {
+  padding: 0 !important;
+  flex-grow: 0 !important;
+  overflow: hidden !important;
+  gap: 0 !important;
+}
+
+/* Scrollbar del nav (alineado con cerberusapp) */
+.sidebar .nav::-webkit-scrollbar { width: 3px; }
+.sidebar .nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 
 .sidebar .nav-link,
 .d-flex-menu {
-  color: #ced4da;
-  padding: 12px 18px;
+  color: var(--sb-text);
+  padding: 10px 0 10px 9px;
   display: flex;
   align-items: center;
-  border-radius: 6px;
-  font-size: 0.95rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: all 0.3s ease;
+  transition: background 0.15s, color 0.15s, padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   cursor: pointer;
 }
 
+.sidebar:hover .nav-link,
+.sidebar:hover .d-flex-menu {
+  padding: 8px 10px;
+}
+
 .sidebar .nav-link i,
 .d-flex-menu i {
-  width: 28px;
+  width: 22px;
   text-align: center;
-  font-size: 1.1rem;
-  transition: transform 0.25s ease;
+  font-size: 1rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.25s ease;
 }
 
 .sidebar .nav-link span,
 .d-flex-menu .menu-label-link span {
   display: none;
   opacity: 0;
-  margin-left: 8px;
-  transition: opacity 0.3s ease;
+  margin-left: 10px;
+  transition: opacity 0.22s ease 0.08s;
 }
 
 .sidebar .nav-link:hover,
 .d-flex-menu:hover {
-  background-color: #3c4b5b;
-  color: #fff;
-  transform: translateX(2px);
+  background-color: var(--sb-hover);
+  color: var(--sb-hi);
 }
 
+.sidebar .nav-link:hover i,
+.d-flex-menu:hover i { opacity: 0.9; }
+
 .sidebar .nav-link.active {
-  background-color: #2e3a4a;
-  border-left: 4px solid #ffc107;
-  color: #fff;
-  font-weight: bold;
+  background-color: rgba(242, 195, 0, 0.08);
+  color: var(--sb-gold);
+  font-weight: 600;
 }
+
+.sidebar .nav-link.active i { opacity: 1; color: var(--sb-gold); }
 
 /* =====================
    EFECTO EXPANDIBLE (HOVER)
 ===================== */
-.sidebar:hover {
-  width: 240px;
-}
-
-.sidebar:hover .logo {
-  justify-content: flex-start;
-  padding-left: 20px;
-}
-
-.sidebar:hover .logo-text {
-  display: inline;
-  opacity: 1;
-}
-
 .sidebar:hover .nav-link span,
 .sidebar:hover .d-flex-menu .menu-label-link span {
   display: inline;
   opacity: 1;
 }
 
-.sidebar:hover .nav-link i,
-.sidebar:hover .d-flex-menu i {
-  transform: scale(1.08);
-}
-
 /* =====================
-   INDICADOR VISUAL
+   INDICADOR VISUAL (punto dorado, solo expandido)
 ===================== */
-.sidebar .nav-link::after {
+.sidebar:hover .nav-link.active::after {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 0;
-  background: #ffc107;
-  border-radius: 6px 0 0 6px;
-  transition: width 0.25s ease;
-}
-
-.sidebar .nav-link:hover::after,
-.d-flex-menu:hover::after {
-  width: 4px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sb-gold);
+  box-shadow: 0 0 8px rgba(242, 195, 0, 0.7);
 }
 
 /* =====================
@@ -196,7 +287,7 @@
 .toggle-submenu {
   background: transparent !important;
   border: none !important;
-  color: inherit !important;
+  color: var(--sb-text) !important;
   padding: 8px;
   display: none;
   opacity: 0;
@@ -207,6 +298,9 @@
   display: flex;
   opacity: 1;
 }
+
+.toggle-submenu:hover i,
+.toggle-submenu:focus i { color: var(--sb-gold); }
 
 /* Submenu container */
 .nav-submenu {
@@ -224,13 +318,13 @@
 }
 
 .nav-submenu .nav-link {
-  padding: 12px 14px 12px 16px !important;
-  font-size: 0.95rem;
-  color: #a0aec0 !important;
+  padding: 8px 10px 8px 14px !important;
+  font-size: 0.82rem;
+  color: var(--sb-text) !important;
 }
 
 .nav-submenu .nav-link:hover {
-  color: #fff !important;
+  color: var(--sb-hi) !important;
 }
 
 .d-flex-menu.expanded .toggle-submenu {
@@ -268,11 +362,16 @@
     <!-- Logo -->
     <div class="logo">
       <img src="https://i.postimg.cc/rFxsm3xS/icono-goberna.png" alt="Goberna Logo" class="logo-img">
-      <span class="logo-text">GOBERNA</span>
+      <div class="logo-copy">
+        <span class="logo-name">GOBERNA</span>
+        <span class="logo-sub">DASHBOARD</span>
+      </div>
     </div>
 
     <!-- Menú -->
     <ul class="nav flex-column">
+      <li class="sb-label">Principal</li>
+
       {% if request.user.id != 19 and not request.user|has_group_id:5 %}
       <li class="nav-item">
         <a class="nav-link" href="https://vercel.goberna.pe">
@@ -281,6 +380,8 @@
         </a>
       </li>
       {% endif %}
+
+      <li class="sb-label">Gestión</li>
 
       {% if request.user.id != 19 and not request.user|has_group_id:5 %}
       <li class="nav-item {% if 'clientes' in request.path %}active-indicator{% endif %}">
@@ -460,6 +561,8 @@
       </li>
       {% endif %}
 
+      <li class="sb-label">Sistema</li>
+
       <li class="nav-item">
         <a class="nav-link" href="{{ MAIN_APP_URL }}/">
           <i class="fas fa-user"></i>
@@ -577,28 +680,29 @@
     .toast-stack,
     #toastStack.toast-stack {
       position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 50000;
+      top: 16px;
+      right: 16px;
+      z-index: 60000;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: min(280px, calc(100vw - 28px));
+      width: min(320px, calc(100vw - 32px));
       pointer-events: none; /* click-through en el stack */
     }
 
     #toastStack .gob-toast,
     .toast-stack .gob-toast {
       pointer-events: auto;
-      background: #ffffff;
-      border: 1px solid rgba(148,163,184,0.2);
-      border-radius: 10px;
-      box-shadow: 0 10px 22px rgba(15,23,42,0.12);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148,163,184,0.35);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
       overflow: hidden;
-      transform: translateY(-5px);
+      transform: translateY(-6px);
       opacity: 0;
       transition: transform .18s ease, opacity .18s ease;
-      font-family: 'Montserrat','Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Outfit', system-ui, sans-serif;
     }
     #toastStack .gob-toast.show,
     .toast-stack .gob-toast.show {
@@ -616,13 +720,13 @@
 
     #toastStack .gob-toast .icon,
     .toast-stack .gob-toast .icon {
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex: 0 0 30px;
+      flex: 0 0 32px;
       font-size: 0.95rem;
     }
     #toastStack .gob-toast.toast-warning .icon,
@@ -638,12 +742,11 @@
     #toastStack .gob-toast .title-toast,
     .toast-stack .gob-toast .title,
     .toast-stack .gob-toast .title-toast {
-      font-weight: 800;
+      font-weight: 700;
       font-size: 0.85rem;
       color: #0f172a;
-      margin: 0 0 4px 0;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
+      margin: 0 0 2px 0;
+      line-height: 1.2;
     }
     #toastStack .gob-toast .msg,
     .toast-stack .gob-toast .msg {
@@ -662,10 +765,10 @@
       border: 0;
       background: transparent;
       color: #64748b;
-      padding: 2px 4px;
-      border-radius: 7px;
+      padding: 3px 5px;
+      border-radius: 8px;
       line-height: 1;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       margin-left: 4px;
     }
     #toastStack .gob-toast .close-btn:hover,
@@ -675,19 +778,17 @@
     .toast-stack .gob-toast .actions {
       display: flex;
       gap: 6px;
-      padding: 0 10px 10px 44px;
+      padding: 0 10px 10px 52px;
       flex-wrap: wrap;
     }
     #toastStack .gob-toast .actions a,
     #toastStack .gob-toast .actions button,
     .toast-stack .gob-toast .actions a,
     .toast-stack .gob-toast .actions button {
-      border-radius: 12px;
-      font-size: 0.74rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
       padding: 5px 9px;
-      line-height: 1.0;
-      box-shadow: 0 5px 12px rgba(25,59,89,0.12);
-      border-width: 1px !important;
+      line-height: 1.1;
     }
 
     #toastStack .gob-toast .actions .btn-warning,
@@ -734,44 +835,49 @@
     }
 
     /* =========================================================
-       SIDEBAR UI (mantengo tu estética)
+       SIDEBAR UI (paleta navy/dorado, alineada con cerberusapp)
     ========================================================= */
     .sidebar > .nav > .nav-item > .nav-link {
-      color: #fff;
-      border-radius: 12px;
-      padding: 12px 14px 12px 16px;
+      color: var(--sb-text);
+      border-radius: 8px;
+      padding: 10px 0 10px 9px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      transition: background 0.2s ease, color 0.2s ease;
+      gap: 10px;
+      transition: background 0.15s ease, color 0.15s ease;
     }
+    .sidebar:hover > .nav > .nav-item > .nav-link { padding: 8px 10px; }
 
     .matriculas-menu > .d-flex > .nav-link,
     .ventas-menu > .d-flex > .nav-link {
-      color: #fff;
-      border-radius: 12px;
-      padding: 12px 14px 12px 16px;
+      color: var(--sb-text);
+      border-radius: 8px;
+      padding: 10px 0 10px 9px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      transition: background 0.2s ease, color 0.2s ease;
+      gap: 10px;
+      transition: background 0.15s ease, color 0.15s ease;
     }
+    .sidebar:hover .matriculas-menu > .d-flex > .nav-link,
+    .sidebar:hover .ventas-menu > .d-flex > .nav-link { padding: 8px 10px; }
+
     .matriculas-menu > .d-flex > .nav-link:hover,
     .ventas-menu > .d-flex > .nav-link:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
+      background: var(--sb-hover);
+      color: var(--sb-hi);
     }
 
-    .sidebar .nav-link i { width: 24px; text-align: center; flex-shrink: 0; }
+    .sidebar .nav-link i { width: 22px; text-align: center; flex-shrink: 0; }
 
     .sidebar > .nav > .nav-item > .nav-link:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
+      background: var(--sb-hover);
+      color: var(--sb-hi);
     }
     .sidebar > .nav > .nav-item.active-indicator > .nav-link {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      background: rgba(242, 195, 0, 0.08);
+      color: var(--sb-gold);
     }
+    .sidebar > .nav > .nav-item.active-indicator > .nav-link i { color: var(--sb-gold); opacity: 1; }
 
     .nav-submenu { padding: 0; margin: 0; list-style: none; width: 100%; }
     .nav-submenu .nav-item { margin: 0; width: 100%; }
@@ -779,8 +885,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 14px 10px 10px;
-      border-radius: 12px;
+      padding: 8px 10px 8px 8px;
+      border-radius: 8px;
     }
 
     .movimientos-menu .d-flex,
@@ -793,7 +899,7 @@
 
     .movimientos-menu .toggle-submenu {
       margin-right: 0.35rem;
-      color: #fff;
+      color: var(--sb-text);
       opacity: 1;
       flex-shrink: 0;
       padding: 0 0.25rem;
@@ -823,7 +929,7 @@
     }
 
     .toggle-submenu {
-      color: #fff !important;
+      color: var(--sb-text) !important;
       padding: 0 0.35rem;
       margin: 0 0.35rem 0 0;
       opacity: 1;
@@ -841,7 +947,7 @@
     }
     .toggle-submenu i { transition: transform 0.35s ease; }
     .toggle-submenu:hover i,
-    .toggle-submenu:focus i { color: #f5c544; }
+    .toggle-submenu:focus i { color: var(--sb-gold); }
 
     .movimientos-menu.show-submenu .toggle-submenu i,
     .matriculas-menu.show-submenu .toggle-submenu i,
@@ -861,7 +967,7 @@
       top: -6px;
       bottom: -6px;
       width: 6px;
-      background: #f5c544;
+      background: var(--sb-gold);
       border-radius: 0 6px 6px 0;
       z-index: 4;
     }
@@ -871,7 +977,7 @@
     .ventas-menu > .d-flex {
       position: relative;
       overflow: visible;
-      border-radius: 12px;
+      border-radius: 8px;
       padding-right: 10px;
       gap: 10px;
       background: transparent;
@@ -882,19 +988,25 @@
     .matriculas-menu.show-submenu > .d-flex,
     .ventas-menu.active-indicator > .d-flex,
     .ventas-menu.show-submenu > .d-flex {
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
+      background: rgba(242, 195, 0, 0.08);
+      border-radius: 8px;
       overflow: visible;
       padding-right: 10px;
       gap: 10px;
-      box-shadow: inset 4px 0 0 #f5c544;
+      box-shadow: inset 3px 0 0 var(--sb-gold);
     }
+    .movimientos-menu.active-indicator > .d-flex > .nav-link,
+    .movimientos-menu.show-submenu > .d-flex > .nav-link,
+    .matriculas-menu.active-indicator > .d-flex > .nav-link,
+    .matriculas-menu.show-submenu > .d-flex > .nav-link,
+    .ventas-menu.active-indicator > .d-flex > .nav-link,
+    .ventas-menu.show-submenu > .d-flex > .nav-link { color: var(--sb-gold); }
 
     .movimientos-menu > .d-flex:hover,
     .matriculas-menu > .d-flex:hover,
     .ventas-menu > .d-flex:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
+      background: var(--sb-hover);
+      border-radius: 8px;
       overflow: visible;
       padding-right: 10px;
       gap: 10px;

@@ -862,22 +862,13 @@
   };
   var CATEGORY_FALLBACK = { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
 
-  // --- Delivery status badges (item A3: Spanish labels) ---
-  // Key = raw DB value (lowercased, spaces→_); label = Spanish display text
-  var DELIVERY_BADGES = {
-    active:             { label: "Activa",              bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
-    inactive:           { label: "Inactiva",            bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" },
-    completed:          { label: "Finalizada",          bg: "#E8EEF9", fg: "#1E4FA3", bd: "#CDDCF2" },
-    recently_completed: { label: "Recién finalizada",   bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4" },
-    archived:           { label: "Archivada",           bg: "#F4F1EA", fg: "#7A7261", bd: "#E7E1D2" },
-    not_delivering:     { label: "Sin entrega",         bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#F59E0B" },
-    // API effective_status (rows with source='api' from sync_meta_ads)
-    paused:             { label: "Pausada",             bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
-    deleted:            { label: "Eliminada",           bg: "#334155", fg: "#F1F5F9", bd: "#334155" },
-    with_issues:        { label: "Con problemas",       bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#F59E0B" },
-    in_process:         { label: "En proceso",          bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4", dot: "#0EA5E9" },
-    campaign_paused:    { label: "Pausada (campaña)",   bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" },
-    adset_paused:       { label: "Pausada (conjunto)",  bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0" }
+  // --- Entrega (Delivery) — 3-state, matches Meta Ads Manager ---
+  // Derived server-side from effective_status into active|pending|inactive.
+  // The raw Meta status is shown in the cell tooltip.
+  var DELIVERY3 = {
+    active:   { label: "Activa",    bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
+    pending:  { label: "Pendiente", bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#F59E0B" },
+    inactive: { label: "Inactiva",  bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#94A3B8" }
   };
 
   // --- Result indicator: raw Meta API action types -> human labels ---
@@ -1036,37 +1027,6 @@
     return chip;
   }
 
-  function deliveryFmt(cell) {
-    var v = cell.getValue();
-    if (!v) return NULL_HTML;
-    var key = norm(v).trim().replace(/\s+/g, "_");
-    var c = DELIVERY_BADGES[key] || { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
-    var badge = document.createElement("span");
-    badge.className = "status-badge";
-    badge.style.backgroundColor = c.bg;
-    badge.style.color = c.fg;
-    badge.style.borderColor = c.bd;
-    if (c.dot) {
-      var dot = document.createElement("span");
-      dot.className = "dot";
-      dot.style.backgroundColor = c.dot;
-      badge.appendChild(dot);
-    }
-    // Use Spanish label when available (item A3); fallback to raw DB value
-    badge.appendChild(document.createTextNode(c.label || v));
-    return badge;
-  }
-
-  // Estado (effective_status) — uppercase API values → Spanish badge
-  var STATUS_BADGES = {
-    "ACTIVE":       { label: "Activa",        bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
-    "PAUSED":       { label: "Pausada",       bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
-    "ARCHIVED":     { label: "Archivada",     bg: "#F4F1EA", fg: "#7A7261", bd: "#E7E1D2" },
-    "DELETED":      { label: "Eliminada",     bg: "#334155", fg: "#F1F5F9", bd: "#334155" },
-    "WITH_ISSUES":  { label: "Con problemas", bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#EF4444" },
-    "IN_PROCESS":   { label: "En proceso",    bg: "#E3F0FA", fg: "#0B6394", bd: "#C9E4F4", dot: "#0EA5E9" },
-  };
-
   function _makeBadge(label, bg, fg, bd, dot) {
     var badge = document.createElement("span");
     badge.className = "delivery-badge";
@@ -1081,30 +1041,20 @@
     return badge;
   }
 
-  function statusFmt(cell) {
-    var v = (cell.getValue() || "").toUpperCase();
+  // Entrega (Delivery): 3-state badge. Value = active|pending|inactive
+  // (computed server-side from effective_status). Tooltip = raw Meta status.
+  function delivery3Fmt(cell) {
+    var v = cell.getValue();
+    var d = cell.getData() || {};
     if (!v) {
-      // Sin status después del match server-side: Excel sin campaña en la API
-      if ((cell.getData() || {}).source === "excel") {
-        return _makeBadge("Sin sync", "#F8FAFC", "#94A3B8", "#E2E8F0", null);
-      }
+      // Excel row whose campaign isn't in the API yet → no live status.
+      if (d.source === "excel") return _makeBadge("Sin sync", "#F8FAFC", "#94A3B8", "#E2E8F0", null);
       return NULL_HTML;
     }
-    var c = STATUS_BADGES[v] || { label: v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
-    return _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
-  }
-
-  var ACCT_STATUS = {
-    1: { label: "Activa",        bg: "#E8F6EC", fg: "#1F7A3F", bd: "#CDEED8", dot: "#16A34A" },
-    2: { label: "Deshabilitada", bg: "#EEF1F5", fg: "#64748B", bd: "#E2E8F0", dot: "#F59E0B" },
-    3: { label: "Sin fondos",    bg: "#FBEFD9", fg: "#92610E", bd: "#F3DFB5", dot: "#EF4444" },
-  };
-
-  function acctStatusFmt(cell) {
-    var v = cell.getValue();
-    if (v === null || v === undefined) return NULL_HTML;
-    var c = ACCT_STATUS[+v] || { label: "Estado " + v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
-    return _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
+    var c = DELIVERY3[v] || { label: v, bg: "#f1f5f9", fg: "#475569", bd: "#e2e8f0" };
+    var badge = _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
+    if (d.effective_status) badge.title = d.effective_status;  // raw Meta value
+    return badge;
   }
 
   function cprFmt(cell) {
@@ -1467,7 +1417,7 @@
     product:          "Producto",
     paid_country:     "País (pauta)",
     country:          "País (cliente)",
-    delivery:         "Entrega",
+    delivery_status:  "Entrega",
     result_indicator: "Indicador de resultados",
     month:            "Mes",
     category:         "Categoría"
@@ -1672,23 +1622,9 @@
   // Popup list label: DB values ALWAYS via textContent (XSS-safe);
   // Entrega renders its status badge so the list mirrors the cells.
   function listLabelNode(field, v) {
-    if (field === "delivery") {
-      var key = norm(v).trim().replace(/\s+/g, "_");
-      var c = DELIVERY_BADGES[key] || { bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
-      var badge = document.createElement("span");
-      badge.className = "status-badge";
-      badge.style.backgroundColor = c.bg;
-      badge.style.color = c.fg;
-      badge.style.borderColor = c.bd;
-      if (c.dot) {
-        var dot = document.createElement("span");
-        dot.className = "dot";
-        dot.style.backgroundColor = c.dot;
-        badge.appendChild(dot);
-      }
-      // Use Spanish label (item A3)
-      badge.appendChild(document.createTextNode(c.label || v));
-      return badge;
+    if (field === "delivery_status") {
+      var c = DELIVERY3[v] || { label: v, bg: "#EEF1F5", fg: "#475569", bd: "#E2E8F0" };
+      return _makeBadge(c.label, c.bg, c.fg, c.bd, c.dot || null);
     }
     var span = document.createElement("span");
     span.className = "ads-fp-label";
@@ -1886,19 +1822,15 @@
         headerTooltip: "Producto del catálogo Goberna vinculado a esta campaña",
         titleFormatter: filterTitle("product", "Producto")
       },
-      { title: "Estado Campaña", field: "effective_status", width: 145, formatter: statusFmt,
-        headerTooltip: "Estado actual de la campaña en Meta (ACTIVE, PAUSED, ARCHIVED…). Para filas Excel sin sync, se hereda del campaign_id si existe en la API.",
-        titleFormatter: filterTitle("effective_status", "Estado Campaña") },
+      { title: "Entrega", field: "delivery_status", width: 130, formatter: delivery3Fmt,
+        headerTooltip: "Estado de entrega (Delivery) de la campaña en Meta: Activa / Pendiente / Inactiva. El estado detallado de Meta (ACTIVE, PAUSED, IN_PROCESS…) aparece en el tooltip de cada celda.",
+        titleFormatter: filterTitle("delivery_status", "Entrega") },
       { title: "País (pauta)", field: "paid_country", width: 130, formatter: dashFmt,
         headerTooltip: "País de la cuenta publicitaria (quién pagó la pauta)",
         titleFormatter: filterTitle("paid_country", "País (pauta)") },
       { title: "País (cliente)", field: "country", width: 130, formatter: dashFmt,
         headerTooltip: "País del público alcanzado según Meta (desglose geográfico)",
         titleFormatter: filterTitle("country", "País (cliente)") },
-      // Hidden by default: shows "—" in casi todas las filas; recoverable via Columnas
-      { title: "Entrega", field: "delivery", width: 140, formatter: deliveryFmt, visible: false,
-        headerTooltip: "Estado de entrega actual de la campaña en Meta",
-        titleFormatter: filterTitle("delivery", "Entrega") },
       assign({ title: "Resultados", field: "results", width: 110, hozAlign: "right", headerHozAlign: "right", formatter: intFmt,
         headerTooltip: "Cantidad de resultados obtenidos según el objetivo de la campaña" }, sumCalc),
       { title: "Indicador de resultados", field: "result_indicator", width: 200, formatter: resultFmt,
@@ -1991,8 +1923,6 @@
           return NULL_HTML;
         }
       },
-      { title: "Estado Cuenta", field: "account_status", width: 145, formatter: acctStatusFmt,
-        headerTooltip: "Estado del ad account en Meta: 1=Activa, 2=Deshabilitada, 3=Sin fondos" },
       { title: "Categoría", field: "category", width: 135, formatter: categoryFmt,
         headerTooltip: "Línea de negocio Goberna (Escuela, Editorial, Consultoría, LifeStyle)",
         titleFormatter: filterTitle("category", "Categoría") },

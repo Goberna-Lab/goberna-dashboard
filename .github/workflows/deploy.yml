@@ -1,0 +1,85 @@
+name: Deploy to Production
+
+# Auto-deploy de goberna-dashboard a VPS2 en cada push a main.
+# Runner self-hosted dedicado (vps2-goberna-dashboard-runner), corre EN el VPS
+# como usuario gh-runner (en grupo docker, dueno de /srv/goberna-dashboard/app).
+# El entrypoint del contenedor corre migrate + collectstatic al arrancar.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-goberna-dashboard-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, goberna-dashboard]
+
+    env:
+      DEPLOY_DIR: /srv/goberna-dashboard
+      APP_DIR: /srv/goberna-dashboard/app
+      GIT_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Deploy con health check + auto-rollback
+        run: |
+          set -e
+
+          if [ ! -d "$APP_DIR" ]; then
+            echo "ERROR: no existe APP_DIR=$APP_DIR en el servidor."
+            exit 1
+          fi
+          if [ ! -f "$DEPLOY_DIR/docker-compose.yml" ]; then
+            echo "ERROR: no existe docker-compose.yml en $DEPLOY_DIR"
+            exit 1
+          fi
+
+          cd "$APP_DIR"
+          PREV_COMMIT="$(git rev-parse HEAD)"
+
+          echo "--- Pulling latest code ---"
+          git config credential.helper store
+          echo "https://x-access-token:${GIT_TOKEN}@github.com" > "$HOME/.git-credentials"
+          git fetch origin main
+          git reset --hard origin/main
+          rm -f "$HOME/.git-credentials"
+          git config --unset credential.helper || true
+
+          cd "$DEPLOY_DIR"
+
+          echo "--- Building and starting containers ---"
+          docker compose build dashboard
+          docker compose up -d
+
+          echo "--- Waiting for application to be ready ---"
+          READY=0
+          for i in $(seq 1 30); do
+            if docker exec goberna_dashboard python manage.py shell -c "print('ready')" 2>/dev/null; then
+              echo "Application is ready"
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            echo "ERROR: la app no levanto - rollback a $PREV_COMMIT"
+            cd "$APP_DIR" && git reset --hard "$PREV_COMMIT"
+            cd "$DEPLOY_DIR" && docker compose build dashboard && docker compose up -d
+            exit 1
+          fi
+
+          echo "--- Checking HTTP endpoint ---"
+          curl -fsS -o /dev/null -w 'dashboard.goberna.us=%{http_code}\n' https://dashboard.goberna.us/ || \
+            echo "WARNING: healthcheck HTTP fallo (revisar manualmente)"
+
+          echo "--- Cleaning up old Docker images ---"
+          docker image prune -f
+
+          echo "OK: Deploy completado"

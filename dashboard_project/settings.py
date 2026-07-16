@@ -22,9 +22,14 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = ['*'] # Vercel usa dominios dinámicos, restringir en prod si se desea
 
 # SESSION SHARING SETTINGS
-SESSION_COOKIE_DOMAIN = ".goberna.pe"
+# (SESSION_COOKIE_DOMAIN real esta mas abajo, leido de env var -- no duplicar aca)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Detras de un reverse proxy (nginx) que termina TLS y reenvia por HTTP:
+# sin esto Django cree que la conexion es insegura (request.is_secure() = False),
+# generando URLs http:// (ej. el "next=" del redirect a login) en vez de https://.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'django.contrib.admin', # Opcional, quizás para debug
@@ -112,12 +117,12 @@ MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 # MEDIA_ROOT no sirve en Vercel para escritura, solo lectura si se despliegan assets
 
 # SESIÓN COMPARTIDA (CLAVE PARA EL LOGIN)
-# Ajustar esto al dominio real, ej: ".goberna.pe"
-SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', '.goberna.pe') 
+# Ajustar esto al dominio real, ej: ".goberna.us"
+SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN', '.goberna.us')
 SESSION_ENGINE = 'django.contrib.sessions.backends.db' # Comparte sesión por DB
 
 # URLs EXTERNAS (Para los links del dashboard)
-MAIN_APP_URL = os.getenv('MAIN_APP_URL', 'https://app.goberna.pe')
+MAIN_APP_URL = os.getenv('MAIN_APP_URL', 'https://app.goberna.us')
 LOGIN_URL = f"{MAIN_APP_URL}/ingresar/"  # Redirigir al login principal si falta sesión
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

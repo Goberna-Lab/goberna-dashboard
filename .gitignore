@@ -12,6 +12,7 @@ venv/
 
 # SDD / tooling
 .atl/
+.claude/
 
 # OS
 .DS_Store

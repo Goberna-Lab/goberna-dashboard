@@ -87,7 +87,19 @@
     .pack-trends-subtitle { color: #64748b; font-size: 12px; margin-top: 2px; }
     .pack-trends-controls { display: inline-flex; align-items: center; gap: 8px; }
     .pack-trends-controls .form-select { min-width: 120px; max-width: 140px; }
-    .pack-trends-list { display: grid; gap: 8px; margin-top: 4px; }
+    .pack-trends-list { display: grid; gap: 8px; margin-top: 4px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+    .trend-card-half .pack-trend-row { grid-template-columns: 1fr; gap: 8px; }
+    .trend-card-half .pack-trend-metric-cell { min-width: 0; }
+    .trend-card-half .pack-trend-spark { justify-content: flex-start; }
+    .trend-card-half .pack-trend-icon { display: none; }
+    .trend-card-half .school-trend-row { grid-template-columns: 30px 48px minmax(0, 1fr); gap: 10px; }
+    .trend-card-half .school-trend-side {
+      grid-column: 2 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 96px;
+      gap: 10px;
+      align-items: center;
+    }
     .pack-trend-empty {
       text-align: center;
       color: #64748b;
@@ -479,6 +491,10 @@
       .modal-sales-filters {
         grid-template-columns: 1fr;
       }
+      .all-product-modal-head,
+      .all-product-modal-summary {
+        grid-template-columns: 1fr;
+      }
     }
     .pack-trend-sale-amount {
       font-size: 15px;
@@ -561,7 +577,8 @@
       font-weight: 700;
     }
     .school-trends-card {
-      grid-column: span 2;
+      /* grid-column ya no se define aquí: la tarjeta vive dentro de un wrapper .dual-card
+         que controla el ancho/posición del par (Escuela + Tendencias de packs). */
       padding: 16px;
       border-radius: 16px;
       border-color: #e2e8f0;
@@ -815,6 +832,120 @@
     #tablePackBooks th:nth-child(4) {
       white-space: nowrap;
     }
+    #tableAllProducts {
+      width: 100%;
+      table-layout: fixed;
+    }
+    #tableAllProducts th,
+    #tableAllProducts td {
+      vertical-align: middle;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    #tableAllProducts thead th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #fff;
+      box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+    #tableAllProducts th:nth-child(1),
+    #tableAllProducts td:nth-child(1) { width: 55%; }
+    #tableAllProducts th:nth-child(2),
+    #tableAllProducts td:nth-child(2) { width: 15%; }
+    #tableAllProducts th:nth-child(3),
+    #tableAllProducts td:nth-child(3) {
+      width: 30%;
+      white-space: nowrap;
+    }
+    #tableAllProducts tbody tr {
+      cursor: pointer;
+    }
+    #tableAllProducts tbody tr:hover {
+      background: #f8fbff;
+    }
+    .all-product-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .all-product-thumb {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid #dbe4ee;
+      object-fit: cover;
+      background: #eef2f7;
+      flex: 0 0 auto;
+    }
+    .all-product-name {
+      min-width: 0;
+      color: #1f2937;
+      font-size: 0.78rem;
+      font-weight: 800;
+      line-height: 1.25;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .all-product-modal-head {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 14px;
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .all-product-modal-img {
+      width: 76px;
+      height: 76px;
+      border-radius: 12px;
+      border: 1px solid #dbe4ee;
+      object-fit: cover;
+      background: #eef2f7;
+    }
+    .all-product-modal-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .all-product-modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .all-product-modal-meta span,
+    .all-product-sale-metric {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid #dbe4ee;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .all-product-modal-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .all-product-modal-summary .stat-card {
+      padding: 12px 14px;
+      border-radius: 12px;
+    }
+    .all-product-modal-summary .stat-value {
+      font-size: 18px;
+    }
     .compact-chart { padding: 12px 14px; }
     .compact-chart .section-title { margin-bottom: 6px; }
     .compact-serie { padding: 6px 8px; }
@@ -919,14 +1050,30 @@
       border-radius: 12px;
       padding: 10px 12px;
       border: 1px solid var(--home-border);
+      border-left: 3px solid transparent;
       display: flex;
       gap: 10px;
       align-items: center;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: box-shadow 0.15s ease, background-color 0.15s ease, border-left-color 0.15s ease;
+    }
+    .filter-chip:hover {
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
+    }
+    .filter-chip.has-selection {
+      background: #fff;
+      border-left-color: #193b59;
     }
     .filter-chip i { color: #475569; font-size: 1rem; }
     .filter-chip .filter-body { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-    .filter-chip .filter-label { font-weight: 700; color: #0f172a; font-size: 13px; margin: 0; }
+    .filter-chip .filter-label {
+      font-weight: 600;
+      color: #64748b;
+      font-size: 11px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
     .filter-chip input,
     .filter-chip select {
       background: transparent;
@@ -934,7 +1081,8 @@
       box-shadow: none;
       padding: 0;
       height: auto;
-      font-size: 0.95rem;
+      font-size: 14px;
+      font-weight: 600;
       color: #0f172a;
     }
     .filter-chip input:focus,
@@ -946,7 +1094,8 @@
     .multi-check summary {
       list-style: none;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 14px;
+      font-weight: 600;
       color: #0f172a;
       display: flex;
       align-items: center;
@@ -997,6 +1146,34 @@
       margin: 0;
       flex: 0 0 auto;
     }
+    .multi-check-row input[type="radio"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      flex: 0 0 auto;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      background: #fff;
+      position: relative;
+      cursor: pointer;
+    }
+    .multi-check-row input[type="radio"]:checked {
+      background: #193b59;
+      border-color: #193b59;
+    }
+    .multi-check-row input[type="radio"]:checked::after {
+      content: "\f00c";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 9px;
+      color: #fff;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
     .multi-check-divider {
       height: 1px;
       background: #e2e8f0;
@@ -1035,46 +1212,6 @@
       pointer-events: none;
     }
     .filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
-    .status-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 12px;
-      overflow: visible;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-    }
-    .estado-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--home-border);
-      background: #fff;
-      color: #0f172a;
-      font-weight: 800;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .estado-chip .dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      border: 3px solid #cbd5e1;
-      background: #fff;
-      box-shadow: inset 0 0 0 2px #fff;
-    }
-    .estado-chip.active {
-      border-color: var(--home-primary);
-      box-shadow: 0 12px 26px rgba(25, 59, 89, 0.18);
-    }
-    .chip-all .dot { border-color: #d1d5db; background: #f8fafc; }
-    .chip-pagado .dot { border-color: #198754; background: #e6f4ec; }
-    .chip-pendiente .dot { border-color: #f59e0b; background: #fef3c7; }
-    .chip-no-val .dot { border-color: #6c757d; background: #e2e8f0; }
-    .chip-anulado .dot { border-color: #dc3545; background: #fde2e1; }
     .filter-search {
       display: flex;
       gap: 12px;
@@ -1442,7 +1579,6 @@
     body.fullscreen-dash .search-box .icon,
     body.fullscreen-dash .filter-chip i,
     body.fullscreen-dash i { color: #e5e7eb !important; }
-    body.fullscreen-dash .status-pills .estado-chip { background:#ffffff; color:#e5e7eb; border-color:#ffffff; }
     body.fullscreen-dash input,
     body.fullscreen-dash select,
     body.fullscreen-dash textarea,
@@ -1568,7 +1704,7 @@
       .chart-card { box-shadow: none !important; }
     }
     @media (max-width: 1300px) {
-      .school-trends-card { grid-column: span 2; }
+      /* grid-column removido: ahora lo controla el wrapper .dual-card, no esta regla */
       .school-trend-row { grid-template-columns: 30px 48px minmax(0, 1fr); }
       .school-trend-side {
         grid-column: 2 / -1;
@@ -1592,7 +1728,7 @@
       .pack-trend-sale-books,
       .pack-trend-book-qty,
       .pack-trend-book-amount { text-align: left; }
-      .school-trends-card { grid-column: 1 / -1; padding: 14px; border-radius: 16px; }
+      .school-trends-card { padding: 14px; border-radius: 16px; } /* grid-column: lo maneja .dual-card */
       .school-trends-head { align-items: flex-start; margin-bottom: 10px; }
       .school-trends-heading { gap: 8px; font-size: 17px; }
       .school-trends-icon { width: 26px; height: 26px; border-radius: 8px; }
@@ -1720,26 +1856,6 @@
         </div>
 
 
-        <div class="chart-card" style="grid-column: 1 / -1; padding: 14px 16px;">
-          <div class="status-pills">
-            <button class="estado-chip chip-all active" data-estado="">
-              <span class="dot"></span> Todos
-            </button>
-            <button class="estado-chip chip-pagado" data-estado="1">
-              <span class="dot"></span> Pagado
-          </button>
-          <button class="estado-chip chip-pendiente" data-estado="2">
-            <span class="dot"></span> Pendiente
-          </button>
-          <button class="estado-chip chip-no-val" data-estado="3">
-            <span class="dot"></span> No validado
-          </button>
-            <button class="estado-chip chip-anulado" data-estado="4">
-              <span class="dot"></span> Anulado
-            </button>
-          </div>
-        </div>
-
         <div class="chart-card filters-card" style="grid-column: 1 / -1;">
           <div class="section-title d-flex justify-content-between align-items-center mb-2">
             <span>Filtros</span>
@@ -1761,13 +1877,36 @@
             <div class="filter-chip">
               <i class="fas fa-layer-group"></i>
               <div class="filter-body">
-                <select id="filtroEstado">
-                  <option value="">Todos los estados</option>
-                  <option value="1">Pagado</option>
-                  <option value="2">Pendiente</option>
-                  <option value="3">No validado</option>
-                  <option value="4">Anulado</option>
-                </select>
+                <span class="filter-label">Estado</span>
+                <details class="multi-check" id="filtroEstadoDropdown">
+                  <summary id="filtroEstadoSummary">Todos los estados</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="radio" name="filtroEstadoRadio" value="" id="filtroEstadoOptAll" checked>
+                      <span>Todos los estados</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroEstadoOptions" class="multi-check-list">
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="1" data-label="Pagado">
+                        <span>Pagado</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="2" data-label="Pendiente">
+                        <span>Pendiente</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="3" data-label="No validado">
+                        <span>No validado</span>
+                      </label>
+                      <label class="multi-check-row">
+                        <input type="radio" name="filtroEstadoRadio" value="4" data-label="Anulado">
+                        <span>Anulado</span>
+                      </label>
+                    </div>
+                  </div>
+                </details>
+                <input type="hidden" id="filtroEstado" value="">
               </div>
             </div>
 
@@ -1844,6 +1983,40 @@
                     </label>
                     <div class="multi-check-divider"></div>
                     <div id="filtroPaisOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div class="filter-chip">
+              <i class="fas fa-briefcase"></i>
+              <div class="filter-body">
+                <span class="filter-label">Negocio</span>
+                <details class="multi-check" id="filtroNegocioDropdown">
+                  <summary id="filtroNegocioSummary">Todos los negocios</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroNegocioAll" checked>
+                      <span>Todos los negocios</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroNegocioOptions" class="multi-check-list"></div>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div class="filter-chip">
+              <i class="fas fa-sitemap"></i>
+              <div class="filter-body">
+                <span class="filter-label">División</span>
+                <details class="multi-check" id="filtroDivisionDropdown">
+                  <summary id="filtroDivisionSummary">Todas las divisiones</summary>
+                  <div class="multi-check-menu">
+                    <label class="multi-check-row">
+                      <input type="checkbox" id="filtroDivisionAll" checked>
+                      <span>Todas las divisiones</span>
+                    </label>
+                    <div class="multi-check-divider"></div>
+                    <div id="filtroDivisionOptions" class="multi-check-list"></div>
                   </div>
                 </details>
               </div>
@@ -1985,33 +2158,14 @@
           </div>
         </div>
 
-        <div class="chart-card school-trends-card">
-          <div class="section-title school-trends-head">
-            <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
-            <div class="school-trends-controls">
-              <select id="filtroOrdenEscuela" class="form-select">
-                <option value="monto" selected>Monto</option>
-                <option value="cantidad">Cantidad</option>
-              </select>
-              <select id="filtroOrdenEscuelaDir" class="form-select">
-                <option value="desc" selected>Descendente</option>
-                <option value="asc">Ascendente</option>
-              </select>
-            </div>
-          </div>
-          <div class="school-trends-list" id="schoolTrendsList">
-            <div class="pack-trend-empty">Sin datos de escuela.</div>
-          </div>
-          <div class="school-trends-footer">
-            <span class="school-total-icon"><i class="fas fa-chart-simple"></i></span>
-            <span class="school-total-label">Total:</span>
-            <span><span id="tableSchoolTotalQty">0</span> unidades</span>
-            <span class="school-total-dot">-</span>
-            <strong><span id="tableSchoolTotalAmount">$0</span> USD</strong>
-          </div>
-        </div>
-
-        <div class="chart-card" style="grid-column: span 2;">
+        <!-- Envueltos en .dual-card (patrón ya usado en la sección de heatmap más abajo)
+             para que el par se mantenga SIEMPRE junto en la misma fila y con el mismo ancho,
+             sin depender del número de columnas que auto-fit calcule en el .grid exterior
+             (con 6-8 columnas en pantallas muy anchas, "grid-column: span 2" ya no garantizaba
+             que estas dos tarjetas cayeran en la misma fila). También resuelve el mobile: al
+             no caber 2 columnas de 320px, .dual-card colapsa a 1 columna automáticamente. -->
+        <div class="dual-card">
+        <div class="chart-card">
           <div class="section-title d-flex align-items-center gap-2 justify-content-between">
             <span class="d-flex align-items-center gap-2"><i class="fas fa-book text-primary"></i> Ventas de Libros</span>
             <div class="d-flex align-items-center gap-2">
@@ -2046,7 +2200,71 @@
           </div>
         </div>
 
-        <div class="chart-card pack-trends-card" style="grid-column: 1 / -1;">
+        <div class="chart-card">
+          <div class="section-title d-flex align-items-center gap-2 justify-content-between">
+            <span class="d-flex align-items-center gap-2"><i class="fas fa-box-open text-primary"></i> Ventas de todos los productos</span>
+            <div class="d-flex align-items-center gap-2">
+              <select id="filtroOrdenTodosProductos" class="form-select form-select-sm" style="max-width: 160px;">
+                <option value="monto" selected>Monto</option>
+                <option value="cantidad">Cantidad</option>
+              </select>
+              <select id="filtroOrdenTodosProductosDir" class="form-select form-select-sm" style="max-width: 180px;">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0" id="tableAllProducts">
+              <thead class="text-secondary small-header">
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">Ganancia (USD)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot class="table-light fw-bold small" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 2; font-size: 0.78rem;">
+                <tr>
+                  <td class="text-uppercase text-secondary">Total</td>
+                  <td class="text-end"><span class="badge bg-light text-dark border" id="tableAllProductsTotalQty">0</span></td>
+                  <td class="text-end text-success" id="tableAllProductsTotalAmount">$0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        </div>
+
+        <!-- Mismo patrón dual-card para el par Escuela + Tendencias de packs -->
+        <div class="dual-card">
+        <div class="chart-card school-trends-card trend-card-half">
+          <div class="section-title school-trends-head">
+            <span class="school-trends-heading"><span class="school-trends-icon"><i class="fas fa-graduation-cap"></i></span> Ventas de Escuela</span>
+            <div class="school-trends-controls">
+              <select id="filtroOrdenEscuela" class="form-select">
+                <option value="monto" selected>Monto</option>
+                <option value="cantidad">Cantidad</option>
+              </select>
+              <select id="filtroOrdenEscuelaDir" class="form-select">
+                <option value="desc" selected>Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </div>
+          </div>
+          <div class="school-trends-list" id="schoolTrendsList">
+            <div class="pack-trend-empty">Sin datos de escuela.</div>
+          </div>
+          <div class="school-trends-footer">
+            <span class="school-total-icon"><i class="fas fa-chart-simple"></i></span>
+            <span class="school-total-label">Total:</span>
+            <span><span id="tableSchoolTotalQty">0</span> unidades</span>
+            <span class="school-total-dot">-</span>
+            <strong><span id="tableSchoolTotalAmount">$0</span> USD</strong>
+          </div>
+        </div>
+
+        <div class="chart-card pack-trends-card trend-card-half">
           <div class="pack-trends-head">
             <div class="pack-trends-head-left">
               <div class="section-title mb-0 d-flex align-items-center gap-2">
@@ -2067,6 +2285,7 @@
             <div class="pack-trend-empty">Sin datos para mostrar tendencias.</div>
           </div>
           <div id="packTrendsFooter" class="pack-trends-footer">Total: 0 packs activos - 0 libros - $ 0.00 USD</div>
+        </div>
         </div>
 
         <div class="chart-card" style="grid-column: span 2;">
@@ -2126,7 +2345,7 @@
           <canvas id="chartCuotas" height="180"></canvas>
         </div>
 
-        <!-- Serie temporal full width, justo antes de Últimas ventas -->
+        <!-- Serie temporal full width -->
         <div class="chart-card compact-serie" style="grid-column: 1 / -1;">
           <div class="d-flex align-items-center gap-2">
             <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-chart-area text-primary"></i> Serie temporal (ventas por mes)</div>
@@ -2148,35 +2367,6 @@
             </span>
           </div>
           <canvas id="chartVentasSerie" height="70" title="Arrastrá para seleccionar un rango y filtrar el dashboard"></canvas>
-        </div>
-
-        <div class="table-card" style="grid-column: 1 / -1;">
-          <div class="p-3 d-flex justify-content-between align-items-center">
-            <div class="section-title mb-0 d-flex align-items-center gap-2"><i class="fas fa-clock text-primary"></i> Últimas ventas</div>
-            <span class="stat-label" id="scopeLabel">Solo tus ventas</span>
-          </div>
-          <div class="px-3 pb-2">
-            <!-- <div class="summary-chips" id="chipsResumen"></div> -->
-
-
-             <div class="d-none">
-              <span id="ventasFiltradas">0</span>
-              <span id="montoFiltrado">$ 0.00</span>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Folio</th>
-                  <th>Fecha</th>
-                  <th>Monto</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="tablaVentas"></tbody>
-            </table>
-          </div>
         </div>
 
         <div class="dual-card">
@@ -2499,10 +2689,12 @@
     let selectedCuotasMetric = 'cantidad'; // 'monto' | 'cantidad'
     let selectedSchoolSort = 'monto'; // 'monto' | 'cantidad'
     let selectedBooksSort = 'monto'; // 'monto' | 'cantidad'
+    let selectedAllProductsSort = 'monto'; // 'monto' | 'cantidad'
     let selectedVendorSort = 'cantidad'; // 'cantidad' | 'monto'
     let selectedVendorSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedSchoolSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedBooksSortOrder = 'desc'; // 'asc' | 'desc'
+    let selectedAllProductsSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedCoursesSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedBooksChartSortOrder = 'desc'; // 'asc' | 'desc'
     let selectedBooksChartMetric = 'cantidad'; // 'cantidad' | 'monto'
@@ -2517,7 +2709,10 @@
     // caches de datos filtrados (ya no se exportan a CSV/XLSX)
     let ventasFiltradasCache = [];
     let cuotasFiltradasCache = [];
+    const ventasByIdMap = new Map();
     const ventaProductosMap = new Map();
+    const ventaNegociosMap = new Map();
+    const ventaDivisionesMap = new Map();
     const productNameToIdsMap = new Map();
     const PACK_TRENDS_ORDER = [
       'Pack de 02 Libros Goberna',
@@ -2642,6 +2837,8 @@
       vendedoresSeleccionados = new Set(),
       productosSeleccionados = new Set(),
       paisesSeleccionados = new Set(),
+      negociosSeleccionados = new Set(),
+      divisionesSeleccionadas = new Set(),
       texto = '',
       ignorarFecha = false,
     } = {}) {
@@ -2675,6 +2872,32 @@
           }
         }
         if (!hasAnyProduct) return false;
+      }
+
+      if (negociosSeleccionados.size) {
+        const negociosVenta = ventaNegociosMap.get(String(v?.id || ''));
+        if (!negociosVenta) return false;
+        let hasAnyNegocio = false;
+        for (const negocio of negociosSeleccionados) {
+          if (negociosVenta.has(negocio)) {
+            hasAnyNegocio = true;
+            break;
+          }
+        }
+        if (!hasAnyNegocio) return false;
+      }
+
+      if (divisionesSeleccionadas.size) {
+        const divisionesVenta = ventaDivisionesMap.get(String(v?.id || ''));
+        if (!divisionesVenta) return false;
+        let hasAnyDivision = false;
+        for (const division of divisionesSeleccionadas) {
+          if (divisionesVenta.has(division)) {
+            hasAnyDivision = true;
+            break;
+          }
+        }
+        if (!hasAnyDivision) return false;
       }
 
       const folio = String(v?.folio_venta || '').toLowerCase();
@@ -2884,8 +3107,15 @@
     }
 
     function rebuildVentaProductosMap() {
+      ventasByIdMap.clear();
       ventaProductosMap.clear();
+      ventaNegociosMap.clear();
+      ventaDivisionesMap.clear();
       productNameToIdsMap.clear();
+      (ventasDetalle || []).forEach(v => {
+        const ventaId = Number(v?.id || 0);
+        if (ventaId > 0) ventasByIdMap.set(ventaId, v);
+      });
       (detallesCategoria || []).forEach(d => {
         const ventaId = String(d.venta_id || '');
         const producto = String(d.producto__nombre_producto || '').trim();
@@ -2894,6 +3124,18 @@
           ventaProductosMap.set(ventaId, new Set());
         }
         ventaProductosMap.get(ventaId).add(producto);
+
+        const negocio = String(d.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+        if (!ventaNegociosMap.has(ventaId)) {
+          ventaNegociosMap.set(ventaId, new Set());
+        }
+        ventaNegociosMap.get(ventaId).add(negocio);
+
+        const division = String(d.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+        if (!ventaDivisionesMap.has(ventaId)) {
+          ventaDivisionesMap.set(ventaId, new Set());
+        }
+        ventaDivisionesMap.get(ventaId).add(division);
 
         const productoId = Number(d.producto__codigo_producto || 0);
         if (productoId > 0) {
@@ -2920,6 +3162,18 @@
       const nombreProducto = String(detalle?.producto__nombre_producto || '').trim();
       if (!nombreProducto) return false;
       return productosSeleccionados.has(nombreProducto);
+    }
+
+    function detalleCoincideNegocioSeleccionado(detalle, negociosSeleccionados) {
+      if (!negociosSeleccionados || !negociosSeleccionados.size) return true;
+      const nombreNegocio = String(detalle?.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+      return negociosSeleccionados.has(nombreNegocio);
+    }
+
+    function detalleCoincideDivisionSeleccionada(detalle, divisionesSeleccionadas) {
+      if (!divisionesSeleccionadas || !divisionesSeleccionadas.size) return true;
+      const nombreDivision = String(detalle?.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+      return divisionesSeleccionadas.has(nombreDivision);
     }
 
     function seleccionarProductosEnFiltro(productNames) {
@@ -3100,6 +3354,80 @@
       allCheckbox.checked = !hasAnySelected;
       updateMultiSummary('filtroProductoSummary', 'filtroProductoOptions', 'Todos los productos');
       applyMultiSearchFilter('filtroProductoBuscar', 'filtroProductoOptions');
+    }
+
+    function populateBusinessFilter() {
+      const optionsContainer = document.getElementById('filtroNegocioOptions');
+      const allCheckbox = document.getElementById('filtroNegocioAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const prevSelected = getCheckedValues('filtroNegocioOptions');
+      const negocios = new Set();
+      (detallesCategoria || []).forEach(d => {
+        const nombre = String(d.producto__codigo_negocio__nombre_negocio || '').trim() || 'Sin negocio';
+        negocios.add(nombre);
+      });
+
+      const sorted = Array.from(negocios).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      optionsContainer.innerHTML = '';
+      sorted.forEach(nombre => {
+        const label = document.createElement('label');
+        label.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = nombre;
+        input.dataset.label = nombre;
+        input.checked = prevSelected.has(nombre);
+        const span = document.createElement('span');
+        span.textContent = nombre;
+        label.appendChild(input);
+        label.appendChild(span);
+        optionsContainer.appendChild(label);
+      });
+
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroNegocioSummary', 'filtroNegocioOptions', 'Todos los negocios');
+    }
+
+    function populateDivisionFilter() {
+      const optionsContainer = document.getElementById('filtroDivisionOptions');
+      const allCheckbox = document.getElementById('filtroDivisionAll');
+      if (!optionsContainer || !allCheckbox) return;
+
+      const prevSelected = getCheckedValues('filtroDivisionOptions');
+      const divisiones = new Set();
+      (detallesCategoria || []).forEach(d => {
+        const nombre = String(d.producto__codigo_division__nombre_division || '').trim() || 'Sin división';
+        divisiones.add(nombre);
+      });
+
+      const sorted = Array.from(divisiones).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      optionsContainer.innerHTML = '';
+      sorted.forEach(nombre => {
+        const label = document.createElement('label');
+        label.className = 'multi-check-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = nombre;
+        input.dataset.label = nombre;
+        input.checked = prevSelected.has(nombre);
+        const span = document.createElement('span');
+        span.textContent = nombre;
+        label.appendChild(input);
+        label.appendChild(span);
+        optionsContainer.appendChild(label);
+      });
+
+      const hasAnySelected = optionsContainer.querySelector('input[type="checkbox"]:checked');
+      allCheckbox.checked = !hasAnySelected;
+      updateMultiSummary('filtroDivisionSummary', 'filtroDivisionOptions', 'Todas las divisiones');
     }
 
     function populateCountryFilter(data = ventasDetalle) {
@@ -4388,6 +4716,55 @@
         if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
     }
 
+    function renderAllProductsTable(data) {
+        const tbody = document.querySelector('#tableAllProducts tbody');
+        const totalQtyEl = document.getElementById('tableAllProductsTotalQty');
+        const totalAmountEl = document.getElementById('tableAllProductsTotalAmount');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!data || !data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+            if (totalQtyEl) totalQtyEl.textContent = '0';
+            if (totalAmountEl) totalAmountEl.textContent = formatearMonto(0);
+            return;
+        }
+
+        let totalQty = 0;
+        let totalAmount = 0;
+        data.forEach((d) => {
+            const qty = toNumber(d.qty || 0);
+            const amount = toNumber(d.amount || 0);
+            const imageUrl = d.imageUrl || LOGO_URL_FALLBACK;
+            totalQty += qty;
+            totalAmount += amount;
+
+            const tr = document.createElement('tr');
+            tr.tabIndex = 0;
+            tr.title = 'Ver detalle de ventas del producto';
+            tr.innerHTML = `
+                <td>
+                  <div class="all-product-cell">
+                    <img class="all-product-thumb" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(d.name || 'Producto')}" loading="lazy">
+                    <div class="all-product-name">${escapeHtml(d.name || 'Sin producto')}</div>
+                  </div>
+                </td>
+                <td class="text-end"><span class="badge bg-light text-dark border">${formatearTickCantidad(qty)}</span></td>
+                <td class="text-end text-success fw-bold small">${formatearMonto(amount)}</td>
+            `;
+            tr.addEventListener('click', () => showAllProductSalesModal(d));
+            tr.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                showAllProductSalesModal(d);
+            });
+            tbody.appendChild(tr);
+        });
+
+        if (totalQtyEl) totalQtyEl.textContent = formatearTickCantidad(totalQty);
+        if (totalAmountEl) totalAmountEl.textContent = formatearMonto(totalAmount);
+    }
+
     function renderPackBooksTable(data) {
         const tbody = document.querySelector('#tablePackBooks tbody');
         const totalQtyEl = document.getElementById('tablePackBooksTotalQty');
@@ -5309,6 +5686,202 @@
         renderBooksTable(booksTableList);
     }
 
+    function updateAllProductsTable(ventaIds, productosSeleccionados, negociosSeleccionados = new Set(), divisionesSeleccionadas = new Set()) {
+        const allProductDetails = detallesCategoria.filter(d => {
+            if (ventaIds && !ventaIds.has(d.venta_id)) return false;
+            if (!detalleCoincideProductoSeleccionado(d, productosSeleccionados)) return false;
+            if (!detalleCoincideNegocioSeleccionado(d, negociosSeleccionados)) return false;
+            if (!detalleCoincideDivisionSeleccionada(d, divisionesSeleccionadas)) return false;
+            return true;
+        });
+
+        const productMap = new Map();
+        allProductDetails.forEach((d) => {
+            const productId = Number(d.producto__codigo_producto || 0) || '';
+            const ventaId = Number(d.venta_id || 0);
+            const name = String(d.producto__nombre_producto || 'Sin producto').trim() || 'Sin producto';
+            const category = String(d.producto__codigo_categoria__nombre_categoria || 'Sin categoria').trim() || 'Sin categoria';
+            const business = String(d.producto__codigo_negocio__nombre_negocio || 'Sin negocio').trim() || 'Sin negocio';
+            const imageUrl = String(d.producto_imagen_url || '').trim();
+            const key = productId ? `id:${productId}` : `${name}|${category}|${business}`;
+
+            if (!productMap.has(key)) {
+                productMap.set(key, {
+                    productId,
+                    name,
+                    category,
+                    business,
+                    imageUrl,
+                    qty: 0,
+                    amount: 0,
+                    ventas: new Set(),
+                    salesMap: new Map(),
+                });
+            }
+
+            const entry = productMap.get(key);
+            if (!entry.imageUrl && imageUrl) entry.imageUrl = imageUrl;
+            const qty = toNumber(d.cantidad || 0);
+            const amount = toNumber(d.monto_usd || 0);
+            entry.qty += qty;
+            entry.amount += amount;
+
+            if (ventaId > 0) {
+                entry.ventas.add(ventaId);
+                const venta = ventasByIdMap.get(ventaId) || {};
+                if (!entry.salesMap.has(ventaId)) {
+                    entry.salesMap.set(ventaId, {
+                        venta_id: ventaId,
+                        folio: venta.folio_venta || `Venta ${ventaId}`,
+                        fecha: venta.fecha_venta || '',
+                        vendedor: venta.vendedor || venta.usuario__username || 'Sin vendedor',
+                        pais: venta.pais_cliente || 'Sin pais',
+                        medio: venta.medio_label || medioLabel(venta.medio),
+                        estado: venta.estado,
+                        qty: 0,
+                        amount: 0,
+                    });
+                }
+                const saleEntry = entry.salesMap.get(ventaId);
+                saleEntry.qty += qty;
+                saleEntry.amount += amount;
+            }
+        });
+
+        const allProductsList = Array.from(productMap.values())
+            .map((item) => ({
+                ...item,
+                ventas_count: item.ventas instanceof Set ? item.ventas.size : 0,
+                sales: Array.from(item.salesMap.values()).sort((a, b) => {
+                    const dateA = a.fecha ? new Date(a.fecha).getTime() : 0;
+                    const dateB = b.fecha ? new Date(b.fecha).getTime() : 0;
+                    if (dateA !== dateB) return dateB - dateA;
+                    return String(a.folio || '').localeCompare(String(b.folio || ''), 'es', { numeric: true });
+                }),
+            }))
+            .sort((a, b) => {
+                const base = selectedAllProductsSort === 'cantidad'
+                    ? compareByOrder(a.qty, b.qty, selectedAllProductsSortOrder)
+                    : compareByOrder(a.amount, b.amount, selectedAllProductsSortOrder);
+                if (base !== 0) return base;
+                return String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
+            });
+
+        renderAllProductsTable(allProductsList);
+    }
+
+    function renderAllProductSaleRows(sales) {
+        return (sales || []).map((sale) => {
+            const urlVenta = sale.venta_id ? buildMainAppPath(`${VENTA_DETALLE_PATH}${sale.venta_id}/`) : '';
+            const folioHtml = urlVenta
+                ? `<a href="${escapeHtml(urlVenta)}" target="_blank" rel="noopener">${escapeHtml(sale.folio)}</a>`
+                : `<span>${escapeHtml(sale.folio)}</span>`;
+            const estadoLabel = estadoLabels[sale.estado] || 'Sin estado';
+            const estadoClass = getVentaStatusTagClass(sale.estado);
+
+            return `
+              <div class="pack-trend-sale-row school-sale-row">
+                <div class="pack-trend-sale-date">${escapeHtml(formatPackSaleDate(sale.fecha))}</div>
+                <div class="pack-trend-sale-folio">
+                  ${folioHtml}
+                  <div class="pack-trend-sale-tags">
+                    <span class="pack-trend-sale-tag">Usuario: <strong>${escapeHtml(sale.vendedor)}</strong></span>
+                    <span class="pack-trend-sale-tag">Medio: <strong>${escapeHtml(sale.medio)}</strong></span>
+                    <span class="pack-trend-sale-tag">Pais: <strong>${escapeHtml(sale.pais)}</strong></span>
+                    <span class="pack-trend-sale-tag ${estadoClass}">Estado: <strong>${escapeHtml(estadoLabel)}</strong></span>
+                  </div>
+                </div>
+                <div class="pack-trend-sale-books">${formatearTickCantidad(sale.qty)} unidades</div>
+                <div class="pack-trend-sale-amount">${formatearMonto(sale.amount)}</div>
+              </div>
+            `;
+        }).join('');
+    }
+
+    function showAllProductSalesModal(item) {
+        const titleEl = document.getElementById('allProductModalTitle');
+        const bodyEl = document.getElementById('allProductModalBody');
+        const modalEl = document.getElementById('allProductModal');
+        if (!modalEl || !bodyEl || !item) return;
+
+        const imageUrl = item.imageUrl || LOGO_URL_FALLBACK;
+        const sales = Array.isArray(item.sales) ? item.sales : [];
+        const totalQty = toNumber(item.qty || 0);
+        const totalAmount = toNumber(item.amount || 0);
+        const countries = Array.from(new Set(sales.map((sale) => String(sale.pais || '').trim()).filter(Boolean)));
+        const vendors = Array.from(new Set(sales.map((sale) => String(sale.vendedor || '').trim()).filter(Boolean)));
+        const rowsHtml = renderAllProductSaleRows(sales);
+
+        if (titleEl) {
+            titleEl.innerHTML = `<i class="fas fa-box-open"></i> Detalle de producto`;
+        }
+
+        bodyEl.innerHTML = `
+          <div class="all-product-modal-head">
+            <img class="all-product-modal-img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name || 'Producto')}">
+            <div>
+              <h3 class="all-product-modal-title">${escapeHtml(item.name || 'Sin producto')}</h3>
+              <div class="all-product-modal-meta">
+                <span><i class="fas fa-layer-group"></i> ${escapeHtml(item.category || 'Sin categoria')}</span>
+                <span><i class="fas fa-briefcase"></i> ${escapeHtml(item.business || 'Sin negocio')}</span>
+              </div>
+            </div>
+          </div>
+          <div class="all-product-modal-summary">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearMonto(totalAmount)}</div>
+                <div class="stat-label">Ganancia total</div>
+              </div>
+              <span class="icon-badge success"><i class="fas fa-dollar-sign"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(totalQty)}</div>
+                <div class="stat-label">Unidades</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-boxes-stacked"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(sales.length)}</div>
+                <div class="stat-label">Ventas</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-receipt"></i></span>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-value">${formatearTickCantidad(countries.length)}</div>
+                <div class="stat-label">Paises</div>
+              </div>
+              <span class="icon-badge"><i class="fas fa-globe-americas"></i></span>
+            </div>
+          </div>
+          <div class="pack-trend-detail-head">
+            <div>
+              <div class="pack-trend-detail-title">Ventas relacionadas</div>
+              <div class="pack-trend-sale-meta">${formatearTickCantidad(vendors.length)} vendedor${vendors.length === 1 ? '' : 'es'} - ${formatearTickCantidad(countries.length)} pais${countries.length === 1 ? '' : 'es'} - respeta los filtros activos del dashboard.</div>
+            </div>
+          </div>
+          <div class="pack-trend-sales">
+            ${rowsHtml || '<div class="pack-trend-empty">No hay ventas para este producto con los filtros actuales.</div>'}
+          </div>
+        `;
+
+        const imgEl = bodyEl.querySelector('.all-product-modal-img');
+        if (imgEl) {
+            imgEl.onerror = () => {
+                imgEl.onerror = null;
+                imgEl.src = LOGO_URL_FALLBACK;
+            };
+        }
+
+        const modalInstance = typeof bootstrap !== 'undefined' && bootstrap.Modal
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : null;
+        if (modalInstance) modalInstance.show();
+    }
+
     function computeHeatmapData(vendorUser) {
         const year = Number(selectedYear) || new Date().getFullYear();
         const start = new Date(year, 0, 1);
@@ -5637,7 +6210,9 @@
       productosSeleccionados = getCheckedValues('filtroProductoOptions'),
       ventaMontoFiltradoMapArg = null,
       usarMontoPorProductoArg = null,
-      ventaScopeContextArg = null
+      ventaScopeContextArg = null,
+      negociosSeleccionados = getCheckedValues('filtroNegocioOptions'),
+      divisionesSeleccionadas = getCheckedValues('filtroDivisionOptions')
     ) {
       if (!ventasFil) ventasFil = [];
       // Identificadores de ventas filtradas (se reutiliza en varias secciones)
@@ -5780,6 +6355,8 @@
 
       // Update Books Table con filtros superiores
       updateBooksTable(ventaIds, productosSeleccionados);
+      // Update All Products Table con filtros superiores
+      updateAllProductsTable(ventaIds, productosSeleccionados, negociosSeleccionados, divisionesSeleccionadas);
       // Update Pack Books Table con filtros superiores
       updatePackBooksTable(ventaIds, productosSeleccionados);
       // Update Pack Courses Table con filtros superiores
@@ -5887,15 +6464,13 @@
     function aplicarFiltros() {
       const desde = document.getElementById('filtroDesde').value;
       const hasta = document.getElementById('filtroHasta').value;
-      const chipActivo = document.querySelector('.estado-chip.active');
-      const estado = chipActivo ? chipActivo.dataset.estado || '' : document.getElementById('filtroEstado').value;
-      
-      document.getElementById('filtroEstado').value = estado;
-      document.getElementById('filtroEstado').value = estado;
+      const estado = document.getElementById('filtroEstado').value;
       const vendedoresSeleccionados = getCheckedValues('filtroVendedorOptions');
       const mediosSeleccionados = getCheckedValues('filtroMedioOptions');
       const productosSeleccionados = getCheckedValues('filtroProductoOptions');
       const paisesSeleccionados = getCheckedValues('filtroPaisOptions');
+      const negociosSeleccionados = getCheckedValues('filtroNegocioOptions');
+      const divisionesSeleccionadas = getCheckedValues('filtroDivisionOptions');
       const texto = (document.getElementById('filtroBuscar').value || '').toLowerCase();
       const fechaDesdeKey = String(desde || '').trim();
       const fechaHastaKey = String(hasta || '').trim();
@@ -5905,6 +6480,8 @@
         vendedoresSeleccionados,
         productosSeleccionados,
         paisesSeleccionados,
+        negociosSeleccionados,
+        divisionesSeleccionadas,
         texto,
       };
 
@@ -5929,8 +6506,10 @@
         (acc, v) => acc + getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto),
         0
       );
-      document.getElementById('ventasFiltradas').innerText = ventasFil.length;
-      document.getElementById('montoFiltrado').innerText = formatearMonto(total);
+      const ventasFiltradasEl = document.getElementById('ventasFiltradas');
+      if (ventasFiltradasEl) ventasFiltradasEl.innerText = ventasFil.length;
+      const montoFiltradoEl = document.getElementById('montoFiltrado');
+      if (montoFiltradoEl) montoFiltradoEl.innerText = formatearMonto(total);
       // cache para exportación local
       ventasFiltradasCache = ventasFil.slice();
       cuotasFiltradasCache = buildCuotasFiltradas(ventasFil);
@@ -6011,18 +6590,34 @@
       const productoLabel = summarizeMultiSelection(getCheckedLabels('filtroProductoOptions'), '');
       const medioLabel = summarizeMultiSelection(getCheckedLabels('filtroMedioOptions'), '');
       const paisLabel = summarizeMultiSelection(getCheckedLabels('filtroPaisOptions'), '');
+      const negocioLabel = summarizeMultiSelection(getCheckedLabels('filtroNegocioOptions'), '');
+      const divisionLabel = summarizeMultiSelection(getCheckedLabels('filtroDivisionOptions'), '');
 
-      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel });
+      renderChipsResumen({ estado, medio: medioLabel, desde, hasta, texto, vendedor: vendedoresLabel, producto: productoLabel, pais: paisLabel, negocio: negocioLabel, division: divisionLabel });
       updateCharts(
         ventasFil,
         productosSeleccionados,
         ventaMontoFiltradoMap,
         usarMontoPorProducto,
-        ventaScopeContext
+        ventaScopeContext,
+        negociosSeleccionados,
+        divisionesSeleccionadas
       );
       initCuotasPendientes(ventasFil, ventaScopeContext.byFolio, usarMontoPorProducto);
-      renderTabla(ventasFil, ventaMontoFiltradoMap, usarMontoPorProducto);
       updatePrintHeader();
+      updateFilterChipSelectionStates();
+    }
+
+    function updateFilterChipSelectionStates() {
+      const estadoHidden = document.getElementById('filtroEstado');
+      const estadoDropdown = document.getElementById('filtroEstadoDropdown');
+      estadoDropdown?.closest('.filter-chip')?.classList.toggle('has-selection', Boolean(estadoHidden?.value));
+
+      ['filtroMedio', 'filtroVendedor', 'filtroProducto', 'filtroPais', 'filtroNegocio', 'filtroDivision'].forEach((prefix) => {
+        const dropdown = document.getElementById(`${prefix}Dropdown`);
+        const hasSelection = getCheckedValues(`${prefix}Options`).size > 0;
+        dropdown?.closest('.filter-chip')?.classList.toggle('has-selection', hasSelection);
+      });
     }
 
     function initCuotasPendientes(ventasLocales, scopeByFolio = null, usarMontoPorProducto = false) {
@@ -6417,14 +7012,11 @@
 
     async function loadData() {
         try {
-            document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-2 text-muted">Cargando datos...</p></td></tr>';
-            
             const response = await fetch(window.location.href, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             if (!response.ok) {
                 console.error("Error HTTP cargando datos", response.status);
-                document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar datos.</td></tr>';
                 return;
             }
 
@@ -6448,6 +7040,8 @@
       
             populateVendorFilter(ventasDetalle);
             populateProductFilter();
+            populateBusinessFilter();
+            populateDivisionFilter();
             populateMediumFilter(ventasDetalle);
             populateCountryFilter(ventasDetalle);
             initCuotasPendientes(ventasDetalle);
@@ -6456,7 +7050,6 @@
             aplicarFiltros(); 
         } catch (error) {
             console.error("Error de red/parseo", error);
-            document.getElementById('tablaVentas').innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -6508,6 +7101,17 @@
     const filtroOrdenLibrosDir = document.getElementById('filtroOrdenLibrosDir');
     filtroOrdenLibrosDir?.addEventListener('change', () => {
       selectedBooksSortOrder = filtroOrdenLibrosDir.value === 'asc' ? 'asc' : 'desc';
+      aplicarFiltros();
+    });
+
+    const filtroOrdenTodosProductos = document.getElementById('filtroOrdenTodosProductos');
+    filtroOrdenTodosProductos?.addEventListener('change', () => {
+      selectedAllProductsSort = filtroOrdenTodosProductos.value === 'cantidad' ? 'cantidad' : 'monto';
+      aplicarFiltros();
+    });
+    const filtroOrdenTodosProductosDir = document.getElementById('filtroOrdenTodosProductosDir');
+    filtroOrdenTodosProductosDir?.addEventListener('change', () => {
+      selectedAllProductsSortOrder = filtroOrdenTodosProductosDir.value === 'asc' ? 'asc' : 'desc';
       aplicarFiltros();
     });
 
@@ -6608,10 +7212,6 @@
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
       document.getElementById('filtroDesde').value = '';
       document.getElementById('filtroHasta').value = '';
-      document.getElementById('filtroEstado').value = '';
-      document.getElementById('filtroBuscar').value = '';
-      document.getElementById('filtroHasta').value = '';
-      document.getElementById('filtroEstado').value = '';
       document.getElementById('filtroBuscar').value = '';
       syncRangeDatePicker('', '');
       const medioAll = document.getElementById('filtroMedioAll');
@@ -6630,24 +7230,36 @@
       if (paisAll) paisAll.checked = true;
       document.querySelectorAll('#filtroPaisOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
       updateMultiSummary('filtroPaisSummary', 'filtroPaisOptions', 'Todos los países');
-      setEstadoChip('');
+      const negocioAll = document.getElementById('filtroNegocioAll');
+      if (negocioAll) negocioAll.checked = true;
+      document.querySelectorAll('#filtroNegocioOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroNegocioSummary', 'filtroNegocioOptions', 'Todos los negocios');
+      const divisionAll = document.getElementById('filtroDivisionAll');
+      if (divisionAll) divisionAll.checked = true;
+      document.querySelectorAll('#filtroDivisionOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateMultiSummary('filtroDivisionSummary', 'filtroDivisionOptions', 'Todas las divisiones');
+      setEstadoRadio('');
       aplicarFiltros();
     });
 
-    const estadoChips = document.querySelectorAll('.estado-chip');
-    function setEstadoChip(val) {
-      estadoChips.forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.estado || '') === val);
+    function setEstadoRadio(val) {
+      const hidden = document.getElementById('filtroEstado');
+      const dropdown = document.getElementById('filtroEstadoDropdown');
+      if (hidden) hidden.value = val;
+      dropdown?.querySelectorAll('input[type="radio"]').forEach((radio) => {
+        radio.checked = radio.value === val;
       });
-      document.getElementById('filtroEstado').value = val;
+      const selectedRadio = dropdown?.querySelector('input[type="radio"]:checked');
+      const summary = document.getElementById('filtroEstadoSummary');
+      if (summary) summary.textContent = val ? (selectedRadio?.dataset.label || 'Todos los estados') : 'Todos los estados';
     }
-    estadoChips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        setEstadoChip(chip.dataset.estado || '');
+    document.getElementById('filtroEstadoDropdown')?.querySelectorAll('input[type="radio"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        setEstadoRadio(radio.value);
         aplicarFiltros();
       });
     });
-    setEstadoChip(document.querySelector('.estado-chip.active')?.dataset.estado || '');
+    setEstadoRadio(document.getElementById('filtroEstado')?.value || '');
 
     function renderChipsResumen(filters) {
       const cont = document.getElementById('chipsResumen');
@@ -6658,37 +7270,12 @@
       if (filters.vendedor) chips.push(`<span class="summary-chip"><i class="fas fa-user-tag"></i> Vendedor: ${filters.vendedor}</span>`);
       if (filters.producto) chips.push(`<span class="summary-chip"><i class="fas fa-box-open"></i> Producto: ${filters.producto}</span>`);
       if (filters.pais) chips.push(`<span class="summary-chip"><i class="fas fa-earth-americas"></i> País: ${filters.pais}</span>`);
+      if (filters.negocio) chips.push(`<span class="summary-chip"><i class="fas fa-briefcase"></i> Negocio: ${filters.negocio}</span>`);
+      if (filters.division) chips.push(`<span class="summary-chip"><i class="fas fa-sitemap"></i> División: ${filters.division}</span>`);
       if (filters.desde) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-day"></i> Desde: ${filters.desde}</span>`);
       if (filters.hasta) chips.push(`<span class="summary-chip"><i class="fas fa-calendar-check"></i> Hasta: ${filters.hasta}</span>`);
       if (filters.texto) chips.push(`<span class="summary-chip"><i class="fas fa-search"></i> Búsqueda: ${filters.texto}</span>`);
       cont.innerHTML = chips.join('') || '<span class="stat-label">Sin filtros aplicados</span>';
-    }
-
-    function renderTabla(ventasFil, ventaMontoFiltradoMap = null, usarMontoPorProducto = false) {
-      const tbody = document.getElementById('tablaVentas');
-      if (!tbody) return;
-      
-      const visibleItems = ventasFil.slice(0, 50);
-      
-      const filas = visibleItems.map(v => {
-        const fecha = v.fecha_venta ? new Date(v.fecha_venta).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        const estado = estadoLabels[v.estado] || '---';
-        const urlVenta = buildMainAppPath(`${VENTA_DETALLE_PATH}${v.id}/`);
-        
-        return `
-          <tr>
-            <td><a href="${urlVenta}" target="_blank" class="text-decoration-none fw-semibold">${v.folio_venta}</a></td>
-            <td>${fecha}</td>
-            <td>${formatearMonto(getVentaMontoForScope(v, ventaMontoFiltradoMap, usarMontoPorProducto))}</td>
-            <td><span class="pill ${v.estado === 1 ? 'pill-success' : 'pill-danger'}">${estado}</span></td>
-          </tr>
-        `;
-      }).join('') || '<tr><td colspan="4" class="text-muted text-center">Sin ventas registradas</td></tr>';
-      tbody.innerHTML = filas;
-      const scopeLabel = document.getElementById('scopeLabel');
-      if (scopeLabel) {
-        scopeLabel.innerText = IS_ADMIN ? 'Todas las ventas' : 'Solo tus ventas';
-      }
     }
 
     wireMultiFilterDropdown({
@@ -6714,6 +7301,18 @@
       optionsId: 'filtroPaisOptions',
       summaryId: 'filtroPaisSummary',
       defaultText: 'Todos los países',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroNegocioAll',
+      optionsId: 'filtroNegocioOptions',
+      summaryId: 'filtroNegocioSummary',
+      defaultText: 'Todos los negocios',
+    });
+    wireMultiFilterDropdown({
+      allId: 'filtroDivisionAll',
+      optionsId: 'filtroDivisionOptions',
+      summaryId: 'filtroDivisionSummary',
+      defaultText: 'Todas las divisiones',
     });
     wireMultiSearch({
       inputId: 'filtroProductoBuscar',
@@ -6741,7 +7340,7 @@
       });
     });
 
-    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .estado-chip, .summary-chip, .filter-chip, .flatpickr-calendar';
+    const DBLCLICK_SAFE_SELECTOR = 'table, canvas, input, select, textarea, button, a, label, details, summary, .filters-card, .summary-chip, .filter-chip, .flatpickr-calendar';
     document.addEventListener('dblclick', (evt) => {
       const target = evt.target;
       if (!(target instanceof Element)) return;
@@ -6760,6 +7359,22 @@
     // Mantener encabezado de impresión actualizado al cargar
     updatePrintHeader();
 </script>
+<div class="modal fade pack-trend-modal" id="allProductModal" tabindex="-1" aria-labelledby="allProductModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allProductModalTitle">
+          <i class="fas fa-box-open"></i>
+          Detalle de producto
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="allProductModalBody">
+        <div class="pack-trend-empty">Selecciona un producto para ver sus ventas.</div>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal fade pack-trend-modal" id="packTrendModal" tabindex="-1" aria-labelledby="packTrendModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
