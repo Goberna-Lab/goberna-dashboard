@@ -164,6 +164,7 @@ PAID_COUNTRY_TOKENS = {
     "EC": "Ecuador",
     "CL": "Chile",
     "CO": "Colombia",
+    "DOM": "República Dominicana",  # "Goberna Rep. Dom." no matchea la palabra completa "DOMINICANA"
 }
 
 
