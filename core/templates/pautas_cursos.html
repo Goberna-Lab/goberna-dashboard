@@ -1045,7 +1045,17 @@
         if (!keepProductFilter) {
           productFilterSelected = [];
         } else if (productFilterSelected.length) {
-          var disponibles = new Set(linkedRows.map(function (r) { return r.producto; }));
+          // Mismo criterio que buildProductFilterOptions: solo productos con
+          // al menos una campaña vinculada siguen siendo una selección
+          // válida (ej. si "Desvincular" dejó a un producto sin campañas).
+          var campanasPorProducto = {};
+          linkedRows.forEach(function (r) {
+            campanasPorProducto[r.producto] = (campanasPorProducto[r.producto] || 0) + (r.campanas || []).length;
+          });
+          var disponibles = new Set(
+            linkedRows.map(function (r) { return r.producto; })
+              .filter(function (p) { return campanasPorProducto[p] > 0; })
+          );
           productFilterSelected = productFilterSelected.filter(function (p) { return disponibles.has(p); });
         }
         buildProductFilterOptions();
@@ -1169,11 +1179,25 @@
   // Construye el checklist a partir de los productos realmente presentes en
   // el rango de fechas actual (no un catálogo aparte) — se reconstruye cada
   // vez que cambian las fechas, porque los cursos con datos pueden variar.
+  //
+  // Solo se listan productos con AL MENOS una campaña de Meta Ads vinculada
+  // (r.campanas.length > 0 en alguna fila, sumando países) — allLinkedRows ya
+  // excluye "Sin producto vinculado" (codigo_producto null), pero un producto
+  // puede tener codigo_producto propio (viene de sus ventas, DetalleVenta ->
+  // Producto) sin que NINGUNA campaña de Meta haya sido vinculada nunca a él
+  // (ni en rango, ni en el backfill histórico de _roas_por_producto_pais).
+  // Ese producto no es "pauta", así que no debe aparecer como opción de
+  // filtro acá, aunque sí siga apareciendo en la tabla (bajo "Todos").
   function buildProductFilterOptions() {
     var container = document.getElementById("productFilterOptions");
     if (!container) return;
+    var campanasByProducto = {};
+    allLinkedRows.forEach(function (r) {
+      campanasByProducto[r.producto] = (campanasByProducto[r.producto] || 0) + (r.campanas || []).length;
+    });
     var nombres = Array.from(new Set(allLinkedRows.map(function (r) { return r.producto; })))
       .filter(Boolean)
+      .filter(function (p) { return campanasByProducto[p] > 0; })
       .sort(function (a, b) { return a.localeCompare(b, "es"); });
 
     var allCbTop = document.getElementById("productFilterAll");
