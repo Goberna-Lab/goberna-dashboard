@@ -26,6 +26,7 @@ from django.db.models import (
     Sum,
     Value,
     When,
+    Window,
 )
 from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth, TruncMonth
 from django.contrib import messages
@@ -2693,9 +2694,10 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
         .annotate(spend_usd=Sum("gasto_usd"))
         .order_by()
     )
-    # Para filas "Sin producto vinculado" (codigo is None): gasto por campaña
-    # individual dentro de cada (None, pais), para que el frontend pueda
-    # mostrar "qué campañas componen este monto" (botón "Ver campañas").
+    # Gasto por campaña individual dentro de cada (codigo_producto, pais),
+    # para cualquier fila (vinculada o no) — permite al frontend mostrar "qué
+    # campañas componen este monto" (botón "Ver campañas") y a qué producto
+    # de Meta corresponde cada una, para poder verificar el vínculo.
     campanas_by_key: dict = {}
     for row in ads_rows:
         codigo = cmap.get(row["campaign_id"])
@@ -2708,11 +2710,17 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
         key = (codigo, pais)
         inversion_by_key[key] = inversion_by_key.get(key, 0.0) + usd
 
-        if codigo is None and usd > 0:
-            cname = (row["campaign_name"] or row["campaign_id"] or "").strip()
-            if cname:
-                by_campaign = campanas_by_key.setdefault(key, {})
-                by_campaign[cname] = by_campaign.get(cname, 0.0) + usd
+        if usd > 0 and row["campaign_id"]:
+            # Se agrupa por campaign_id (no por nombre) para poder
+            # desvincular una campaña puntual sin ambigüedad si dos
+            # campañas distintas comparten el mismo nombre.
+            by_campaign = campanas_by_key.setdefault(key, {})
+            entry = by_campaign.setdefault(row["campaign_id"], {
+                "gasto": 0.0,
+                "producto_meta": row["product"],
+                "nombre": (row["campaign_name"] or row["campaign_id"]).strip(),
+            })
+            entry["gasto"] += usd
 
     # ---- Sales side: paid sales USD + count per (codigo_producto, pais) ----
     ventas_usd_by_key: dict = {}
@@ -2744,30 +2752,79 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
                 output_field=DecimalField(),
             )
         )
+        # --- Prorrateo: el detalle de línea (precio_total) no siempre suma
+        # exactamente venta.monto_total (paquetes con precios "de lista" por
+        # ítem cuando el cliente pagó un combo con descuento, o algún ítem
+        # faltante en el detalle). El monto real cobrado es SIEMPRE
+        # venta.monto_total — así que cada línea se prorratea según su peso
+        # dentro de esa venta, para que la suma de líneas de una venta
+        # siempre reconcilie con lo que realmente se cobró.
+        .annotate(
+            venta_lineas_suma=Window(
+                expression=Sum("precio_total"),
+                partition_by=[F("venta_id")],
+            )
+        )
+        .annotate(
+            venta_lineas_count=Window(
+                expression=Count("id"),
+                partition_by=[F("venta_id")],
+            )
+        )
+        .annotate(
+            precio_prorrateado=Case(
+                # Caso normal: reparte monto_total a prorrata del peso de
+                # cada línea (precio_total / suma de líneas de esa venta).
+                When(
+                    venta_lineas_suma__gt=0,
+                    then=ExpressionWrapper(
+                        F("precio_total") * F("venta__monto_total") / F("venta_lineas_suma"),
+                        output_field=DecimalField(max_digits=14, decimal_places=6),
+                    ),
+                ),
+                # Fallback (no debería ocurrir con los datos actuales, pero
+                # cubre el caso de una venta con TODAS sus líneas en 0 y
+                # monto_total > 0): reparte por partes iguales entre líneas.
+                default=ExpressionWrapper(
+                    F("venta__monto_total") / F("venta_lineas_count"),
+                    output_field=DecimalField(max_digits=14, decimal_places=6),
+                ),
+                output_field=DecimalField(max_digits=14, decimal_places=6),
+            )
+        )
         .annotate(
             monto_usd=ExpressionWrapper(
-                F("precio_total") / F("tasa_final"),
+                F("precio_prorrateado") / F("tasa_final"),
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             )
         )
+        # NOTA: sin agrupar acá — MySQL/MariaDB no permite usar una función
+        # ventana (Window, arriba) como insumo de otra función de agregación
+        # (Sum/Count) dentro de la misma consulta agrupada ("Window functions
+        # can not be used as arguments to group functions"). Se trae una fila
+        # por línea de detalle ya prorrateada, y se agrupa a mano en Python
+        # (mismo patrón que el lado de Ads, más arriba en esta función).
         .values(
             "producto__codigo_producto",
             "venta__pais__nombre",
             "venta__cliente__pais__nombre",
+            "monto_usd",
         )
-        .annotate(total_usd=Sum("monto_usd"), total_count=Count("id"))
-        .order_by()
     )
     for row in detalles_qs:
         cod = row["producto__codigo_producto"]
+        # Prioridad: país del CLIENTE primero — venta.pais suele quedar en
+        # "Perú" por default (país de la oficina/vendedor que registra la
+        # venta), no el país real del comprador. venta.pais queda solo como
+        # respaldo si el cliente no tiene país cargado.
         pais = (
-            (row["venta__pais__nombre"] or "").strip()
-            or (row["venta__cliente__pais__nombre"] or "").strip()
+            (row["venta__cliente__pais__nombre"] or "").strip()
+            or (row["venta__pais__nombre"] or "").strip()
             or "Sin país"
         )
         key = (cod, pais)
-        ventas_usd_by_key[key] = ventas_usd_by_key.get(key, 0.0) + float(row["total_usd"] or 0)
-        ventas_count_by_key[key] = ventas_count_by_key.get(key, 0) + (row["total_count"] or 0)
+        ventas_usd_by_key[key] = ventas_usd_by_key.get(key, 0.0) + float(row["monto_usd"] or 0)
+        ventas_count_by_key[key] = ventas_count_by_key.get(key, 0) + 1
 
     # ---- Merge: union of all (codigo_producto, pais) keys from both sides ----
     all_keys = set(inversion_by_key.keys()) | set(ventas_usd_by_key.keys()) | set(ventas_count_by_key.keys())
@@ -2786,17 +2843,60 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
             "ventas_usd": round(ven, 2),
             "utilidad_usd": round(ven - inv, 2),
             "roas": round(ven / inv, 2) if inv > 0 else None,
+            # Desglose de campañas de Meta que componen la inversión de esta
+            # fila (país + curso) — se arma para CUALQUIER fila, vinculada o
+            # no, para poder verificar a qué campaña y a qué producto de Meta
+            # corresponde cada monto ("Ver campañas").
             "campanas": sorted(
                 (
-                    {"nombre": nombre, "gasto_usd": round(gasto, 2)}
-                    for nombre, gasto in campanas_by_key.get((codigo, pais), {}).items()
+                    {
+                        "campaign_id": cid,
+                        "nombre": info["nombre"],
+                        "gasto_usd": round(info["gasto"], 2),
+                        "producto_meta": info["producto_meta"],
+                    }
+                    for cid, info in campanas_by_key.get((codigo, pais), {}).items()
                 ),
                 key=lambda c: -c["gasto_usd"],
-            ) if codigo is None else [],
+            ),
         })
 
     out.sort(key=lambda r: -r["inversion_usd"])
     return out
+
+
+@ads_admin_required
+def ads_desvincular_campana(request):
+    """
+    POST /ads/desvincular/ — desvincula UNA campaña puntual de su producto.
+
+    Body JSON: {"campaign_id": "..."}. Borra la fila de MetaCampaignMap (si
+    existe) y limpia `product`/`category` en tb_meta_ads para esa campaña —
+    ambos pasos son necesarios: si solo se borra el mapa, la búsqueda de
+    respaldo por nombre exacto (`name_to_codigo`, en _roas_por_producto_pais)
+    volvería a asociarla al mismo producto porque tb_meta_ads.product todavía
+    tendría el nombre viejo. Queda como "Sin producto vinculado" hasta que se
+    re-vincule manualmente desde /ads/vincular/.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"error": "JSON inválido"}, status=400)
+
+    campaign_id = (body.get("campaign_id") or "").strip()
+    if not campaign_id:
+        return JsonResponse({"error": "Falta campaign_id"}, status=400)
+
+    if not MetaAds.objects.filter(campaign_id=campaign_id).exists():
+        return JsonResponse({"error": "La campaña no existe en los datos de Meta"}, status=404)
+
+    MetaCampaignMap.objects.filter(campaign_id=campaign_id).delete()
+    MetaAds.objects.filter(campaign_id=campaign_id).update(product=None, category=None)
+
+    return JsonResponse({"ok": True})
 
 
 @ads_admin_required

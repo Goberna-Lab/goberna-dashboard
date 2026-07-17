@@ -82,6 +82,127 @@
 
     .toolbar-spacer { flex: 1 1 auto; }
 
+    /* ── Filtro de Producto — mismo patrón details.multi-check que
+       home.html/ads.html (icono + etiqueta + "Todos los productos" +
+       buscador + checklist) para que sea consistente con el resto del
+       dashboard. ── */
+    .filter-chip {
+      background: var(--app-bg);
+      border-radius: 10px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    .filter-chip i { color: var(--muted); font-size: 0.8rem; }
+    .filter-chip .filter-body { display: flex; flex-direction: column; gap: 1px; }
+    .filter-chip .filter-label {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 10px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+    .filter-chip .multi-check summary {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+      height: auto;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .multi-check { position: relative; }
+    .multi-check summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .multi-check summary::-webkit-details-marker { display: none; }
+    .multi-check summary::after {
+      content: "\f078";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 10px;
+      color: var(--muted);
+      transition: transform .15s ease;
+    }
+    .multi-check[open] summary::after { transform: rotate(180deg); }
+    .multi-check-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 320px;
+      max-width: 420px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(14, 42, 82, 0.16);
+      padding: 8px;
+      z-index: 500;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .multi-check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--ink);
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .multi-check-row:hover { background: var(--app-bg); }
+    .multi-check-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--blue);
+      margin: 0;
+      flex: 0 0 auto;
+    }
+    .multi-check-divider { height: 1px; background: var(--border); margin: 6px 0; }
+    .multi-check-list { display: grid; gap: 2px; }
+    .multi-check-search {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #fff;
+      padding-bottom: 6px;
+    }
+    .multi-check-search input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--app-bg);
+      padding: 6px 8px 6px 28px;
+      font-size: 12.5px;
+      color: var(--ink);
+    }
+    .multi-check-search input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .15);
+      background: #fff;
+    }
+    .multi-check-search .icon {
+      position: absolute;
+      left: 9px;
+      top: 7px;
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
     /* ── Flatpickr date range (mismo patrón que home/ads) ── */
     .ads-date-wrap {
       display: flex;
@@ -379,13 +500,76 @@
     }
     .ver-campanas:hover { text-decoration: underline; }
 
-    /* Modal "Campañas sin vincular" */
-    #campanasModal .modal-header { background: var(--navy); color: #fff; }
-    #campanasModal .modal-header .btn-close { filter: invert(1); }
-    #campanasModal .campanas-list { max-height: 360px; overflow-y: auto; }
+    /* Modal "Ver campañas" — lista de campañas Meta detrás de una fila
+       (país × curso), con opción de desvincular una puntual. */
+    #campanasModal .modal-dialog { max-width: 720px; }
+    #campanasModal .modal-header {
+      background: var(--navy);
+      color: #fff;
+      align-items: flex-start;
+      padding: 18px 24px;
+    }
+    #campanasModal .modal-header .btn-close { filter: invert(1); margin-top: 2px; }
+    #campanasModal .modal-title-main {
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    #campanasModal .modal-title-sub {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.68);
+      margin-top: 2px;
+    }
+    #campanasModal .modal-body { padding: 0; }
+    #campanasModal .campanas-list { max-height: 420px; overflow-y: auto; }
     #campanasModal table { font-size: 0.82rem; margin-bottom: 0; }
-    #campanasModal table th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: .03em; }
-    #campanasModal table td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #campanasModal table th {
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      white-space: nowrap;
+      padding: 12px 16px;
+      background: var(--app-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    #campanasModal table td {
+      padding: 12px 16px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border);
+    }
+    #campanasModal table tr:last-child td { border-bottom: none; }
+    #campanasModal table td.campana-name { font-weight: 600; color: var(--ink); }
+    #campanasModal table td.producto-meta { color: var(--muted); font-size: 0.78rem; }
+    #campanasModal table td.amt {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    #campanasModal table td.action { text-align: right; white-space: nowrap; }
+    #campanasModal .btn-desvincular {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    #campanasModal .btn-desvincular:hover {
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: #B42318;
+    }
+    #campanasModal .btn-desvincular:disabled { opacity: .6; cursor: default; }
+    #campanasModal .modal-footer { padding: 14px 24px; }
 
     /* ============================================================
        EMPTY / LOADING STATES
@@ -412,6 +596,7 @@
 </head>
 
 <body>
+{% csrf_token %}
 
 {% include 'menu/sidebard.html' %}
 
@@ -449,7 +634,6 @@
     <div class="kpi-card">
       <div class="kpi-label"><i class="fas fa-receipt"></i>Cantidad de ventas</div>
       <div class="kpi-value" id="kpiVentasCount">—</div>
-      <div class="kpi-sub" id="kpiUnlinkedSub"></div>
     </div>
   </div>
 
@@ -457,6 +641,33 @@
   <div class="gob-card">
 
     <div class="grid-toolbar">
+      <!-- Filtro de Producto: multi-check contra los cursos ya cargados en
+           esta vista (no un catálogo aparte) — filtra tanto la tabla como
+           recalcula los KPIs de arriba para reflejar solo lo seleccionado. -->
+      <div class="filter-chip">
+        <i class="fas fa-tag"></i>
+        <div class="filter-body">
+          <span class="filter-label">Producto</span>
+          <details class="multi-check" id="productFilterDropdown">
+            <summary id="btnProductFilter" title="Filtrá la tabla y los KPIs por uno o varios cursos">
+              <span id="productFilterSummaryText">Todos los productos</span>
+            </summary>
+            <div class="multi-check-menu">
+              <div class="multi-check-search">
+                <i class="fas fa-search icon"></i>
+                <input type="text" id="productFilterSearch" placeholder="Buscar producto..." autocomplete="off">
+              </div>
+              <label class="multi-check-row">
+                <input type="checkbox" id="productFilterAll" checked>
+                <span>Todos los productos</span>
+              </label>
+              <div class="multi-check-divider"></div>
+              <div id="productFilterOptions" class="multi-check-list"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
       <span class="pill" id="cursosSummary" style="font-size:.78rem; color:#64748B; font-weight:600;"></span>
 
       <span class="toolbar-spacer"></span>
@@ -492,20 +703,23 @@
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="campanasModalTitle">Campañas sin vincular</h5>
+        <div>
+          <h5 class="modal-title modal-title-main" id="campanasModalTitleMain">Campañas</h5>
+          <div class="modal-title-sub" id="campanasModalTitleSub"></div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body">
         <div class="campanas-list">
-          <table class="table table-sm">
+          <table class="table table-sm mb-0">
             <thead>
-              <tr><th>Campaña</th><th class="text-end">Gasto (USD)</th></tr>
+              <tr><th>Campaña</th><th>Producto en Meta</th><th class="text-end">Gasto</th><th></th></tr>
             </thead>
             <tbody id="campanasModalBody"></tbody>
           </table>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" id="campanasModalFooter">
         <a class="roas-vincular" href="/ads/vincular/">Ir a vincular →</a>
       </div>
     </div>
@@ -517,13 +731,22 @@
   "use strict";
 
   var NULL_HTML = '<span class="cell-null">—</span>';
-  var NF_USD0 = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
-  var NF_INT  = new Intl.NumberFormat("es-PE");
+  // "es-PE" en JS usa coma como separador de miles (26,216 se lee ambiguo,
+  // como si fueran 26 con 216 centavos). "es-BO" da el formato esperado en
+  // la región: punto para miles, coma para decimales (26.216 / 77,8%).
+  var NF_USD0 = new Intl.NumberFormat("es-BO", { maximumFractionDigits: 0 });
+  var NF_INT  = new Intl.NumberFormat("es-BO");
+  var NF_PCT  = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   var table = null;
   var dateFrom = "{{ date_from }}";
   var dateTo   = "{{ date_to }}";
   var adsPickerInst = null;
+
+  // Filtro de Producto: opera sobre los cursos ya cargados por loadData()
+  // (no hay un catálogo aparte que consultar) — filtra tabla + KPIs juntos.
+  var allLinkedRows = [];       // todas las filas "vinculadas" del rango de fechas actual
+  var productFilterSelected = []; // [] = sin filtro (todos los productos)
 
   // ── Date range picker (flatpickr, mismos presets que ads.html) ──────────
   var ADS_PRESETS = [
@@ -629,38 +852,136 @@
     return span;
   }
 
-  // Modal "Campañas sin vincular" — lista las campañas Meta que componen el
-  // gasto de una fila "Sin producto vinculado" (codigo_producto === null).
+  // Margen = Utilidad / Ventas, en %. null cuando no hubo ventas (evita
+  // división por cero) — se calcula una vez por fila (ver renderTable) en
+  // vez de derivarlo del formatter, para que la columna sea ordenable.
+  function margenFmt(cell) {
+    var v = cell.getValue();
+    if (v === null || v === undefined) return NULL_HTML;
+    var span = document.createElement("span");
+    span.className = v < 0 ? "roas-neg" : "roas-pos";
+    span.textContent = (v < 0 ? "−" : "") + NF_PCT.format(Math.abs(v)) + "%";
+    return span;
+  }
+
+  // Total del grupo/tabla: utilidad total / ventas totales (NO el promedio
+  // de los márgenes por fila) — mismo criterio usado en el header de grupo.
+  function margenBottomCalc(values, data) {
+    var ven = 0, util = 0;
+    (data || []).forEach(function (r) {
+      ven += r.ventas_usd || 0;
+      util += r.utilidad_usd || 0;
+    });
+    return ven ? (util / ven) * 100 : null;
+  }
+
+  // Modal "Ver campañas" — lista las campañas Meta que componen el gasto de
+  // cualquier fila (curso vinculado o "Sin producto vinculado"), con el
+  // nombre del producto tal como quedó cargado en esa campaña en Meta, para
+  // poder verificar a qué campaña y a qué producto corresponde cada monto.
   var campanasModalEl = document.getElementById("campanasModal");
   var campanasModal = (campanasModalEl && window.bootstrap)
     ? new bootstrap.Modal(campanasModalEl)
     : null;
 
-  function abrirCampanasModal(pais, campanas) {
-    document.getElementById("campanasModalTitle").textContent = "Campañas sin vincular · " + pais;
+  function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      var cookies = document.cookie.split(";");
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Desvincula UNA campaña de su producto (POST /ads/desvincular/) — pide
+  // confirmación porque escribe sobre datos reales de producción (borra el
+  // mapeo en tb_meta_campaign_map y limpia product/category en tb_meta_ads
+  // para esa campaña). Al terminar, recarga los datos para reflejar el
+  // cambio en la tabla y los KPIs.
+  function desvincularCampana(campaignId, nombre, producto, btn) {
+    var msg = 'Vas a desvincular la campaña "' + nombre + '" de "' + producto + '". ' +
+      "Quedará como \"Sin producto vinculado\" hasta que la re-vincules manualmente en /ads/vincular/. ¿Continuar?";
+    if (!window.confirm(msg)) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Desvinculando…';
+
+    fetch("/ads/desvincular/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.data.error || "Error al desvincular");
+        if (campanasModal) campanasModal.hide();
+        loadData(true); // refresca tabla + KPIs, preservando el filtro de Producto activo
+      })
+      .catch(function (err) {
+        window.alert("No se pudo desvincular: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-link-slash"></i>Desvincular';
+      });
+  }
+
+  function abrirCampanasModal(pais, producto, sinVincular, campanas) {
+    document.getElementById("campanasModalTitleMain").textContent = producto || "Campañas";
+    document.getElementById("campanasModalTitleSub").textContent = pais;
+    var footer = document.getElementById("campanasModalFooter");
+    if (footer) footer.style.display = sinVincular ? "" : "none";
     var body = document.getElementById("campanasModalBody");
     body.innerHTML = "";
     (campanas || []).forEach(function (c) {
       var tr = document.createElement("tr");
       var tdName = document.createElement("td");
+      tdName.className = "campana-name";
       tdName.textContent = c.nombre;
+      var tdProd = document.createElement("td");
+      tdProd.className = "producto-meta";
+      tdProd.textContent = c.producto_meta || "—";
       var tdAmt = document.createElement("td");
       tdAmt.className = "amt";
       tdAmt.textContent = "$ " + NF_USD0.format(c.gasto_usd);
+      var tdAction = document.createElement("td");
+      tdAction.className = "action";
+      if (!sinVincular && c.campaign_id) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-desvincular";
+        btn.innerHTML = '<i class="fas fa-link-slash"></i>Desvincular';
+        btn.addEventListener("click", function () {
+          desvincularCampana(c.campaign_id, c.nombre, producto, btn);
+        });
+        tdAction.appendChild(btn);
+      }
       tr.appendChild(tdName);
+      tr.appendChild(tdProd);
       tr.appendChild(tdAmt);
+      tr.appendChild(tdAction);
       body.appendChild(tr);
     });
     if (campanasModal) campanasModal.show();
   }
 
-  // País + link "Ver campañas (N)" cuando la fila es "Sin producto vinculado"
+  // País + link "Ver campañas (N)" en cualquier fila que tenga campañas de
+  // Meta detrás (vinculada o no) — antes solo aparecía en "Sin producto
+  // vinculado".
   function paisFmt(cell) {
     var data = cell.getRow().getData();
     var pais = cell.getValue();
-    var sinVincular = (data.codigo_producto === null || data.codigo_producto === undefined);
     var campanas = data.campanas || [];
-    if (!sinVincular || !campanas.length) return pais;
+    if (!campanas.length) return pais;
+    var sinVincular = (data.codigo_producto === null || data.codigo_producto === undefined);
 
     var wrap = document.createElement("span");
     wrap.textContent = pais;
@@ -670,7 +991,7 @@
     link.innerHTML = '<i class="fas fa-magnifying-glass"></i>Ver ' + campanas.length + (campanas.length === 1 ? " campaña" : " campañas");
     link.addEventListener("click", function (ev) {
       ev.preventDefault();
-      abrirCampanasModal(pais, campanas);
+      abrirCampanasModal(pais, data.producto, sinVincular, campanas);
     });
     wrap.appendChild(link);
     return wrap;
@@ -682,8 +1003,13 @@
     return (v < 0 ? "−$ " : "$ ") + NF_USD0.format(Math.abs(v));
   }
 
+  function fmtPct(v) {
+    if (v === null || v === undefined) return "—";
+    return (v < 0 ? "−" : "") + NF_PCT.format(Math.abs(v)) + "%";
+  }
+
   // ── Carga de datos ──────────────────────────────────────────────────────
-  function loadData() {
+  function loadData(keepProductFilter) {
     var loading = document.getElementById("gridLoading");
     var error = document.getElementById("gridError");
     var empty = document.getElementById("gridEmpty");
@@ -707,23 +1033,31 @@
       })
       .then(function (data) {
         loading.style.display = "none";
-        renderSummary(data);
         var rows = data.rows || [];
-        if (!rows.length) {
-          empty.style.display = "";
-          grid.style.display = "none";
-          return;
-        }
         var linkedRows = rows.filter(function (r) {
           return r.codigo_producto !== null && r.codigo_producto !== undefined;
         });
+        allLinkedRows = linkedRows;
+        // Al cambiar de fecha se resetea el filtro (el set de cursos con
+        // datos puede cambiar). Al recargar por otro motivo (ej. después de
+        // desvincular una campaña) se preserva la selección de producto que
+        // ya tenía el usuario — pierde solo lo que ya no exista más.
+        if (!keepProductFilter) {
+          productFilterSelected = [];
+        } else if (productFilterSelected.length) {
+          var disponibles = new Set(linkedRows.map(function (r) { return r.producto; }));
+          productFilterSelected = productFilterSelected.filter(function (p) { return disponibles.has(p); });
+        }
+        buildProductFilterOptions();
+
         if (!linkedRows.length) {
+          renderSummary([], data.date_from, data.date_to);
           empty.style.display = "";
           grid.style.display = "none";
           return;
         }
         grid.style.display = "";
-        renderTable(linkedRows);
+        applyProductFilter(data.date_from, data.date_to);
       })
       .catch(function () {
         loading.style.display = "none";
@@ -731,27 +1065,21 @@
       });
   }
 
-  function renderSummary(data) {
-    var rows = data.rows || [];
+  function renderSummary(rows, dFrom, dTo) {
+    rows = rows || [];
     var totInv = 0, totVen = 0, totUtil = 0, totVentasCount = 0;
-    var unlinkedGroups = {};
 
+    // rows ya viene filtrado (vinculados + selección de producto aplicada)
     rows.forEach(function (r) {
-      if (r.codigo_producto === null || r.codigo_producto === undefined) {
-        unlinkedGroups[r.producto || "Sin producto vinculado"] = true;
-        return;
-      }
       totInv += r.inversion_usd || 0;
       totVen += r.ventas_usd || 0;
       totUtil += r.utilidad_usd || 0;
       totVentasCount += r.ventas_count || 0;
     });
 
-    var unlinkedCount = Object.keys(unlinkedGroups).length;
-
     // Resumen de toolbar (rango de fechas)
     var el = document.getElementById("cursosSummary");
-    el.textContent = (data.date_from || "") + " → " + (data.date_to || "");
+    el.textContent = (dFrom || "") + " → " + (dTo || "");
 
     // KPI cards
     document.getElementById("kpiInversion").textContent = fmtUsd(totInv);
@@ -764,18 +1092,16 @@
     utilCard.classList.add(totUtil < 0 ? "kpi-negative" : "kpi-positive");
 
     document.getElementById("kpiVentasCount").textContent = NF_INT.format(totVentasCount);
-
-    var unlinkedSub = document.getElementById("kpiUnlinkedSub");
-    if (unlinkedCount > 0) {
-      unlinkedSub.innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--gold-ink);"></i> ' +
-        unlinkedCount + " curso" + (unlinkedCount === 1 ? "" : "s") + " sin vincular · " +
-        '<a class="roas-vincular" href="/ads/vincular/">vincular →</a>';
-    } else {
-      unlinkedSub.textContent = "";
-    }
   }
 
   function renderTable(rows) {
+    // Margen = Utilidad / Ventas, precalculado por fila (no en el
+    // formatter) para que la columna sea ordenable como cualquier otra.
+    rows.forEach(function (r) {
+      var ven = r.ventas_usd || 0;
+      r.margen_pct = ven ? ((r.utilidad_usd || 0) / ven) * 100 : null;
+    });
+
     if (table) {
       table.setData(rows);
       return;
@@ -804,6 +1130,10 @@
           subUtil += r.utilidad_usd || 0;
         });
         var utilClass = subUtil < 0 ? "roas-neg" : "roas-pos";
+        // Margen del grupo = utilidad total / ventas totales (no el
+        // promedio de los márgenes por país)
+        var subMargen = subVen ? (subUtil / subVen) * 100 : null;
+        var margenClass = (subMargen === null) ? "" : (subMargen < 0 ? "roas-neg" : "roas-pos");
 
         var html = '<span class="group-header-inner">';
         html += '<span class="group-header-title">' + label + '</span>';
@@ -817,6 +1147,7 @@
         html += '<span><span class="gh-label">Inv.</span>' + fmtUsd(subInv) + '</span>';
         html += '<span><span class="gh-label">Ventas</span>' + fmtUsd(subVen) + '</span>';
         html += '<span class="' + utilClass + '"><span class="gh-label" style="color:inherit;">Utilidad</span>' + fmtUsd(subUtil) + '</span>';
+        html += '<span class="' + margenClass + '"><span class="gh-label" style="color:inherit;">Margen</span>' + fmtPct(subMargen) + '</span>';
         html += '</span>';
         html += '</span>';
         return html;
@@ -828,12 +1159,126 @@
         { title: "Importe gastado (USD)", field: "inversion_usd", hozAlign: "right", formatter: usdFmt, widthGrow: 1.3, bottomCalc: "sum", bottomCalcFormatter: usdFmt },
         { title: "Ventas (USD)", field: "ventas_usd", hozAlign: "right", formatter: usdFmt, widthGrow: 1.3, bottomCalc: "sum", bottomCalcFormatter: usdFmt },
         { title: "Utilidad", field: "utilidad_usd", hozAlign: "right", formatter: utilidadFmt, widthGrow: 1.2, bottomCalc: "sum", bottomCalcFormatter: utilidadFmt },
+        { title: "Margen", field: "margen_pct", hozAlign: "right", formatter: margenFmt, widthGrow: 1,
+          bottomCalc: margenBottomCalc, bottomCalcFormatter: margenFmt },
       ],
+    });
+  }
+
+  // ── Filtro de Producto (toolbar) ─────────────────────────────────────────
+  // Construye el checklist a partir de los productos realmente presentes en
+  // el rango de fechas actual (no un catálogo aparte) — se reconstruye cada
+  // vez que cambian las fechas, porque los cursos con datos pueden variar.
+  function buildProductFilterOptions() {
+    var container = document.getElementById("productFilterOptions");
+    if (!container) return;
+    var nombres = Array.from(new Set(allLinkedRows.map(function (r) { return r.producto; })))
+      .filter(Boolean)
+      .sort(function (a, b) { return a.localeCompare(b, "es"); });
+
+    var allCbTop = document.getElementById("productFilterAll");
+    if (allCbTop) allCbTop.checked = productFilterSelected.length === 0;
+
+    container.innerHTML = "";
+    nombres.forEach(function (nombre) {
+      var label = document.createElement("label");
+      label.className = "multi-check-row";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = nombre;
+      // Selección vacía = "Todos" (sin filtro): los individuales arrancan
+      // DESTILDADOS, no todos tildados — mismo criterio que home.html
+      // (wireMultiFilterDropdown), donde solo "Todos" queda marcado por
+      // defecto y cada individual representa una selección explícita.
+      cb.checked = productFilterSelected.indexOf(nombre) > -1;
+      var span = document.createElement("span");
+      span.textContent = nombre;
+      label.appendChild(cb);
+      label.appendChild(span);
+      container.appendChild(label);
+
+      cb.addEventListener("change", function () {
+        var allCb = document.getElementById("productFilterAll");
+        var boxes = container.querySelectorAll('input[type="checkbox"]');
+        var checked = Array.prototype.filter.call(boxes, function (b) { return b.checked; });
+        productFilterSelected = checked.map(function (b) { return b.value; });
+        if (allCb) allCb.checked = checked.length === 0;
+        applyProductFilter(dateFrom, dateTo);
+      });
+    });
+  }
+
+  function summarizeProductSelection() {
+    var text = document.getElementById("productFilterSummaryText");
+    if (!text) return;
+    if (!productFilterSelected.length) {
+      text.textContent = "Todos los productos";
+    } else if (productFilterSelected.length === 1) {
+      text.textContent = productFilterSelected[0];
+    } else {
+      text.textContent = productFilterSelected.length + " cursos seleccionados";
+    }
+  }
+
+  function applyProductFilter(dFrom, dTo) {
+    summarizeProductSelection();
+    var filtered = productFilterSelected.length
+      ? allLinkedRows.filter(function (r) { return productFilterSelected.indexOf(r.producto) > -1; })
+      : allLinkedRows;
+
+    var empty = document.getElementById("gridEmpty");
+    var grid = document.getElementById("cursosGrid");
+    renderSummary(filtered, dFrom, dTo);
+    if (!filtered.length) {
+      empty.style.display = "";
+      grid.style.display = "none";
+      return;
+    }
+    empty.style.display = "none";
+    grid.style.display = "";
+    renderTable(filtered);
+  }
+
+  function setupProductFilterMenu() {
+    var allCb = document.getElementById("productFilterAll");
+    if (allCb) {
+      allCb.addEventListener("change", function () {
+        if (allCb.checked) {
+          productFilterSelected = [];
+          document.querySelectorAll("#productFilterOptions input[type=checkbox]").forEach(function (cb) {
+            cb.checked = false;
+          });
+          applyProductFilter(dateFrom, dateTo);
+        } else {
+          // Destildar "Todos" sin nada más tildado no tiene sentido —
+          // se vuelve a marcar (evita quedar en un estado "0 seleccionados").
+          allCb.checked = true;
+        }
+      });
+    }
+
+    var search = document.getElementById("productFilterSearch");
+    if (search) {
+      search.addEventListener("input", function () {
+        var q = search.value.trim().toLowerCase();
+        document.querySelectorAll("#productFilterOptions .multi-check-row").forEach(function (row) {
+          var label = row.querySelector("span").textContent.toLowerCase();
+          row.style.display = label.indexOf(q) > -1 ? "" : "none";
+        });
+      });
+    }
+
+    // Cerrar el dropdown al hacer clic afuera (comportamiento nativo que
+    // <details> no trae) — mismo patrón que ads.html.
+    document.addEventListener("click", function (ev) {
+      var dd = document.getElementById("productFilterDropdown");
+      if (dd && dd.open && !dd.contains(ev.target)) dd.removeAttribute("open");
     });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     setupDatePicker();
+    setupProductFilterMenu();
     loadData();
   });
 })();
