@@ -2829,6 +2829,45 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
     # ---- Merge: union of all (codigo_producto, pais) keys from both sides ----
     all_keys = set(inversion_by_key.keys()) | set(ventas_usd_by_key.keys()) | set(ventas_count_by_key.keys())
 
+    # ---- Backfill: campañas vinculadas sin gasto DENTRO del rango elegido ----
+    # Una campaña puede estar vinculada a un producto (tb_meta_campaign_map)
+    # pero haber gastado en meses fuera de [date_from, date_to] — el filtro de
+    # fecha la deja afuera de `ads_rows` y por lo tanto del modal "Ver
+    # campañas", aunque la fila del producto SÍ exista (por ventas en rango).
+    # Se agregan acá con gasto=0 (histórico, sin filtrar fecha) para que el
+    # modal siempre pueda mostrar el vínculo completo, sin afectar los montos
+    # de inversión/ROAS ya calculados arriba (que siguen scopeados a fecha).
+    accounted_ids = {cid for entries in campanas_by_key.values() for cid in entries}
+    pending_ids = {cid for cid in cmap if cid not in accounted_ids}
+    if pending_ids:
+        extra_info: dict = {}
+        for row in (
+            MetaAds.objects
+            .filter(campaign_id__in=pending_ids)
+            .values("campaign_id", "campaign_name", "product", "paid_country", "country")
+        ):
+            cid = row["campaign_id"]
+            pais = (row["paid_country"] or "").strip() or (row["country"] or "").strip() or "Sin país"
+            info = extra_info.setdefault(cid, {
+                "nombre": (row["campaign_name"] or cid).strip(),
+                "producto_meta": row["product"],
+                "paises": set(),
+            })
+            info["paises"].add(pais)
+
+        for cid, info in extra_info.items():
+            codigo = cmap.get(cid)
+            for pais in info["paises"]:
+                key = (codigo, pais)
+                if key not in all_keys:
+                    continue
+                by_campaign = campanas_by_key.setdefault(key, {})
+                by_campaign.setdefault(cid, {
+                    "gasto": 0.0,
+                    "producto_meta": info["producto_meta"],
+                    "nombre": info["nombre"],
+                })
+
     out = []
     for codigo, pais in all_keys:
         inv = inversion_by_key.get((codigo, pais), 0.0)
