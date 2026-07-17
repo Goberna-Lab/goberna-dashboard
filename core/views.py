@@ -2937,5 +2937,6 @@ def pautas_ventas_cursos(request):
     return render(request, "pautas_cursos.html", {
         "date_from": r_from.isoformat(),
         "date_to": r_to.isoformat(),
+        "MAIN_APP_URL": getattr(settings, "MAIN_APP_URL", ""),
     })
 
