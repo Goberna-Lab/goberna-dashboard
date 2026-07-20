@@ -578,52 +578,6 @@
   </datalist>
 
   <!-- ================================================================ -->
-  <!-- CARD: Vincular una campaña a VARIOS productos (avanzado)          -->
-  <!-- Bloque nuevo, autocontenido — no toca el JS/HTML de los combos    -->
-  <!-- de arriba. Usa el mismo <datalist id="productList"> de forma      -->
-  <!-- read-only. POST separado (multi=1) que no interfiere con el flujo -->
-  <!-- normal de 1 producto (bulk/single), ver core/views.py ads_vincular. -->
-  <!-- ================================================================ -->
-  <div class="gob-card" style="margin-bottom:20px;">
-    <button type="button" class="gob-card-header gob-card-toggle" id="multiProductToggle"
-            data-bs-toggle="collapse" data-bs-target="#multiProductCollapse"
-            aria-expanded="false" aria-controls="multiProductCollapse">
-      <i class="fas fa-diagram-project"></i>
-      Vincular una campaña a varios productos (avanzado)
-      <i class="fas fa-chevron-down ms-auto" style="font-size:0.75rem;"></i>
-    </button>
-    <div class="collapse" id="multiProductCollapse">
-      <div class="gob-card-body">
-        <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">
-          Para campañas tipo "pack" que promocionan más de un producto a la vez
-          (ej. un combo de 2 cursos). El gasto se reparte entre los productos
-          según el peso que asignes; las ventas de cada producto se contabilizan
-          completas (no se dividen).
-        </p>
-        <div id="multiProductMsg" style="display:none;margin-bottom:12px;"></div>
-
-        <div class="mb-2">
-          <label style="font-size:.78rem;font-weight:700;color:var(--ink);">Campaign ID(s)</label>
-          <input type="text" id="mpCampaignIds" class="form-control form-control-sm"
-                 placeholder="Uno o varios, separados por coma (ej: 120245..., 120248...)">
-        </div>
-
-        <div id="mpProductRows"></div>
-        <button type="button" id="mpAddRow" class="btn-gob-ghost btn-sm mt-1">
-          <i class="fas fa-plus me-1"></i>Agregar producto
-        </button>
-
-        <div class="d-flex align-items-center gap-2 mt-3">
-          <button type="button" id="mpSubmit" class="btn-gob-primary btn-sm">
-            <i class="fas fa-link me-1"></i>Vincular a varios productos
-          </button>
-          <span id="mpSumHint" style="font-size:.78rem;color:var(--muted);"></span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================================================================ -->
   <!-- CARD: Campañas sin vincular — agrupadas para bulk link             -->
   <!-- ================================================================ -->
   <div class="gob-card">
@@ -721,6 +675,29 @@
             <input type="hidden" name="campaign_ids" value="{{ g.members.0.campaign_id }}">
             {% endif %}
           </form>
+
+          <!-- Vincular a varios productos (avanzado) — fuera del <form> bulk
+               para evitar forms anidados. Trae precargadas las campañas de
+               este grupo. Bloque aparte, no toca el combo/form de arriba. -->
+          <div class="mp-block"
+               data-campaign-ids="{% for m in g.members %}{{ m.campaign_id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+            <button type="button" class="mp-open-link">
+              <i class="fas fa-diagram-project me-1"></i>¿Es un pack de varios productos? Vincular a varios
+            </button>
+            <div class="mp-panel" style="display:none;">
+              <div class="mp-msg" style="display:none;"></div>
+              <div class="mp-rows"></div>
+              <button type="button" class="mp-add-row btn-gob-ghost btn-sm mt-1">
+                <i class="fas fa-plus me-1"></i>Agregar producto
+              </button>
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button type="button" class="mp-submit btn-gob-primary btn-sm">
+                  <i class="fas fa-link me-1"></i>Vincular a varios productos
+                </button>
+                <span class="mp-sum-hint" style="font-size:.78rem;color:var(--muted);"></span>
+              </div>
+            </div>
+          </div>
 
           {% if g.n > 1 %}
           <!-- Fuera del <form> bulk para evitar <form> anidados: cada fila
@@ -1258,68 +1235,16 @@
 
 <!-- ==================================================================== -->
 <!-- JS: Vincular a varios productos (bloque nuevo, autocontenido).       -->
-<!-- Lee el <datalist id="productList"> ya existente de forma read-only.  -->
+<!-- Un .mp-block por grupo (renderizado por el template). Lee el         -->
+<!-- <datalist id="productList"> ya existente de forma read-only.         -->
 <!-- No toca setupCombo()/resolveOption() ni ningún otro JS de arriba.    -->
 <!-- ==================================================================== -->
 <script>
 (function () {
-  var rowsWrap = document.getElementById('mpProductRows');
-  var addBtn   = document.getElementById('mpAddRow');
-  var submitBtn = document.getElementById('mpSubmit');
-  var sumHint  = document.getElementById('mpSumHint');
-  var msgBox   = document.getElementById('multiProductMsg');
-  var idsInput = document.getElementById('mpCampaignIds');
-  if (!rowsWrap || !addBtn || !submitBtn) return; // bloque no presente, no-op
-
   function getCookie(name) {
     var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return match ? decodeURIComponent(match.pop()) : '';
   }
-
-  function addRow() {
-    var row = document.createElement('div');
-    row.className = 'd-flex align-items-center gap-2 mb-2 mp-row';
-    row.innerHTML =
-      '<input type="text" class="form-control form-control-sm mp-product" ' +
-      'list="productList" placeholder="SKU o nombre del producto…" style="flex:1 1 auto;">' +
-      '<input type="number" class="form-control form-control-sm mp-weight" ' +
-      'value="' + '' + '" min="0" max="100" step="0.01" style="width:90px;" placeholder="%">' +
-      '<button type="button" class="btn-gob-ghost btn-sm mp-remove" title="Quitar">' +
-      '<i class="fas fa-xmark"></i></button>';
-    rowsWrap.appendChild(row);
-    row.querySelector('.mp-remove').addEventListener('click', function () {
-      row.remove();
-      redistribute();
-    });
-    redistribute();
-  }
-
-  function redistribute() {
-    var rows = rowsWrap.querySelectorAll('.mp-row');
-    if (!rows.length) { sumHint.textContent = ''; return; }
-    var equal = (100 / rows.length).toFixed(2);
-    rows.forEach(function (r) {
-      r.querySelector('.mp-weight').value = equal;
-    });
-    updateSumHint();
-  }
-
-  function updateSumHint() {
-    var weights = Array.from(rowsWrap.querySelectorAll('.mp-weight'))
-      .map(function (i) { return parseFloat(i.value) || 0; });
-    var sum = weights.reduce(function (a, b) { return a + b; }, 0);
-    sumHint.textContent = 'Suma de pesos: ' + sum.toFixed(2) + '% (debe ser 100%)';
-    sumHint.style.color = Math.abs(sum - 100) > 0.5 ? '#DC2626' : 'var(--muted)';
-  }
-
-  rowsWrap.addEventListener('input', function (e) {
-    if (e.target.classList.contains('mp-weight')) updateSumHint();
-  });
-
-  addBtn.addEventListener('click', addRow);
-  // Arranca con 2 filas (el caso típico: pack de 2 productos).
-  addRow();
-  addRow();
 
   function resolveProductInput(text) {
     var dl = document.getElementById('productList');
@@ -1336,63 +1261,124 @@
     return null;
   }
 
-  function showMsg(text, ok) {
-    msgBox.style.display = 'block';
-    msgBox.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger');
-    msgBox.textContent = text;
+  function initBlock(block) {
+    var openLink = block.querySelector('.mp-open-link');
+    var panel    = block.querySelector('.mp-panel');
+    var rowsWrap = block.querySelector('.mp-rows');
+    var addBtn   = block.querySelector('.mp-add-row');
+    var submitBtn = block.querySelector('.mp-submit');
+    var sumHint  = block.querySelector('.mp-sum-hint');
+    var msgBox   = block.querySelector('.mp-msg');
+    var campaignIds = (block.dataset.campaignIds || '')
+      .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+    function addRow() {
+      var row = document.createElement('div');
+      row.className = 'd-flex align-items-center gap-2 mb-2 mp-row';
+      row.innerHTML =
+        '<input type="text" class="form-control form-control-sm mp-product" ' +
+        'list="productList" placeholder="SKU o nombre del producto…" style="flex:1 1 auto;">' +
+        '<input type="number" class="form-control form-control-sm mp-weight" ' +
+        'min="0" max="100" step="0.01" style="width:90px;" placeholder="%">' +
+        '<button type="button" class="btn-gob-ghost btn-sm mp-remove" title="Quitar">' +
+        '<i class="fas fa-xmark"></i></button>';
+      rowsWrap.appendChild(row);
+      row.querySelector('.mp-remove').addEventListener('click', function () {
+        row.remove();
+        redistribute();
+      });
+      redistribute();
+    }
+
+    function redistribute() {
+      var rows = rowsWrap.querySelectorAll('.mp-row');
+      if (!rows.length) { sumHint.textContent = ''; return; }
+      var equal = (100 / rows.length).toFixed(2);
+      rows.forEach(function (r) { r.querySelector('.mp-weight').value = equal; });
+      updateSumHint();
+    }
+
+    function updateSumHint() {
+      var weights = Array.from(rowsWrap.querySelectorAll('.mp-weight'))
+        .map(function (i) { return parseFloat(i.value) || 0; });
+      var sum = weights.reduce(function (a, b) { return a + b; }, 0);
+      sumHint.textContent = 'Suma de pesos: ' + sum.toFixed(2) + '% (debe ser 100%)';
+      sumHint.style.color = Math.abs(sum - 100) > 0.5 ? '#DC2626' : 'var(--muted)';
+    }
+
+    function showMsg(text, ok) {
+      msgBox.style.display = 'block';
+      msgBox.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger') + ' mp-msg';
+      msgBox.textContent = text;
+    }
+
+    rowsWrap.addEventListener('input', function (e) {
+      if (e.target.classList.contains('mp-weight')) updateSumHint();
+    });
+    addBtn.addEventListener('click', addRow);
+
+    openLink.addEventListener('click', function () {
+      var opening = panel.style.display === 'none';
+      panel.style.display = opening ? 'block' : 'none';
+      if (opening && !rowsWrap.querySelector('.mp-row')) {
+        // Arranca con 2 filas (el caso típico: pack de 2 productos).
+        addRow();
+        addRow();
+      }
+    });
+
+    submitBtn.addEventListener('click', function () {
+      if (!campaignIds.length) {
+        showMsg('Este grupo no tiene campañas para vincular.', false);
+        return;
+      }
+      var rows = rowsWrap.querySelectorAll('.mp-row');
+      var codigos = [];
+      var pesos = [];
+      var bad = false;
+      rows.forEach(function (r) {
+        var opt = resolveProductInput(r.querySelector('.mp-product').value);
+        var w = r.querySelector('.mp-weight').value;
+        if (!opt) { bad = true; return; }
+        codigos.push(opt.dataset.codigo);
+        pesos.push(w);
+      });
+      if (bad || !codigos.length) {
+        showMsg('Elegí un producto válido del catálogo en cada fila.', false);
+        return;
+      }
+      var sum = pesos.reduce(function (a, b) { return a + (parseFloat(b) || 0); }, 0);
+      if (Math.abs(sum - 100) > 0.5) {
+        showMsg('Los pesos deben sumar 100% (suman ' + sum.toFixed(2) + '%).', false);
+        return;
+      }
+
+      var body = new URLSearchParams();
+      body.append('multi', '1');
+      campaignIds.forEach(function (c) { body.append('campaign_ids', c); });
+      codigos.forEach(function (c) { body.append('productos[]', c); });
+      pesos.forEach(function (p) { body.append('pesos[]', p); });
+
+      submitBtn.disabled = true;
+      fetch('/ads/vincular/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: body.toString(),
+      }).then(function () {
+        // El endpoint responde con la página completa (no JSON); recargamos
+        // para ver el banner de resultado y el estado actualizado.
+        window.location.reload();
+      }).catch(function () {
+        submitBtn.disabled = false;
+        showMsg('Error de red al guardar. Intentá de nuevo.', false);
+      });
+    });
   }
 
-  submitBtn.addEventListener('click', function () {
-    var campaignIds = (idsInput.value || '')
-      .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    if (!campaignIds.length) {
-      showMsg('Ingresá al menos un Campaign ID.', false);
-      return;
-    }
-    var rows = rowsWrap.querySelectorAll('.mp-row');
-    var codigos = [];
-    var pesos = [];
-    var bad = false;
-    rows.forEach(function (r) {
-      var opt = resolveProductInput(r.querySelector('.mp-product').value);
-      var w = r.querySelector('.mp-weight').value;
-      if (!opt) { bad = true; return; }
-      codigos.push(opt.dataset.codigo);
-      pesos.push(w);
-    });
-    if (bad || !codigos.length) {
-      showMsg('Elegí un producto válido del catálogo en cada fila.', false);
-      return;
-    }
-    var sum = pesos.reduce(function (a, b) { return a + (parseFloat(b) || 0); }, 0);
-    if (Math.abs(sum - 100) > 0.5) {
-      showMsg('Los pesos deben sumar 100% (suman ' + sum.toFixed(2) + '%).', false);
-      return;
-    }
-
-    var body = new URLSearchParams();
-    body.append('multi', '1');
-    campaignIds.forEach(function (c) { body.append('campaign_ids', c); });
-    codigos.forEach(function (c) { body.append('productos[]', c); });
-    pesos.forEach(function (p) { body.append('pesos[]', p); });
-
-    submitBtn.disabled = true;
-    fetch('/ads/vincular/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: body.toString(),
-    }).then(function () {
-      // El endpoint responde con la página completa (no JSON); recargamos
-      // para ver el banner de resultado y el estado actualizado.
-      window.location.reload();
-    }).catch(function () {
-      submitBtn.disabled = false;
-      showMsg('Error de red al guardar. Intentá de nuevo.', false);
-    });
-  });
+  document.querySelectorAll('.mp-block').forEach(initBlock);
 })();
 </script>
 </body>
