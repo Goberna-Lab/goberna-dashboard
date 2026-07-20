@@ -952,6 +952,15 @@
       var tdAmt = document.createElement("td");
       tdAmt.className = "amt";
       tdAmt.textContent = "$ " + NF_USD0.format(c.gasto_usd);
+      if (c.peso_pct !== null && c.peso_pct !== undefined) {
+        // Campaña "pack" — esta fila es solo una porción del gasto total de
+        // la campaña, repartido con otro(s) producto(s). Se aclara para que
+        // no se confunda con un gasto propio y separado.
+        var small = document.createElement("div");
+        small.style.cssText = "font-size:.7rem;color:var(--muted);font-weight:400;";
+        small.textContent = Number(c.peso_pct) + "% del gasto (pack)";
+        tdAmt.appendChild(small);
+      }
       var tdAction = document.createElement("td");
       tdAction.className = "action";
       if (!sinVincular && c.campaign_id) {

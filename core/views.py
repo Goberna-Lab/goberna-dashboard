@@ -3062,6 +3062,7 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
                         "nombre": info["nombre"],
                         "gasto_usd": round(info["gasto"], 2),
                         "producto_meta": info["producto_meta"],
+                        "peso_pct": info.get("peso_pct"),
                     }
                     for cid, info in campanas_by_key.get((codigo, pais), {}).items()
                 ),
