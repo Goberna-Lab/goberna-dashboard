@@ -329,6 +329,93 @@
       text-align: center;
     }
 
+    /* Resumen persistente de "tildados" dentro del propio panel abierto
+       (modo pack, 2+ productos). Se inyecta por JS en setupCombo() —
+       ver .ac-selected-chips. Con 0/1 seleccionado queda oculto y el
+       combo se ve/comporta idéntico a antes. */
+    .ac-selected-chips {
+      display: none;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 2px 2px 10px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ac-chips-label {
+      width: 100%;
+      font-size: .68rem;
+      font-weight: 700;
+      color: var(--gold-ink);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      margin-bottom: 2px;
+    }
+    .ac-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #FFF7DB;
+      border: 1px solid #F5D77A;
+      color: #7A5B00;
+      border-radius: 999px;
+      padding: 3px 4px 3px 10px;
+      font-size: .72rem;
+      font-weight: 600;
+      max-width: 220px;
+    }
+    .ac-chip .chip-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ac-chip-remove {
+      border: none;
+      background: rgba(0,0,0,.08);
+      color: #7A5B00;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      font-size: .76rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      padding: 0;
+    }
+    .ac-chip-remove:hover { background: rgba(0,0,0,.18); }
+
+    /* Modo pack: 2+ productos tildados en el mismo combo. Borde dorado
+       distinto del verde "is-resolved" (1 producto) para que se note de
+       un vistazo que este combo está en un estado distinto/acumulativo. */
+    .ac-combo-trigger.product-input.is-pack {
+      border-color: var(--gold-ink);
+      background: #FFFBEA;
+    }
+    .ac-combo-trigger.product-input.is-pack .ac-combo-value {
+      color: #7A5B00;
+      font-weight: 700;
+    }
+
+    /* Texto de ayuda fijo (no dentro del panel) que aparece cuando el
+       combo entra en modo pack, explicando qué va a pasar al enviar.
+       Se inyecta por JS junto al combo — con 0/1 seleccionado no existe
+       contenido/visibilidad distinta a la que había antes del cambio. */
+    .pack-hint {
+      display: none;
+      flex-basis: 100%;
+      align-items: center;
+      gap: 6px;
+      font-size: .74rem;
+      font-weight: 600;
+      color: #7A5B00;
+      background: #FFFBEA;
+      border: 1px solid #F5D77A;
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+
     /* ============================================================
        GRUPOS de campañas pendientes (bulk link)
     ============================================================ */
@@ -927,6 +1014,49 @@
     var activeIndex = -1;
     var currentItems = [];
 
+    // Resumen "Tildados" fijo arriba del buscador, dentro del panel — solo
+    // visible con 2+ seleccionados (modo pack). Con 0/1 queda oculto y el
+    // panel se ve idéntico a como era antes de este cambio.
+    var chipsWrap = document.createElement('div');
+    chipsWrap.className = 'ac-selected-chips';
+    var searchWrap = combo.querySelector('.ac-search-wrap');
+    if (searchWrap) menu.insertBefore(chipsWrap, searchWrap);
+
+    function renderChips() {
+      var sel = combo._selected;
+      chipsWrap.innerHTML = '';
+      if (sel.length < 2) { chipsWrap.style.display = 'none'; return; }
+      chipsWrap.style.display = 'flex';
+      var label = document.createElement('div');
+      label.className = 'ac-chips-label';
+      label.textContent = 'Tildados (' + sel.length + ') — se reparte el gasto por igual:';
+      chipsWrap.appendChild(label);
+      sel.forEach(function (opt) {
+        var sepIdx = opt.value.indexOf(' — ');
+        var nombre = sepIdx >= 0 ? opt.value.slice(sepIdx + 3) : opt.value;
+        var chip = document.createElement('span');
+        chip.className = 'ac-chip';
+        var txt = document.createElement('span');
+        txt.className = 'chip-text';
+        txt.textContent = nombre;
+        chip.appendChild(txt);
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'ac-chip-remove';
+        rm.innerHTML = '&times;';
+        rm.setAttribute('aria-label', 'Quitar ' + nombre);
+        // mousedown (no click), mismo motivo que en .ac-item: ganarle al
+        // blur del buscador y evitar que el panel se cierre solo.
+        rm.addEventListener('mousedown', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          pick(opt);
+        });
+        chip.appendChild(rm);
+        chipsWrap.appendChild(chip);
+      });
+    }
+
     function close() {
       menu.classList.remove('is-open');
       trigger.classList.remove('is-open');
@@ -973,6 +1103,7 @@
       if (idx >= 0) combo._selected.splice(idx, 1);
       else combo._selected.push(opt);
       renderValueLabel();
+      renderChips();
       if (onPick) onPick();
       else picker.dispatchEvent(new Event('input', { bubbles: true }));
       // No cierra el panel — permite tildar más de un producto (pack) sin
@@ -1052,6 +1183,7 @@
       menu.classList.add('is-open');
       trigger.classList.add('is-open');
       searchInp.value = '';
+      renderChips();
       filterAndRender();
       setTimeout(function () { searchInp.focus(); }, 0);
     }
@@ -1124,6 +1256,19 @@
     var manualBtn = form.querySelector('.btn-manual') ||
                     form.querySelector('button[type="submit"]:not(.btn-suggest)');
 
+    // Texto de ayuda fijo (fuera del panel) que solo aparece en modo pack
+    // (2+ tildados). Se inserta como hermano del combo con flex-basis:100%
+    // (mismo truco que .prod-feedback) para que baje de línea sin romper
+    // el layout del botón "Vincular". Con 0/1 seleccionado queda oculto —
+    // el resto del formulario se ve idéntico a antes.
+    var packHint = null;
+    if (combo) {
+      packHint = document.createElement('div');
+      packHint.className = 'pack-hint';
+      packHint.innerHTML = '<i class="fas fa-scale-balanced"></i> Modo pack: cada producto tildado se atribuye el gasto completo de esta campaña (no se reparte).';
+      combo.insertAdjacentElement('afterend', packHint);
+    }
+
     function updateHidden() {
       // 2+ productos tildados en el mismo combo = pack multi-producto.
       // No se resuelve a un solo codigo_producto — el submit se intercepta
@@ -1135,11 +1280,14 @@
         if (trigger) {
           trigger.classList.remove('is-invalid-pick');
           trigger.classList.add('is-resolved');
+          trigger.classList.add('is-pack');
         }
         if (feedback) feedback.style.display = 'none';
         if (manualBtn) manualBtn.classList.add('is-ready');
+        if (packHint) packHint.style.display = 'flex';
         return;
       }
+      if (packHint) packHint.style.display = 'none';
       var opt = resolveOption(picker ? picker.value : '');
       if (opt) {
         hidCodigo.value = opt.codigo;
@@ -1148,6 +1296,7 @@
         // Estado visual "resuelto" + botón pasa a primario sólido
         if (trigger) {
           trigger.classList.remove('is-invalid-pick');
+          trigger.classList.remove('is-pack');
           trigger.classList.add('is-resolved');
         }
         if (feedback) feedback.style.display = 'none';
@@ -1156,7 +1305,10 @@
         hidCodigo.value = '';
         if (hidNombre) hidNombre.value = '';
         if (hidCat)    hidCat.value    = '';
-        if (trigger) trigger.classList.remove('is-resolved');
+        if (trigger) {
+          trigger.classList.remove('is-resolved');
+          trigger.classList.remove('is-pack');
+        }
         if (manualBtn) manualBtn.classList.remove('is-ready');
       }
     }
@@ -1179,10 +1331,12 @@
       }
       ids.forEach(function (id) { body.append('campaign_ids', id); });
 
-      var equal = (100 / selectedItems.length).toFixed(2);
+      // Cada producto tildado recibe el 100% del gasto de la campaña —
+      // no se reparte entre productos (decisión de negocio: el gasto de
+      // un pack cuenta completo contra cada producto que vende).
       selectedItems.forEach(function (opt) {
         body.append('productos[]', opt.codigo);
-        body.append('pesos[]', equal);
+        body.append('pesos[]', '100');
       });
 
       var btn = form.querySelector('button[type="submit"]:not(.btn-suggest)') ||

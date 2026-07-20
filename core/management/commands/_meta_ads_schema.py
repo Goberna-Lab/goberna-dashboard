@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS tb_meta_campaign_product_weight (
   id INT AUTO_INCREMENT PRIMARY KEY,
   campaign_id VARCHAR(32) NOT NULL COMMENT 'Meta campaign_id, same value as tb_meta_campaign_map.campaign_id',
   codigo_producto INT NOT NULL COMMENT 'FK to tb_producto.codigo_producto (always a concrete product, never a category)',
-  weight_pct DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Share of spend 0-100; rows for the same campaign_id should sum to 100',
+  weight_pct DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Attribution 0-100 of this product on the campaign spend, independent per row (default 100 = each linked product gets full spend, not split)',
   linked_by VARCHAR(10) NOT NULL DEFAULT 'manual',
   linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_campaign_producto (campaign_id, codigo_producto),

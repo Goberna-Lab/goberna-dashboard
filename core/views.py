@@ -1868,10 +1868,15 @@ def ads_vincular(request):
                         banner = ("Peso inválido (debe ser un número).", "danger")
 
                     if pesos is not None:
-                        suma = sum(pesos)
-                        if abs(suma - Decimal("100")) > Decimal("0.5"):
+                        # weight_pct es la atribución de CADA producto sobre el
+                        # gasto de la campaña, de forma independiente (no un
+                        # pool que deba sumar 100) — por defecto cada producto
+                        # vinculado recibe el 100% del gasto de la campaña
+                        # (decisión del usuario: no repartir entre productos).
+                        fuera_de_rango = [p for p in pesos if p <= Decimal("0") or p > Decimal("100")]
+                        if fuera_de_rango:
                             banner = (
-                                f"Los pesos deben sumar 100% (suman {suma}%).",
+                                "Cada peso debe estar entre 0 y 100.",
                                 "danger",
                             )
                         else:
@@ -1953,7 +1958,7 @@ def ads_vincular(request):
                                         banner = (
                                             f"✓ {n} campaña{plural} vinculada{plural} a "
                                             f"{len(pares)} productos «{combined_name}» "
-                                            f"(gasto repartido por peso).",
+                                            f"(cada producto atribuye el gasto completo de la campaña).",
                                             "success",
                                         )
                                     except Exception:

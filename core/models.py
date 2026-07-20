@@ -369,9 +369,11 @@ class MetaCampaignProductWeight(models.Model):
     A campaign with a single product NEVER gets a row here — it keeps
     resolving through MetaCampaignMap.codigo_producto alone, unchanged.
     Only campaigns explicitly linked to multiple products via the
-    "vincular a varios productos" flow get rows here, one per product,
-    with weight_pct share of that campaign's spend (should sum to 100
-    across all rows for the same campaign_id).
+    "vincular a varios productos" flow get rows here, one per product.
+    weight_pct is each product's OWN attribution of that campaign's spend,
+    independent per row — default 100 means every linked product gets full
+    credit for the campaign spend (no split between products; business
+    decision: a pack's ad spend counts fully against each product it sells).
 
     managed=False: Django never creates or migrates this table — DDL lives
     in core/management/commands/_meta_ads_schema.py (ensure_campaign_weight_schema).
