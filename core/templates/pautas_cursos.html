@@ -443,21 +443,6 @@
       text-transform: uppercase;
       letter-spacing: .03em;
     }
-    /* Pack compartido: mismo look que badge-unlinked pero en azul, para no
-       confundirse con la advertencia de "sin vincular" (naranja). */
-    .badge-pack {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: #EAF1FE;
-      color: #1E4FA8;
-      border: 1px solid #C7DBFB;
-      border-radius: 999px;
-      padding: 1px 8px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
 
     /* Footer / calc row -> totales generales, claramente diferenciados */
     #cursosGrid .tabulator-footer {
@@ -1172,29 +1157,9 @@
         var subMargen = subVen ? (subUtil / subVen) * 100 : null;
         var margenClass = (subMargen === null) ? "" : (subMargen < 0 ? "roas-neg" : "roas-pos");
 
-        // Pack compartido: alguna campaña de este producto tiene peso_pct
-        // (viene de tb_meta_campaign_product_weight) → hay otro(s) producto(s)
-        // vinculados a la MISMA campaña. producto_meta trae el nombre
-        // combinado ("A / B / ..."); se muestra el resto (sin el actual).
-        var packWith = new Set();
-        (data || []).forEach(function (r) {
-          (r.campanas || []).forEach(function (c) {
-            if (c.peso_pct === null || c.peso_pct === undefined) return;
-            (c.producto_meta || "").split(" / ").forEach(function (name) {
-              name = name.trim();
-              if (name && name !== label) packWith.add(name);
-            });
-          });
-        });
-
         var html = '<span class="group-header-inner">';
         html += '<span class="group-header-title">' + label + '</span>';
         html += '<span class="group-header-count">(' + count + ' fila' + (count === 1 ? '' : 's') + ')</span>';
-        if (packWith.size) {
-          html += '<span class="badge-pack" title="Estas campañas también están vinculadas a este/os otro/s producto/s — el gasto no se reparte, cada uno cuenta el total.">';
-          html += '<i class="fas fa-link"></i> Pack junto con: ' + Array.from(packWith).join(", ");
-          html += '</span>';
-        }
         if (isUnlinked) {
           html += '<span class="badge-unlinked"><i class="fas fa-triangle-exclamation"></i> Sin vincular</span>';
           html += '<a class="roas-vincular" href="/ads/vincular/">vincular →</a>';
