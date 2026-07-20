@@ -70,6 +70,7 @@ from ._meta_ads_schema import (
     source_column_exists,
     ensure_accounts_schema,
     ensure_campaign_map_schema,
+    ensure_campaign_weight_schema,
 )
 
 # ---------------------------------------------------------------------------
@@ -406,6 +407,9 @@ class Command(BaseCommand):
         self.stdout.write("Verificando schema de tb_meta_campaign_map...")
         ensure_campaign_map_schema(connection)
         self.stdout.write(self.style.SUCCESS("  tb_meta_campaign_map OK"))
+        self.stdout.write("Verificando schema de tb_meta_campaign_product_weight...")
+        ensure_campaign_weight_schema(connection)
+        self.stdout.write(self.style.SUCCESS("  tb_meta_campaign_product_weight OK"))
 
     @staticmethod
     def _source_column_exists() -> bool:

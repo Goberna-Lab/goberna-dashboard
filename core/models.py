@@ -361,6 +361,39 @@ class MetaCampaignMap(models.Model):
         return f"{self.campaign_id} → {self.product_name or '(sin producto)'} [{self.linked_by}]"
 
 
+class MetaCampaignProductWeight(models.Model):
+    """
+    Optional N:N satellite for campaigns that promote MORE THAN ONE product
+    at once (e.g. a bundle campaign advertising two courses together).
+
+    A campaign with a single product NEVER gets a row here — it keeps
+    resolving through MetaCampaignMap.codigo_producto alone, unchanged.
+    Only campaigns explicitly linked to multiple products via the
+    "vincular a varios productos" flow get rows here, one per product,
+    with weight_pct share of that campaign's spend (should sum to 100
+    across all rows for the same campaign_id).
+
+    managed=False: Django never creates or migrates this table — DDL lives
+    in core/management/commands/_meta_ads_schema.py (ensure_campaign_weight_schema).
+    """
+    id              = models.AutoField(primary_key=True, db_column='id')
+    campaign_id     = models.CharField(max_length=32, db_column='campaign_id')
+    codigo_producto = models.IntegerField(db_column='codigo_producto')
+    weight_pct      = models.DecimalField(max_digits=5, decimal_places=2, default=100, db_column='weight_pct')
+    linked_by       = models.CharField(max_length=10, default='manual', db_column='linked_by')
+    linked_at       = models.DateTimeField(auto_now_add=False, db_column='linked_at')
+
+    class Meta:
+        managed = False
+        db_table = 'tb_meta_campaign_product_weight'
+        constraints = [
+            models.UniqueConstraint(fields=['campaign_id', 'codigo_producto'], name='uq_campaign_producto'),
+        ]
+
+    def __str__(self):
+        return f"{self.campaign_id} → producto {self.codigo_producto} ({self.weight_pct}%)"
+
+
 class LibroEnPack(models.Model):
     id = models.AutoField(primary_key=True, db_column='codigo_libro_en_pack')
 

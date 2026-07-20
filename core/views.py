@@ -37,7 +37,7 @@ from django.core.cache import cache
 from django.utils import timezone
 import hashlib
 
-from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, LibroEnPack, MetaAds, MetaAccount, MetaCampaignMap, Producto
+from .models import Venta, Cuota, Moneda, PerfilUsuario, DetalleVenta, LibroEnPack, MetaAds, MetaAccount, MetaCampaignMap, MetaCampaignProductWeight, Producto
 
 try:
     import openpyxl
@@ -1835,7 +1835,139 @@ def ads_vincular(request):
     """
     banner = None  # (message, level)
 
-    if request.method == "POST" and (
+    if request.method == "POST" and request.POST.get("multi") == "1":
+        # ---- Multi-product link: N campañas → varios productos con peso ----
+        # Flujo aparte y explícito (marcador "multi") — no interfiere con el
+        # bulk (1 producto) ni el single de abajo, que siguen intactos.
+        multi_ids = [c.strip() for c in request.POST.getlist("campaign_ids") if c.strip()]
+        multi_ids = list(dict.fromkeys(multi_ids))
+        prod_strs = [p.strip() for p in request.POST.getlist("productos[]")]
+        peso_strs = [w.strip() for w in request.POST.getlist("pesos[]")]
+
+        if not multi_ids:
+            banner = ("Seleccioná al menos una campaña.", "danger")
+        elif not prod_strs:
+            banner = ("Agregá al menos un producto.", "danger")
+        elif len(prod_strs) != len(peso_strs):
+            banner = ("Datos de productos/pesos inconsistentes.", "danger")
+        else:
+            try:
+                codigos = [int(p) for p in prod_strs]
+            except ValueError:
+                codigos = None
+                banner = ("Código de producto inválido.", "danger")
+
+            if codigos is not None:
+                if len(set(codigos)) != len(codigos):
+                    banner = ("No repitas el mismo producto en la lista.", "danger")
+                else:
+                    try:
+                        pesos = [Decimal(w) for w in peso_strs]
+                    except Exception:
+                        pesos = None
+                        banner = ("Peso inválido (debe ser un número).", "danger")
+
+                    if pesos is not None:
+                        suma = sum(pesos)
+                        if abs(suma - Decimal("100")) > Decimal("0.5"):
+                            banner = (
+                                f"Los pesos deben sumar 100% (suman {suma}%).",
+                                "danger",
+                            )
+                        else:
+                            productos_qs = list(
+                                Producto.objects.select_related("codigo_negocio")
+                                .filter(codigo_producto__in=codigos)
+                            )
+                            productos_by_codigo = {p.codigo_producto: p for p in productos_qs}
+                            faltantes = [c for c in codigos if c not in productos_by_codigo]
+                            if faltantes:
+                                banner = (
+                                    f"Producto(s) inexistente(s) en catálogo: {faltantes}.",
+                                    "danger",
+                                )
+                            else:
+                                valid_ids = set(
+                                    MetaAds.objects
+                                    .filter(campaign_id__in=multi_ids)
+                                    .values_list("campaign_id", flat=True)
+                                )
+                                unknown = [c for c in multi_ids if c not in valid_ids]
+                                if unknown:
+                                    banner = (
+                                        "Algunas campañas seleccionadas no existen en los "
+                                        "datos de Meta. Recargá la página e intentá de nuevo.",
+                                        "danger",
+                                    )
+                                else:
+                                    # Producto representativo = mayor peso (para
+                                    # MetaCampaignMap y filtros que leen un solo código).
+                                    pares = sorted(
+                                        zip(codigos, pesos), key=lambda cp: cp[1], reverse=True
+                                    )
+                                    rep_codigo = pares[0][0]
+                                    rep_prod = productos_by_codigo[rep_codigo]
+                                    try:
+                                        rep_negocio = rep_prod.codigo_negocio.nombre_negocio
+                                    except Exception:
+                                        rep_negocio = None
+                                    rep_category = _negocio_to_ads_category(rep_negocio)
+                                    combined_name = " / ".join(
+                                        productos_by_codigo[c].nombre_producto for c, _ in pares
+                                    )
+                                    try:
+                                        from django.db import transaction
+                                        from django.utils import timezone as tz
+                                        now = tz.now()
+                                        with transaction.atomic():
+                                            for cid in multi_ids:
+                                                MetaCampaignProductWeight.objects.filter(
+                                                    campaign_id=cid
+                                                ).delete()
+                                                MetaCampaignProductWeight.objects.bulk_create([
+                                                    MetaCampaignProductWeight(
+                                                        campaign_id=cid,
+                                                        codigo_producto=codigo,
+                                                        weight_pct=peso,
+                                                        linked_by="manual",
+                                                        linked_at=now,
+                                                    )
+                                                    for codigo, peso in pares
+                                                ])
+                                                MetaCampaignMap.objects.update_or_create(
+                                                    campaign_id=cid,
+                                                    defaults={
+                                                        "codigo_producto": rep_codigo,
+                                                        "product_name": combined_name,
+                                                        "category": rep_category or None,
+                                                        "linked_by": "manual",
+                                                        "linked_at": now,
+                                                    },
+                                                )
+                                            MetaAds.objects.filter(campaign_id__in=multi_ids).update(
+                                                product=combined_name,
+                                                category=rep_category or None,
+                                            )
+                                        n = len(multi_ids)
+                                        plural = "s" if n != 1 else ""
+                                        banner = (
+                                            f"✓ {n} campaña{plural} vinculada{plural} a "
+                                            f"{len(pares)} productos «{combined_name}» "
+                                            f"(gasto repartido por peso).",
+                                            "success",
+                                        )
+                                    except Exception:
+                                        logger.exception(
+                                            "Error en vinculación multi-producto (%d ids, %d productos)",
+                                            len(multi_ids), len(pares),
+                                        )
+                                        banner = (
+                                            "Error al guardar la vinculación. Intentá de "
+                                            "nuevo o avisá al administrador.",
+                                            "danger",
+                                        )
+
+    elif request.method == "POST" and (
         request.POST.get("bulk") == "1" or request.POST.getlist("campaign_ids")
     ):
         # ---- Bulk link: N campañas de un grupo → un producto ----
@@ -1986,7 +2118,6 @@ def ads_vincular(request):
     try:
         progress = _linking_progress(date_from=LINKING_SCOPE_FROM)
     except Exception:
-        from decimal import Decimal
         progress = {
             "total_campaigns": 0, "linked_campaigns": 0, "unlinked_campaigns": 0,
             "pct_campaigns": 0, "spend_total": Decimal("0"), "spend_linked": Decimal("0"),
@@ -2517,6 +2648,15 @@ def _roas_por_producto(date_from: datetime.date, date_to: datetime.date) -> list
         if nom:
             name_to_codigo[nom.strip()] = cod
 
+    # Multi-product campaigns (bundle ads promoting >1 product at once).
+    # Campaigns with no row here fall through to the single-product path
+    # below, unchanged. campaign_id -> [(codigo_producto, weight_pct), ...]
+    weight_map: dict[str, list[tuple[int, Decimal]]] = {}
+    for cid, cod, peso in MetaCampaignProductWeight.objects.values_list(
+        "campaign_id", "codigo_producto", "weight_pct"
+    ):
+        weight_map.setdefault(cid, []).append((cod, peso))
+
     # ---- Meta side: spend per codigo_producto ----
     # BOB-billed accounts have amount_usd=NULL; convert spend (BOB) -> USD
     # on the fly using the moneda BOB ratio (codigo_moneda=3), with a
@@ -2553,10 +2693,19 @@ def _roas_por_producto(date_from: datetime.date, date_to: datetime.date) -> list
         .order_by()
     )
     for row in ads_rows:
+        usd = float(row["spend_usd"] or 0)
+        targets = weight_map.get(row["campaign_id"])
+        if targets:
+            # Bundle campaign: split spend across its linked products by
+            # weight. Same spend_by_codigo dict as the single-product path
+            # below, so a product's own 1:1 campaigns and its share of a
+            # bundle campaign land in the same bucket (no double-counting).
+            for codigo, peso in targets:
+                spend_by_codigo[codigo] = spend_by_codigo.get(codigo, 0.0) + usd * float(peso) / 100.0
+            continue
         codigo = cmap.get(row["campaign_id"])
         if codigo is None and row["product"]:
             codigo = name_to_codigo.get(row["product"].strip())
-        usd = float(row["spend_usd"] or 0)
         if codigo is None:
             spend_sin_producto += usd
         else:
@@ -2663,6 +2812,15 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
         if nom:
             name_to_codigo[nom.strip()] = cod
 
+    # Multi-product campaigns (bundle ads promoting >1 product at once).
+    # Campaigns with no row here fall through to the single-product path
+    # below, unchanged. campaign_id -> [(codigo_producto, weight_pct), ...]
+    weight_map: dict[str, list[tuple[int, Decimal]]] = {}
+    for cid, cod, peso in MetaCampaignProductWeight.objects.values_list(
+        "campaign_id", "codigo_producto", "weight_pct"
+    ):
+        weight_map.setdefault(cid, []).append((cod, peso))
+
     # ---- Meta side: spend per (codigo_producto, pais) ----
     bob_ratio = Moneda.objects.filter(pk=3).values_list(
         "radioMultiplicador", flat=True
@@ -2700,27 +2858,38 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
     # de Meta corresponde cada una, para poder verificar el vínculo.
     campanas_by_key: dict = {}
     for row in ads_rows:
-        codigo = cmap.get(row["campaign_id"])
-        if codigo is None and row["product"]:
-            codigo = name_to_codigo.get(row["product"].strip())
-
         pais = (row["paid_country"] or "").strip() or (row["country"] or "").strip() or "Sin país"
-
         usd = float(row["spend_usd"] or 0)
-        key = (codigo, pais)
-        inversion_by_key[key] = inversion_by_key.get(key, 0.0) + usd
 
-        if usd > 0 and row["campaign_id"]:
-            # Se agrupa por campaign_id (no por nombre) para poder
-            # desvincular una campaña puntual sin ambigüedad si dos
-            # campañas distintas comparten el mismo nombre.
-            by_campaign = campanas_by_key.setdefault(key, {})
-            entry = by_campaign.setdefault(row["campaign_id"], {
-                "gasto": 0.0,
-                "producto_meta": row["product"],
-                "nombre": (row["campaign_name"] or row["campaign_id"]).strip(),
-            })
-            entry["gasto"] += usd
+        targets = weight_map.get(row["campaign_id"])
+        if targets:
+            # Bundle campaign: split spend across its linked products by
+            # weight, one (codigo, pais) key per product — same buckets a
+            # 1:1 campaign for that product would land in, so nothing is
+            # double-counted.
+            resolved = [(codigo, usd * float(peso) / 100.0, peso) for codigo, peso in targets]
+        else:
+            codigo = cmap.get(row["campaign_id"])
+            if codigo is None and row["product"]:
+                codigo = name_to_codigo.get(row["product"].strip())
+            resolved = [(codigo, usd, None)]
+
+        for codigo, usd_share, peso in resolved:
+            key = (codigo, pais)
+            inversion_by_key[key] = inversion_by_key.get(key, 0.0) + usd_share
+
+            if usd_share > 0 and row["campaign_id"]:
+                # Se agrupa por campaign_id (no por nombre) para poder
+                # desvincular una campaña puntual sin ambigüedad si dos
+                # campañas distintas comparten el mismo nombre.
+                by_campaign = campanas_by_key.setdefault(key, {})
+                entry = by_campaign.setdefault(row["campaign_id"], {
+                    "gasto": 0.0,
+                    "producto_meta": row["product"],
+                    "nombre": (row["campaign_name"] or row["campaign_id"]).strip(),
+                    **({"peso_pct": float(peso)} if peso is not None else {}),
+                })
+                entry["gasto"] += usd_share
 
     # ---- Sales side: paid sales USD + count per (codigo_producto, pais) ----
     ventas_usd_by_key: dict = {}
@@ -2933,6 +3102,9 @@ def ads_desvincular_campana(request):
         return JsonResponse({"error": "La campaña no existe en los datos de Meta"}, status=404)
 
     MetaCampaignMap.objects.filter(campaign_id=campaign_id).delete()
+    # Also clear any multi-product weight rows — si no, una campaña "desvinculada"
+    # seguiría repartiendo gasto en el ROAS según pesos viejos.
+    MetaCampaignProductWeight.objects.filter(campaign_id=campaign_id).delete()
     MetaAds.objects.filter(campaign_id=campaign_id).update(product=None, category=None)
 
     return JsonResponse({"ok": True})

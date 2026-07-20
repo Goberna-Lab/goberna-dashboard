@@ -171,3 +171,36 @@ def ensure_campaign_map_schema(connection) -> list[str]:
     with connection.cursor() as cursor:
         cursor.execute(CREATE_CAMPAIGN_MAP_SQL)
     return []
+
+
+# ---------------------------------------------------------------------------
+# tb_meta_campaign_product_weight — optional N:N satellite for campaigns that
+# promote MORE THAN ONE product at once (e.g. a bundle campaign advertising
+# two courses together). Campaigns with a single product NEVER get a row
+# here — they keep working exactly as before via tb_meta_campaign_map alone.
+# ---------------------------------------------------------------------------
+
+CREATE_CAMPAIGN_WEIGHT_SQL = """
+CREATE TABLE IF NOT EXISTS tb_meta_campaign_product_weight (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  campaign_id VARCHAR(32) NOT NULL COMMENT 'Meta campaign_id, same value as tb_meta_campaign_map.campaign_id',
+  codigo_producto INT NOT NULL COMMENT 'FK to tb_producto.codigo_producto (always a concrete product, never a category)',
+  weight_pct DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Share of spend 0-100; rows for the same campaign_id should sum to 100',
+  linked_by VARCHAR(10) NOT NULL DEFAULT 'manual',
+  linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_campaign_producto (campaign_id, codigo_producto),
+  KEY idx_cpw_campaign (campaign_id),
+  KEY idx_cpw_producto (codigo_producto)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+"""
+
+
+def ensure_campaign_weight_schema(connection) -> list[str]:
+    """
+    Idempotent bootstrap for tb_meta_campaign_product_weight.
+    CREATE TABLE IF NOT EXISTS, no additive columns yet.
+    Returns list of changes made (empty if schema was current).
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(CREATE_CAMPAIGN_WEIGHT_SQL)
+    return []
