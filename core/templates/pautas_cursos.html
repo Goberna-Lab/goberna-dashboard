@@ -1198,7 +1198,12 @@
 
   function abrirCampanasModal(pais, producto, sinVincular, campanas) {
     document.getElementById("campanasModalTitleMain").textContent = producto || "Campañas";
-    document.getElementById("campanasModalTitleSub").textContent = pais;
+    // "País Destino" (no solo el nombre del país a secas): la fila ya viene
+    // agrupada por a quién le llegó el anuncio (breakdown geográfico real
+    // de Meta), no por la cuenta que paga -- ver "País Origen" más abajo,
+    // que es la distinción opuesta. Rotular ambos evita la confusión de
+    // "¿por qué dice Perú si la cuenta es México?".
+    document.getElementById("campanasModalTitleSub").textContent = "País Destino: " + pais;
     var footer = document.getElementById("campanasModalFooter");
     if (footer) footer.style.display = sinVincular ? "" : "none";
     var body = document.getElementById("campanasModalBody");
@@ -1216,7 +1221,7 @@
       if (c.cuenta_origen && c.cuenta_origen !== pais) {
         var origen = document.createElement("div");
         origen.style.cssText = "font-size:.7rem;color:var(--muted);font-weight:400;";
-        origen.textContent = "Cuenta: " + c.cuenta_origen;
+        origen.textContent = "País Origen: " + c.cuenta_origen;
         tdName.appendChild(origen);
       }
       var tdProd = document.createElement("td");
