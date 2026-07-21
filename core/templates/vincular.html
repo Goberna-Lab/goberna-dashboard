@@ -1093,7 +1093,7 @@
         valueEl.classList.remove('is-placeholder');
       } else {
         picker.value = '';
-        valueEl.textContent = sel.length + ' productos seleccionados (pack)';
+        valueEl.textContent = sel.length + ' productos seleccionados';
         valueEl.classList.remove('is-placeholder');
       }
     }
@@ -1265,7 +1265,7 @@
     if (combo) {
       packHint = document.createElement('div');
       packHint.className = 'pack-hint';
-      packHint.innerHTML = '<i class="fas fa-scale-balanced"></i> Modo pack: cada producto tildado se atribuye el gasto completo de esta campaña (no se reparte).';
+      packHint.innerHTML = '<i class="fas fa-scale-balanced"></i> Campaña vinculada a varios productos: cada producto tildado se atribuye el gasto completo de esta campaña (no se reparte).';
       combo.insertAdjacentElement('afterend', packHint);
     }
 
