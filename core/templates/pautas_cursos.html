@@ -502,6 +502,32 @@
       text-align: left;
       line-height: 1.25;
     }
+    /* "×" para quitar UN producto de una campaña vinculada a varios — solo
+       se agrega (por JS) cuando la fila tiene 2+ productos, nunca en un
+       badge de campaña 1:1. */
+    .product-badge-remove {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 5px;
+      width: 14px;
+      height: 14px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--navy);
+      opacity: .55;
+      font-size: 0.62rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color .15s ease, color .15s ease, opacity .15s ease;
+    }
+    .product-badge-remove:hover {
+      background: #FEE2E2;
+      color: #B42318;
+      opacity: 1;
+    }
+    .product-badge-remove:disabled { opacity: .4; cursor: default; }
     /* Grupo con más de un producto vinculado (pack) -> resaltar sutilmente,
        coherente con el resto de la paleta (dorado = "atención/pack"). */
     .group-header.group-pack .group-header-title { color: var(--navy); }
@@ -1240,14 +1266,83 @@
   }
 
   // Columna "Producto(s) vinculado(s)" — badges. Una fila normal (campaña
-  // 1:1) muestra un solo badge; una fila de campaña "pack" muestra 2+.
-  // wrap=true: nombres completos, sin truncar (más espacio disponible que
-  // en el header de grupo) — ver .product-badge--wrap.
+  // 1:1) muestra un solo badge; una fila de campaña vinculada a varios
+  // productos muestra 2+, cada uno con un "×" para quitar SOLO ese producto
+  // (POST /ads/quitar-producto/) sin desvincular el resto. wrap=true:
+  // nombres completos, sin truncar (más espacio disponible que en el header
+  // de grupo) — ver .product-badge--wrap.
   function productosFmt(cell) {
     var data = cell.getRow().getData();
+    var productos = data.productos || [];
     var wrap = document.createElement("div");
-    wrap.innerHTML = productBadgesHtml(data.productos || [], true);
+    wrap.innerHTML = productBadgesHtml(productos, true);
+
+    // El "×" solo tiene sentido cuando hay 2+ productos vinculados a esta
+    // campaña Y hay campañas reales detrás (nunca en el grupo "Sin campaña
+    // con gasto en el rango", que no tiene campaign_id que llamar).
+    var campanas = data.campanas || [];
+    if (productos.length > 1 && campanas.length) {
+      var badgeEls = wrap.querySelectorAll(".product-badge");
+      badgeEls.forEach(function (el, i) {
+        var p = productos[i];
+        if (!p || p.codigo === null || p.codigo === undefined) return;
+        var x = document.createElement("button");
+        x.type = "button";
+        x.className = "product-badge-remove";
+        x.title = "Quitar " + p.nombre + " de esta campaña";
+        x.innerHTML = '<i class="fas fa-xmark"></i>';
+        x.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          quitarProductoDeCampana(data, p, x);
+        });
+        el.appendChild(x);
+      });
+    }
     return wrap;
+  }
+
+  // Quita UN producto puntual de una campaña vinculada a varios (POST
+  // /ads/quitar-producto/), sin desvincular el resto. Una fila de la tabla
+  // agrupa 1+ campanas reales (normalmente 1, pero puede haber más de una
+  // con el mismo nombre) — se llama al endpoint una vez por cada
+  // campaign_id real detrás de esta fila para que el producto quede
+  // consistentemente quitado de todas.
+  function quitarProductoDeCampana(rowData, producto, btn) {
+    var ids = (rowData.campanas || [])
+      .map(function (c) { return c.campaign_id; })
+      .filter(Boolean);
+    if (!ids.length) return;
+
+    var msg = 'Vas a quitar "' + producto.nombre + '" de "' + rowData.campana_nombre +
+      '" (' + rowData.pais + '). El resto de productos vinculados a esta campaña sigue igual. ¿Continuar?';
+    if (!window.confirm(msg)) return;
+
+    btn.disabled = true;
+    var prevHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    Promise.all(ids.map(function (cid) {
+      return fetch("/ads/quitar-producto/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ campaign_id: cid, codigo_producto: producto.codigo }),
+      }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); });
+    }))
+      .then(function (results) {
+        var bad = results.find(function (r) { return !r.ok; });
+        if (bad) throw new Error(bad.data.error || "Error al quitar el producto");
+        loadData(true); // refresca tabla + KPIs, preservando el filtro de Producto activo
+      })
+      .catch(function (err) {
+        window.alert("No se pudo quitar el producto: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+      });
   }
 
   function escapeHtml(s) {
