@@ -589,38 +589,39 @@
       min-width: 0;
     }
 
-    /* Footer / calc row -> totales generales, claramente diferenciados */
+    /* Footer / calc row -> totales generales, claramente diferenciados.
+       Antes era un bloque navy sólido (mismo peso que el header) que el
+       dueño del producto vio como "pesado / poco profesional" en producción.
+       Ahora: fondo gris muy sutil (--app-bg, el mismo de detrás de la
+       tarjeta) + un borde superior de acento en navy -> se distingue de las
+       filas blancas normales sin competir visualmente con el header. Texto
+       en navy (no blanco) porque ya no hay bloque de color sólido detrás. */
     #cursosGrid .tabulator-footer {
-      background: var(--navy);
+      background: var(--app-bg);
       border-top: 2px solid var(--navy);
       padding: 0;
     }
     #cursosGrid .tabulator-footer .tabulator-calcs-holder {
-      background: var(--navy) !important;
+      background: var(--app-bg) !important;
       border-top: none !important;
       border-bottom: none !important;
     }
-    /* La librería le pone su propio fondo gris claro (tema por defecto) a
-       la fila de calcs (`.tabulator-row.tabulator-calcs`), que queda ENCIMA
-       del navy que le pusimos a `.tabulator-calcs-holder` — sin este
-       override, el texto blanco de la fila quedaba prácticamente ilegible
-       sobre gris claro en vez de sobre navy. */
+    /* La librería le pone su propio fondo gris (tema por defecto) a la fila
+       de calcs (`.tabulator-row.tabulator-calcs`), que puede quedar algo más
+       oscuro/distinto al --app-bg del holder -> se iguala explícitamente
+       para que la fila se vea como una sola superficie continua. */
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row.tabulator-calcs {
-      background: var(--navy) !important;
+      background: var(--app-bg) !important;
     }
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell {
       font-weight: 700;
       font-size: 0.8rem;
-      color: #fff;
+      color: var(--navy);
       padding: 10px;
       background: transparent;
     }
-    #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell .roas-neg {
-      color: #FCA5A5;
-    }
-    #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell .roas-pos {
-      color: #86EFAC;
-    }
+    /* roas-neg/roas-pos ya definidos arriba (#B42318 / #15803D) para fondo
+       claro — se heredan tal cual, sin overrides de color blanco. */
     /* Primera celda del footer: etiqueta "Totales". Cuando hay más de una
        página de campañas (#cursosGrid.is-paginated, ver renderGroupPager),
        esta barra solo suma las campañas visibles en la página actual -> se
@@ -632,7 +633,7 @@
       font-size: 0.62rem;
       font-weight: 700;
       letter-spacing: .06em;
-      color: rgba(255,255,255,.55);
+      color: var(--muted);
       margin-bottom: 1px;
     }
     #cursosGrid.is-paginated .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell:first-child::before {
