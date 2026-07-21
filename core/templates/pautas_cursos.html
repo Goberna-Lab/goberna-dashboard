@@ -600,11 +600,20 @@
       border-top: none !important;
       border-bottom: none !important;
     }
+    /* La librería le pone su propio fondo gris claro (tema por defecto) a
+       la fila de calcs (`.tabulator-row.tabulator-calcs`), que queda ENCIMA
+       del navy que le pusimos a `.tabulator-calcs-holder` — sin este
+       override, el texto blanco de la fila quedaba prácticamente ilegible
+       sobre gris claro en vez de sobre navy. */
+    #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row.tabulator-calcs {
+      background: var(--navy) !important;
+    }
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell {
       font-weight: 700;
       font-size: 0.8rem;
       color: #fff;
       padding: 10px;
+      background: transparent;
     }
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell .roas-neg {
       color: #FCA5A5;
