@@ -1852,17 +1852,48 @@
   // Filtro combinado Producto + Campaña, en AND. Una fila sin campañas
   // (SIN_CAMPANA_GROUP) solo pasa el filtro de Campaña si esa opción especial
   // está seleccionada explícitamente.
+  //
+  // OJO: `r.campanas` es la lista de TODAS las campañas Meta reales que
+  // aportan gasto a esta fila (producto+país) — un producto vinculado tanto
+  // a un pack como a su propia campaña dedicada trae ambas en el mismo
+  // array. Si el filtro de Campaña solo recorta qué FILAS sobreviven (una
+  // fila sobrevive si ALGUNA de sus campañas matchea) pero no recorta el
+  // array `campanas` en sí, buildCampaignGroupedRows() vuelve a abrir esa
+  // fila en un grupo por CADA campaña que traía — incluyendo las que el
+  // usuario no seleccionó. Por eso acá también se recorta `campanas` a
+  // solo las que matchean el filtro (ver filterRowCampanas/applyCampaignFilterToRows,
+  // reutilizados por el test de regresión de este filtro).
+  function filterRowCampanas(row, selected) {
+    if (!selected.length || !row.campanas || !row.campanas.length) return row;
+    var recortadas = row.campanas.filter(function (c) {
+      return selected.indexOf(c.nombre || c.campaign_id) > -1;
+    });
+    if (recortadas.length === row.campanas.length) return row;
+    var copia = {};
+    for (var k in row) { if (Object.prototype.hasOwnProperty.call(row, k)) copia[k] = row[k]; }
+    copia.campanas = recortadas;
+    return copia;
+  }
+
+  function applyCampaignFilterToRows(rows, selected) {
+    return rows
+      .filter(function (r) {
+        if (!selected.length) return true;
+        var campanas = r.campanas || [];
+        if (!campanas.length) return selected.indexOf(SIN_CAMPANA_GROUP) > -1;
+        return campanas.some(function (c) { return selected.indexOf(c.nombre || c.campaign_id) > -1; });
+      })
+      .map(function (r) { return filterRowCampanas(r, selected); });
+  }
+
   function applyFilters(dFrom, dTo) {
     summarizeProductSelection();
     summarizeCampaignSelection();
 
     var filtered = allLinkedRows.filter(function (r) {
-      if (productFilterSelected.length && productFilterSelected.indexOf(r.producto) === -1) return false;
-      if (!campaignFilterSelected.length) return true;
-      var campanas = r.campanas || [];
-      if (!campanas.length) return campaignFilterSelected.indexOf(SIN_CAMPANA_GROUP) > -1;
-      return campanas.some(function (c) { return campaignFilterSelected.indexOf(c.nombre || c.campaign_id) > -1; });
+      return !productFilterSelected.length || productFilterSelected.indexOf(r.producto) > -1;
     });
+    filtered = applyCampaignFilterToRows(filtered, campaignFilterSelected);
 
     var empty = document.getElementById("gridEmpty");
     var grid = document.getElementById("cursosGrid");
