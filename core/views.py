@@ -1517,6 +1517,39 @@ def _negocio_to_ads_category(nombre_negocio: str | None) -> str | None:
     return _MAP.get(key, nombre_negocio)
 
 
+def _resolver_representante_pack(pares, productos_by_codigo):
+    """
+    Dado un pack de 2+ productos vinculados a una(s) campaña(s)
+    (`pares`: lista de (codigo_producto, weight_pct) YA ordenada por peso
+    descendente) y el dict {codigo_producto: Producto} correspondiente,
+    devuelve (rep_codigo, rep_category, combined_name):
+
+    - rep_codigo: producto de mayor peso — el que queda como "representante"
+      en MetaCampaignMap.codigo_producto, para que el resto del sistema
+      (que lee un solo código por campaña) siga funcionando sin cambios.
+    - rep_category: categoría (negocio) del representante, normalizada.
+    - combined_name: nombre combinado "Producto A / Producto B / ..." en el
+      mismo orden de `pares`, usado en MetaCampaignMap.product_name y
+      tb_meta_ads.product/category para que se vea bien en el resto del
+      dashboard.
+
+    Única fuente de esta regla de negocio — antes vivía duplicada en el
+    flujo de vinculación multi-producto y en el de quitar un producto de un
+    pack; un cambio en el criterio ahora se hace en un solo lugar.
+    """
+    rep_codigo = pares[0][0]
+    rep_prod = productos_by_codigo.get(rep_codigo)
+    try:
+        rep_negocio = rep_prod.codigo_negocio.nombre_negocio if rep_prod else None
+    except Exception:
+        rep_negocio = None
+    rep_category = _negocio_to_ads_category(rep_negocio)
+    combined_name = " / ".join(
+        productos_by_codigo[c].nombre_producto for c, _ in pares if c in productos_by_codigo
+    )
+    return rep_codigo, rep_category, combined_name
+
+
 # ---------------------------------------------------------------------------
 # Vincular — agrupación de campañas pendientes + sugerencias de producto
 # ---------------------------------------------------------------------------
@@ -1910,15 +1943,8 @@ def ads_vincular(request):
                                     pares = sorted(
                                         zip(codigos, pesos), key=lambda cp: cp[1], reverse=True
                                     )
-                                    rep_codigo = pares[0][0]
-                                    rep_prod = productos_by_codigo[rep_codigo]
-                                    try:
-                                        rep_negocio = rep_prod.codigo_negocio.nombre_negocio
-                                    except Exception:
-                                        rep_negocio = None
-                                    rep_category = _negocio_to_ads_category(rep_negocio)
-                                    combined_name = " / ".join(
-                                        productos_by_codigo[c].nombre_producto for c, _ in pares
+                                    rep_codigo, rep_category, combined_name = (
+                                        _resolver_representante_pack(pares, productos_by_codigo)
                                     )
                                     try:
                                         from django.db import transaction
@@ -3168,6 +3194,141 @@ def ads_desvincular_campana(request):
     MetaAds.objects.filter(campaign_id=campaign_id).update(product=None, category=None)
 
     return JsonResponse({"ok": True})
+
+
+@ads_admin_required
+def ads_quitar_producto_campana(request):
+    """
+    POST /ads/quitar-producto/ — quita UN producto puntual de una campaña
+    vinculada a varios productos, sin desvincular el resto.
+
+    Body JSON: {"campaign_id": "...", "codigo_producto": N}.
+
+    Solo tiene sentido si la campaña tiene filas en MetaCampaignProductWeight
+    (viene de un vínculo multi-producto). Si el producto pedido no está entre
+    los vinculados, o la campaña solo tiene 1 producto, 400.
+
+    Tras quitar:
+    - Si quedan 2+ productos: sigue vinculada a varios — se reescribe el
+      producto representante en MetaCampaignMap (el de mayor peso entre los que
+      quedan) y el nombre combinado en tb_meta_ads.product/category.
+    - Si queda 1 solo producto: colapsa al comportamiento normal 1:1 — se
+      borra también esa última fila de MetaCampaignProductWeight (una
+      campaña de 1 producto NUNCA tiene fila ahí, ver docs), y
+      MetaCampaignMap/tb_meta_ads quedan con el nombre de ESE único
+      producto (no el combinado viejo).
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"error": "JSON inválido"}, status=400)
+
+    campaign_id = (body.get("campaign_id") or "").strip()
+    codigo_str = str(body.get("codigo_producto") or "").strip()
+    if not campaign_id or not codigo_str:
+        return JsonResponse({"error": "Faltan datos: campaign_id o codigo_producto"}, status=400)
+
+    try:
+        codigo_producto = int(codigo_str)
+    except ValueError:
+        return JsonResponse({"error": "Código de producto inválido"}, status=400)
+
+    if not MetaAds.objects.filter(campaign_id=campaign_id).exists():
+        return JsonResponse({"error": "La campaña no existe en los datos de Meta"}, status=404)
+
+    restantes = list(
+        MetaCampaignProductWeight.objects.filter(campaign_id=campaign_id)
+        .order_by("-weight_pct")
+    )
+    if not restantes:
+        return JsonResponse(
+            {"error": "Esta campaña no está vinculada a varios productos (no hay nada que quitar)."},
+            status=400,
+        )
+    if codigo_producto not in {r.codigo_producto for r in restantes}:
+        return JsonResponse(
+            {"error": "Ese producto no está vinculado a esta campaña."},
+            status=400,
+        )
+
+    restantes = [r for r in restantes if r.codigo_producto != codigo_producto]
+
+    try:
+        from django.db import transaction
+        from django.utils import timezone as tz
+        now = tz.now()
+        with transaction.atomic():
+            if len(restantes) >= 2:
+                # Sigue siendo pack: recalcular representante y nombre combinado
+                # entre los productos que quedan (ya ordenados por peso desc.).
+                codigos_restantes = [r.codigo_producto for r in restantes]
+                productos_by_codigo = {
+                    p.codigo_producto: p
+                    for p in Producto.objects.select_related("codigo_negocio")
+                    .filter(codigo_producto__in=codigos_restantes)
+                }
+                pares_restantes = [(r.codigo_producto, r.weight_pct) for r in restantes]
+                rep_codigo, rep_category, combined_name = (
+                    _resolver_representante_pack(pares_restantes, productos_by_codigo)
+                )
+
+                MetaCampaignProductWeight.objects.filter(
+                    campaign_id=campaign_id, codigo_producto=codigo_producto
+                ).delete()
+                MetaCampaignMap.objects.update_or_create(
+                    campaign_id=campaign_id,
+                    defaults={
+                        "codigo_producto": rep_codigo,
+                        "product_name": combined_name,
+                        "category": rep_category or None,
+                        "linked_by": "manual",
+                        "linked_at": now,
+                    },
+                )
+                MetaAds.objects.filter(campaign_id=campaign_id).update(
+                    product=combined_name,
+                    category=rep_category or None,
+                )
+                mensaje = f"✓ Producto quitado. La campaña sigue vinculada a {len(restantes)} productos «{combined_name}»."
+            else:
+                # Queda 1 solo producto: colapsa a 1:1, sin fila de peso.
+                ultimo_codigo = restantes[0].codigo_producto
+                ultimo_prod = Producto.objects.select_related("codigo_negocio").filter(
+                    codigo_producto=ultimo_codigo
+                ).first()
+                try:
+                    ultimo_negocio = ultimo_prod.codigo_negocio.nombre_negocio if ultimo_prod else None
+                except Exception:
+                    ultimo_negocio = None
+                ultimo_category = _negocio_to_ads_category(ultimo_negocio)
+                ultimo_nombre = ultimo_prod.nombre_producto if ultimo_prod else None
+
+                MetaCampaignProductWeight.objects.filter(campaign_id=campaign_id).delete()
+                MetaCampaignMap.objects.update_or_create(
+                    campaign_id=campaign_id,
+                    defaults={
+                        "codigo_producto": ultimo_codigo,
+                        "product_name": ultimo_nombre,
+                        "category": ultimo_category or None,
+                        "linked_by": "manual",
+                        "linked_at": now,
+                    },
+                )
+                MetaAds.objects.filter(campaign_id=campaign_id).update(
+                    product=ultimo_nombre,
+                    category=ultimo_category or None,
+                )
+                mensaje = f"✓ Producto quitado. La campaña quedó vinculada solo a «{ultimo_nombre}»."
+    except Exception:
+        logger.exception(
+            "Error al quitar producto %s de campaña %s", codigo_producto, campaign_id
+        )
+        return JsonResponse({"error": "Error al guardar el cambio."}, status=500)
+
+    return JsonResponse({"ok": True, "message": mensaje, "productos_restantes": len(restantes)})
 
 
 @ads_admin_required

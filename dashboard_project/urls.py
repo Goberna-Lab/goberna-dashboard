@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from core.views import home_dashboard, ads_dashboard, ads_accounts, ads_vincular, ads_crear_campana, pautas_ventas_cursos, ads_desvincular_campana
+from core.views import home_dashboard, ads_dashboard, ads_accounts, ads_vincular, ads_crear_campana, pautas_ventas_cursos, ads_desvincular_campana, ads_quitar_producto_campana
 from core.debug_view import debug_session
 
 urlpatterns = [
@@ -10,6 +10,7 @@ urlpatterns = [
     path('ads/cuentas/', ads_accounts, name='ads_accounts'),
     path('ads/vincular/', ads_vincular, name='ads_vincular'),
     path('ads/desvincular/', ads_desvincular_campana, name='ads_desvincular_campana'),
+    path('ads/quitar-producto/', ads_quitar_producto_campana, name='ads_quitar_producto_campana'),
     path('ads/crear-campana/', ads_crear_campana, name='ads_crear_campana'),
     path('ads/cursos/', pautas_ventas_cursos, name='pautas_cursos'),
     path('debug-session/', debug_session),
