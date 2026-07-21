@@ -286,7 +286,7 @@
     ============================================================ */
     .kpi-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 14px;
       margin-bottom: 20px;
     }
@@ -328,10 +328,13 @@
       margin-top: 2px;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
+      .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
       .kpi-row { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 420px) {
       .kpi-row { grid-template-columns: 1fr; }
     }
 
@@ -374,22 +377,39 @@
       border-right: 1px solid #F1F4F9;
     }
 
-    /* Group header rows (groupBy: producto) */
+    /* Group header rows (groupBy: campana_nombre). Extra padding + margin-top
+       (separación entre "tarjetas" de campaña, con el fondo de la página
+       asomando entre una y otra) para que la lista de campañas no se sienta
+       como un bloque compacto y continuo — feedback del usuario ("se puede
+       mejorar... más aire entre elementos"). El primer grupo no lleva
+       margen para no dejar un hueco raro pegado al header de la tabla. */
     #cursosGrid .tabulator-row.tabulator-group {
       background: #EFF4FE;
       border-bottom: 1px solid #CDDCF2;
+      border-top: 1px solid #CDDCF2;
       font-weight: 700;
       color: var(--navy);
       font-size: 0.82rem;
-      padding: 8px 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      border-radius: 8px;
     }
+    #cursosGrid .tabulator-row.tabulator-group:first-child {
+      margin-top: 0;
+      border-radius: 0;
+    }
+    /* Con groupToggleElement:"arrow" solo la flechita togglea el grupo (no
+       toda la fila) — ver JS. Grupos de 1 solo país no tienen nada nuevo que
+       mostrar al expandir (la fila de detalle repite 1:1 el header), así que
+       se oculta la flecha y el cursor vuelve a "default" en vez de dejar una
+       affordance de expandir que no lleva a ningún lado. */
     #cursosGrid .tabulator-row.tabulator-group .tabulator-group-toggle {
       padding: 4px 6px;
+      cursor: pointer;
     }
     #cursosGrid .tabulator-row.tabulator-group .tabulator-arrow {
       margin-right: 6px;
     }
-
     /* Grupo "Sin producto vinculado" -> advertencia suave, no agresiva */
     #cursosGrid .tabulator-row.tabulator-group.group-unlinked {
       background: #FBF8F0;
@@ -404,19 +424,37 @@
       gap: 8px;
       flex-wrap: wrap;
       width: 100%;
+      min-width: 0;
     }
-    .group-header-title { font-weight: 700; }
-    .group-header-count { color: #94A3B8; font-weight: 600; font-size: 0.76rem; }
+    /* min-width:0 en cada hijo flex evita que el texto sin wrap (título de
+       campaña largo, subtotales) fuerce el ancho total de la fila más allá
+       del contenedor -> esto era lo que generaba scroll horizontal en la
+       tabla (los flex items no se achican por debajo de su contenido por
+       default). */
+    .group-header-inner > * { min-width: 0; }
+    .group-header-title {
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    .group-header-count { color: #94A3B8; font-weight: 600; font-size: 0.76rem; flex: 0 0 auto; }
+    .group-header-pais { color: var(--muted); font-weight: 600; flex: 0 0 auto; white-space: nowrap; }
     .group-header-spacer { flex: 1 1 auto; }
     .group-header-subtotals {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
+      row-gap: 4px;
       gap: 14px;
       font-size: 0.76rem;
       font-weight: 700;
       color: var(--navy);
       font-variant-numeric: tabular-nums;
+      flex: 0 1 auto;
     }
+    .group-header-subtotals > * { white-space: nowrap; }
     .group-header-subtotals .gh-label {
       font-weight: 600;
       color: var(--muted);
@@ -428,6 +466,58 @@
     }
     .group-unlinked .group-header-title {
       color: #8A6A1F;
+    }
+    /* Badges de producto(s) vinculado(s) — usados tanto en el header de
+       grupo (campaña) como en la columna "Producto(s)" de cada fila país. */
+    .product-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .product-badge {
+      display: inline-flex;
+      align-items: center;
+      background: #EEF2FF;
+      color: var(--navy);
+      border: 1px solid #DCE3F7;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      white-space: nowrap;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .group-header-title .product-badges { margin-left: 8px; }
+    /* Variante para la columna "Producto(s) vinculado(s)" de la tabla (no el
+       header de grupo, que sigue compacto/truncado): ahí hay más espacio
+       vertical disponible y priorizamos legibilidad del nombre completo por
+       sobre una sola línea -> permite wrap en vez de truncar con "…".
+       El tooltip (title=) se mantiene como respaldo en pantallas chicas. */
+    .product-badge--wrap {
+      white-space: normal;
+      max-width: 100%;
+      text-align: left;
+      line-height: 1.25;
+    }
+    /* Grupo con más de un producto vinculado (pack) -> resaltar sutilmente,
+       coherente con el resto de la paleta (dorado = "atención/pack"). */
+    .group-header.group-pack .group-header-title { color: var(--navy); }
+    .badge-pack {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #FFF7DC;
+      color: var(--gold-ink);
+      border: 1px solid #F5E4A3;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
     }
     .badge-unlinked {
       display: inline-flex;
@@ -442,6 +532,25 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .03em;
+    }
+    /* Segunda línea bajo el nombre del país: campaña(s) detrás del gasto de
+       esa fila. Texto secundario, truncado con ellipsis para no romper el
+       layout de la tabla (fitColumns sigue intacto). */
+    .pais-campana-sub {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+      max-width: 100%;
+    }
+    .pais-campana-sub .campana-nombre {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 500;
+      min-width: 0;
     }
 
     /* Footer / calc row -> totales generales, claramente diferenciados */
@@ -467,7 +576,11 @@
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell .roas-pos {
       color: #86EFAC;
     }
-    /* Primera celda del footer: etiqueta "Totales" */
+    /* Primera celda del footer: etiqueta "Totales". Cuando hay más de una
+       página de campañas (#cursosGrid.is-paginated, ver renderGroupPager),
+       esta barra solo suma las campañas visibles en la página actual -> se
+       aclara con "(esta página)" para no confundirla con los KPI cards de
+       arriba, que siempre son el total general del filtro completo. */
     #cursosGrid .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell:first-child::before {
       content: "TOTALES";
       display: block;
@@ -477,6 +590,9 @@
       color: rgba(255,255,255,.55);
       margin-bottom: 1px;
     }
+    #cursosGrid.is-paginated .tabulator-footer .tabulator-calcs-holder .tabulator-row .tabulator-cell:first-child::before {
+      content: "TOTALES (esta página)";
+    }
 
     #cursosGrid .tabulator-placeholder .tabulator-placeholder-contents {
       color: var(--muted);
@@ -484,7 +600,50 @@
       font-weight: 600;
     }
 
+    /* Un poco de aire entre la toolbar de filtros y el grid (antes quedaban
+       pegados: el borde de la toolbar tocaba directamente la primera fila). */
+    #cursosGrid { padding: 10px 0 0; }
+
     .cell-null { color: var(--muted); }
+
+    /* ── Paginador de grupos (campañas) ──────────────────────────────────
+       Tabulator no soporta bien pagination + groupBy (un grupo puede
+       partirse entre dos páginas) — en vez de usar su paginación nativa,
+       se pagina del lado del cliente a nivel de "campaña" (no de fila): se
+       le pasa a Tabulator solo el subconjunto de campañas de la página
+       actual, así ningún grupo queda nunca cortado a la mitad. */
+    .group-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--app-bg);
+    }
+    .group-pager-info {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .group-pager-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .group-pager-controls .btn {
+      font-size: 0.78rem;
+      padding: 5px 12px;
+      font-weight: 600;
+    }
+    .group-pager-controls .group-pager-page {
+      font-size: 0.78rem;
+      color: var(--ink);
+      font-weight: 700;
+      min-width: 70px;
+      text-align: center;
+    }
 
     /* Link "ver campañas" en filas "Sin producto vinculado" */
     .ver-campanas {
@@ -607,7 +766,7 @@
     <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
       <div>
         <h1><i class="fas fa-graduation-cap me-2"></i>Pautas y Ventas</h1>
-        <p class="sub">Cruce de inversión Meta (USD, incluye conversión BOB) vs ventas pagadas (USD), agrupado por producto y país.</p>
+        <p class="sub">Cruce de inversión Meta (USD, incluye conversión BOB) vs ventas pagadas (USD), agrupado por campaña de Meta Ads y producto(s) vinculado(s).</p>
       </div>
       <!-- Date range picker (flatpickr, mismo patrón que ads.html) -->
       <div class="ads-date-wrap" id="adsDateWrap">
@@ -630,6 +789,10 @@
     <div class="kpi-card" id="kpiUtilidadCard">
       <div class="kpi-label"><i class="fas fa-chart-line"></i>Utilidad</div>
       <div class="kpi-value" id="kpiUtilidad">—</div>
+    </div>
+    <div class="kpi-card" id="kpiMargenCard">
+      <div class="kpi-label"><i class="fas fa-percent"></i>Margen</div>
+      <div class="kpi-value" id="kpiMargen">—</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label"><i class="fas fa-receipt"></i>Cantidad de ventas</div>
@@ -668,6 +831,34 @@
         </div>
       </div>
 
+      <!-- Filtro de Campaña: mismo patrón multi-check que Producto. El
+           catálogo se recalcula según el/los producto(s) ya seleccionado(s)
+           (no muestra campañas ajenas al producto elegido) y ambos filtros
+           se combinan en AND — ver applyFilters(). -->
+      <div class="filter-chip">
+        <i class="fas fa-bullhorn"></i>
+        <div class="filter-body">
+          <span class="filter-label">Campaña</span>
+          <details class="multi-check" id="campaignFilterDropdown">
+            <summary id="btnCampaignFilter" title="Filtrá la tabla y los KPIs por una o varias campañas de Meta Ads">
+              <span id="campaignFilterSummaryText">Todas las campañas</span>
+            </summary>
+            <div class="multi-check-menu">
+              <div class="multi-check-search">
+                <i class="fas fa-search icon"></i>
+                <input type="text" id="campaignFilterSearch" placeholder="Buscar campaña..." autocomplete="off">
+              </div>
+              <label class="multi-check-row">
+                <input type="checkbox" id="campaignFilterAll" checked>
+                <span>Todas las campañas</span>
+              </label>
+              <div class="multi-check-divider"></div>
+              <div id="campaignFilterOptions" class="multi-check-list"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
       <span class="pill" id="cursosSummary" style="font-size:.78rem; color:#64748B; font-weight:600;"></span>
 
       <span class="toolbar-spacer"></span>
@@ -693,6 +884,21 @@
 
     <!-- Tabulator grid -->
     <div id="cursosGrid" style="display:none;"></div>
+
+    <!-- Paginador de grupos (campañas) — ver comentario CSS .group-pager y
+         paginateCampaignGroups() en el JS. Oculto si hay una sola página. -->
+    <div class="group-pager" id="groupPager" style="display:none;">
+      <span class="group-pager-info" id="groupPagerInfo"></span>
+      <div class="group-pager-controls">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="groupPagerPrev">
+          <i class="fas fa-chevron-left"></i> Anterior
+        </button>
+        <span class="group-pager-page" id="groupPagerPage"></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="groupPagerNext">
+          Siguiente <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
 
   </div>
 
@@ -747,6 +953,16 @@
   // (no hay un catálogo aparte que consultar) — filtra tabla + KPIs juntos.
   var allLinkedRows = [];       // todas las filas "vinculadas" del rango de fechas actual
   var productFilterSelected = []; // [] = sin filtro (todos los productos)
+  var campaignFilterSelected = []; // [] = sin filtro (todas las campañas); AND con productFilterSelected
+
+  // ── Paginación de grupos (campañas) ─────────────────────────────────────
+  // Cuántas campañas (grupos) se muestran por página. Tabulator no soporta
+  // bien pagination + groupBy (un grupo puede quedar partido entre dos
+  // páginas), así que se pagina a mano del lado del cliente, por campaña
+  // completa — ver paginateAndRender().
+  var GROUP_PAGE_SIZE = 12;
+  var groupPage = 0;
+  var currentGroupedRows = []; // filas (campaña x país) del filtro actual, sin paginar
 
   // ── Date range picker (flatpickr, mismos presets que ads.html) ──────────
   var ADS_PRESETS = [
@@ -946,6 +1162,17 @@
       var tdName = document.createElement("td");
       tdName.className = "campana-name";
       tdName.textContent = c.nombre;
+      // "Ver campañas" abre desde una fila que ya está agrupada por país
+      // DESTINO real (a quién le llegó el anuncio). `cuenta_origen` es la
+      // cuenta publicitaria que paga la campaña (heurística por nombre de
+      // cuenta) — solo se muestra cuando difiere del país destino de esta
+      // fila, para no repetir el mismo país dos veces sin motivo.
+      if (c.cuenta_origen && c.cuenta_origen !== pais) {
+        var origen = document.createElement("div");
+        origen.style.cssText = "font-size:.7rem;color:var(--muted);font-weight:400;";
+        origen.textContent = "Cuenta: " + c.cuenta_origen;
+        tdName.appendChild(origen);
+      }
       var tdProd = document.createElement("td");
       tdProd.className = "producto-meta";
       tdProd.textContent = c.producto_meta || "—";
@@ -960,8 +1187,8 @@
         var small = document.createElement("div");
         small.style.cssText = "font-size:.7rem;color:var(--muted);font-weight:400;";
         small.textContent = (Number(c.peso_pct) >= 100)
-          ? "gasto completo (pack compartido)"
-          : Number(c.peso_pct) + "% del gasto (pack)";
+          ? "gasto completo (campaña vinculada a varios productos)"
+          : Number(c.peso_pct) + "% del gasto (varios productos vinculados)";
         tdAmt.appendChild(small);
       }
       var tdAction = document.createElement("td");
@@ -985,28 +1212,185 @@
     if (campanasModal) campanasModal.show();
   }
 
-  // País + link "Ver campañas (N)" en cualquier fila que tenga campañas de
-  // Meta detrás (vinculada o no) — antes solo aparecía en "Sin producto
-  // vinculado".
+  // País + link "Ver campañas (N)" — dentro de un grupo "campaña", cada fila
+  // es un país donde esa campaña corrió. Normalmente 1 campaign_id real por
+  // país, pero puede haber más de uno con el mismo nombre (ads duplicados) —
+  // el link siempre abre el detalle exacto detrás del monto de esa fila.
   function paisFmt(cell) {
     var data = cell.getRow().getData();
     var pais = cell.getValue();
     var campanas = data.campanas || [];
     if (!campanas.length) return pais;
-    var sinVincular = (data.codigo_producto === null || data.codigo_producto === undefined);
 
-    var wrap = document.createElement("span");
-    wrap.textContent = pais;
+    var wrap = document.createElement("div");
+    var top = document.createElement("span");
+    top.textContent = pais;
     var link = document.createElement("a");
     link.href = "#";
     link.className = "ver-campanas";
     link.innerHTML = '<i class="fas fa-magnifying-glass"></i>Ver ' + campanas.length + (campanas.length === 1 ? " campaña" : " campañas");
     link.addEventListener("click", function (ev) {
       ev.preventDefault();
-      abrirCampanasModal(pais, data.producto, sinVincular, campanas);
+      var productoLabel = (data.productos || []).map(function (p) { return p.nombre; }).join(" + ");
+      abrirCampanasModal(pais, productoLabel || data.campana_nombre, false, campanas);
     });
-    wrap.appendChild(link);
+    top.appendChild(link);
+    wrap.appendChild(top);
     return wrap;
+  }
+
+  // Columna "Producto(s) vinculado(s)" — badges. Una fila normal (campaña
+  // 1:1) muestra un solo badge; una fila de campaña "pack" muestra 2+.
+  // wrap=true: nombres completos, sin truncar (más espacio disponible que
+  // en el header de grupo) — ver .product-badge--wrap.
+  function productosFmt(cell) {
+    var data = cell.getRow().getData();
+    var wrap = document.createElement("div");
+    wrap.innerHTML = productBadgesHtml(data.productos || [], true);
+    return wrap;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function round2(v) { return Math.round((v || 0) * 100) / 100; }
+
+  // ── Reagrupamiento por campaña de Meta Ads ──────────────────────────────
+  // Las filas que llegan del backend (allLinkedRows, filtradas por
+  // productFilter en `filtered`) siguen siendo una fila por (producto, país)
+  // — eso no cambia, sigue siendo la unidad correcta para el cálculo de
+  // ventas/inversión que ya viene validado del backend. Acá se las reagrupa
+  // en el cliente en filas por (nombre de campaña, país), usando el array
+  // `campanas` que cada fila ya trae (campaign_id, nombre, gasto_usd,
+  // producto_meta, peso_pct).
+  //
+  // Se agrupa por NOMBRE de campaña (no por campaign_id) porque en Meta cada
+  // país suele tener su propio campaign_id pero reutiliza el mismo nombre
+  // (ej. "[JUL] PACK 360 | WSP" → 3 campaign_id distintos, uno por país) —
+  // agrupar por nombre es lo que realmente consolida la vista.
+  //
+  // Reglas para no inflar sumas cuando una campaña está vinculada a más de
+  // un producto (pack, weight_pct=100 en cada uno — ver
+  // docs/multi-producto-meta-ads.md):
+  //  - Inversión de una fila (campaña × país): se dedupea por campaign_id
+  //    (Map), así que si esta función procesa esa campaña vía el producto A
+  //    y vía el producto B, el gasto se cuenta UNA sola vez (no una fila
+  //    "campaña" pack con 2 productos infla el `campanas` a $X+$X); el
+  //    monto en sí sigue siendo el gasto completo de la campaña, no una
+  //    porción — esa es la decisión de negocio ya tomada, no se cambia acá.
+  //  - Ventas de una fila (campaña × país): SÍ se suman las ventas de todos
+  //    los productos vinculados a esa campaña en ese país — es la misma
+  //    filosofía de atribución completa ya aplicada al gasto: si el pack
+  //    promociona A y B, la fila de la campaña refleja el resultado
+  //    combinado de A+B en ese país, no una porción arbitraria.
+  //  - Caso distinto (no es la decisión de negocio de arriba): si un mismo
+  //    (producto, país) tiene gasto de DOS campañas con nombre distinto en
+  //    el rango (ej. una campaña vieja + una nueva corriendo a la vez para
+  //    el mismo curso/país), esa venta NO se duplica entre ambos grupos —
+  //    se atribuye entera a la campaña de mayor gasto de esa fila (`r.
+  //    campanas` ya viene ordenado desc. por gasto_usd desde el backend); la
+  //    otra campaña sigue apareciendo como su propio grupo, con su gasto
+  //    real, pero ventas=0 en esa fila país (evita inflar la suma de Ventas
+  //    del footer/KPI al reagrupar).
+  //  - Ventas sin ninguna campaña con gasto en el rango: `_roas_por_producto_pais`
+  //    incluye a propósito filas con inversion_usd=0 y ventas_usd>0 (venta
+  //    pagada de un curso vinculado, sin pauta activa en esas fechas — ver
+  //    docstring en views.py). Esas filas no tienen `campanas`, así que no
+  //    encajan en ningún grupo de campaña real; se agrupan aparte, por
+  //    producto, bajo "Sin campaña con gasto en el rango" para no perder esa
+  //    venta silenciosamente (si se descartaran, el total de Ventas de la
+  //    tabla dejaría de coincidir con las KPI cards de arriba).
+  var SIN_CAMPANA_GROUP = "Sin campaña con gasto en el rango";
+  function buildCampaignGroupedRows(rows) {
+    var groups = {}; // nombre de campaña -> { paises: { pais -> entry } }
+
+    rows.forEach(function (r) {
+      var campanas = r.campanas || [];
+      if (!campanas.length) {
+        var gg = groups[SIN_CAMPANA_GROUP] || (groups[SIN_CAMPANA_GROUP] = { nombre: SIN_CAMPANA_GROUP, paises: {} });
+        var key = r.pais + "||" + r.producto;
+        var pp = gg.paises[key] || (gg.paises[key] = {
+          pais: r.pais, productos: [{ nombre: r.producto, codigo: r.codigo_producto }],
+          campanasMap: {}, ventas: 0, ventas_count: 0,
+        });
+        pp.ventas += r.ventas_usd || 0;
+        pp.ventas_count += r.ventas_count || 0;
+        return;
+      }
+
+      var primaryName = campanas[0].nombre || campanas[0].campaign_id;
+      var namesInRow = {};
+      campanas.forEach(function (c) { namesInRow[c.nombre || c.campaign_id] = true; });
+
+      Object.keys(namesInRow).forEach(function (name) {
+        var g = groups[name] || (groups[name] = { nombre: name, paises: {} });
+        var p = g.paises[r.pais] || (g.paises[r.pais] = {
+          pais: r.pais,
+          productos: [],      // [{nombre, codigo}], orden de aparición
+          productosSeen: {},
+          campanasMap: {},    // campaign_id -> objeto campaña (dedupe)
+          ventas: 0,
+          ventas_count: 0,
+        });
+
+        if (!p.productosSeen[r.producto]) {
+          p.productosSeen[r.producto] = true;
+          p.productos.push({ nombre: r.producto, codigo: r.codigo_producto });
+        }
+        if (name === primaryName) {
+          p.ventas += r.ventas_usd || 0;
+          p.ventas_count += r.ventas_count || 0;
+        }
+
+        campanas.forEach(function (c) {
+          if ((c.nombre || c.campaign_id) === name) {
+            p.campanasMap[c.campaign_id] = c; // mismo campaign_id -> mismo gasto, no importa desde qué producto se vea
+          }
+        });
+      });
+    });
+
+    var out = [];
+    Object.keys(groups).forEach(function (gname) {
+      var g = groups[gname];
+      Object.keys(g.paises).forEach(function (paisKey) {
+        var p = g.paises[paisKey];
+        var inv = 0;
+        var campanasList = [];
+        Object.keys(p.campanasMap).forEach(function (cid) {
+          var c = p.campanasMap[cid];
+          inv += c.gasto_usd || 0;
+          campanasList.push(c);
+        });
+        campanasList.sort(function (a, b) { return (b.gasto_usd || 0) - (a.gasto_usd || 0); });
+        var ven = p.ventas;
+        var util = ven - inv;
+        out.push({
+          campana_nombre: gname,
+          pais: p.pais,
+          productos: p.productos,
+          ventas_count: p.ventas_count,
+          inversion_usd: round2(inv),
+          ventas_usd: round2(ven),
+          utilidad_usd: round2(util),
+          margen_pct: ven ? (util / ven) * 100 : null,
+          campanas: campanasList,
+        });
+      });
+    });
+    return out;
+  }
+
+  function productBadgesHtml(productos, wrap) {
+    var cls = "product-badge" + (wrap ? " product-badge--wrap" : "");
+    return '<span class="product-badges">' +
+      productos.map(function (p) {
+        return '<span class="' + cls + '" title="' + escapeHtml(p.nombre) + '">' + escapeHtml(p.nombre) + '</span>';
+      }).join("") +
+      '</span>';
   }
 
   // Helper para subtotales en el header de grupo (no formatter de Tabulator)
@@ -1056,6 +1440,7 @@
         // ya tenía el usuario — pierde solo lo que ya no exista más.
         if (!keepProductFilter) {
           productFilterSelected = [];
+          campaignFilterSelected = [];
         } else if (productFilterSelected.length) {
           // Mismo criterio que buildProductFilterOptions: solo productos con
           // al menos una campaña vinculada siguen siendo una selección
@@ -1071,6 +1456,10 @@
           productFilterSelected = productFilterSelected.filter(function (p) { return disponibles.has(p); });
         }
         buildProductFilterOptions();
+        // campaignFilterSelected se poda dentro de buildCampaignFilterOptions
+        // (mismo criterio defensivo que el producto: solo quedan seleccionadas
+        // las campañas que sigan existiendo en el catálogo recalculado).
+        buildCampaignFilterOptions();
 
         if (!linkedRows.length) {
           renderSummary([], data.date_from, data.date_to);
@@ -1079,7 +1468,7 @@
           return;
         }
         grid.style.display = "";
-        applyProductFilter(data.date_from, data.date_to);
+        applyFilters(data.date_from, data.date_to);
       })
       .catch(function () {
         loading.style.display = "none";
@@ -1113,38 +1502,67 @@
     utilCard.classList.remove("kpi-positive", "kpi-negative");
     utilCard.classList.add(totUtil < 0 ? "kpi-negative" : "kpi-positive");
 
+    // Margen % global = Utilidad total / Ventas totales (mismo criterio que
+    // margenBottomCalc/el header de grupo: sobre el total, no el promedio de
+    // márgenes por fila). null cuando no hubo ventas.
+    var totMargen = totVen ? (totUtil / totVen) * 100 : null;
+    var margenEl = document.getElementById("kpiMargen");
+    var margenCard = document.getElementById("kpiMargenCard");
+    margenEl.textContent = fmtPct(totMargen);
+    margenCard.classList.remove("kpi-positive", "kpi-negative");
+    if (totMargen !== null) margenCard.classList.add(totMargen < 0 ? "kpi-negative" : "kpi-positive");
+
     document.getElementById("kpiVentasCount").textContent = NF_INT.format(totVentasCount);
   }
 
-  function renderTable(rows) {
-    // Margen = Utilidad / Ventas, precalculado por fila (no en el
-    // formatter) para que la columna sea ordenable como cualquier otra.
-    rows.forEach(function (r) {
-      var ven = r.ventas_usd || 0;
-      r.margen_pct = ven ? ((r.utilidad_usd || 0) / ven) * 100 : null;
-    });
-
+  function renderTable(campaignRows) {
     if (table) {
-      table.setData(rows);
+      table.setData(campaignRows);
       return;
     }
     table = new Tabulator("#cursosGrid", {
-      data: rows,
+      data: campaignRows,
       layout: "fitColumns",
-      groupBy: "producto",
-      // Container del grupo recibe clase "group-unlinked" para estilo de advertencia suave
+      groupBy: "campana_nombre",
+      // Grupos colapsados por defecto: el header ya muestra los subtotales
+      // completos (Inv./Ventas/Utilidad/Margen), así que la fila de detalle
+      // por país solo se ve si el usuario la pide -> elimina la redundancia
+      // de ver los mismos números repetidos en grupos de 1 solo país.
+      groupStartOpen: false,
+      // Por default Tabulator agrega, además del header custom de arriba,
+      // una fila de cálculo automática AL PIE DE CADA GRUPO (usa los mismos
+      // bottomCalc de las columnas) — es la 3ra repetición de los mismos
+      // números que reportó el usuario. "table" deja el cálculo únicamente
+      // en el pie de toda la tabla (barra navy "TOTALES").
+      columnCalcs: "table",
       groupHeader: function (value, count, data, group) {
-        var label = value || "Sin producto vinculado";
-        var isUnlinked = (data || []).some(function (r) { return r.codigo_producto === null || r.codigo_producto === undefined; });
+        var label = value || "Sin nombre de campaña";
 
-        // Marcar el elemento del grupo para aplicar el estilo "group-unlinked"
+        // Producto(s) vinculado(s) a esta campaña -> unión de productos de
+        // todas las filas país del grupo (una campaña pack los repite en
+        // cada país, acá se muestran una sola vez).
+        var productosSeen = {};
+        var productos = [];
+        (data || []).forEach(function (r) {
+          (r.productos || []).forEach(function (p) {
+            if (!productosSeen[p.nombre]) {
+              productosSeen[p.nombre] = true;
+              productos.push(p);
+            }
+          });
+        });
+        var isPack = productos.length > 1;
+
         if (group && group.getElement) {
           var el = group.getElement();
-          if (isUnlinked) el.classList.add("group-unlinked");
-          else el.classList.remove("group-unlinked");
+          el.classList.toggle("group-pack", isPack);
         }
 
-        // Subtotales del grupo (curso/producto)
+        // Subtotales del grupo (campaña): cada fila país ya viene con el
+        // gasto de esa campaña deduplicado por campaign_id (ver
+        // buildCampaignGroupedRows) y la venta combinada de los productos
+        // vinculados en ese país -> sumar entre países es seguro, no hay
+        // doble conteo dentro del grupo.
         var subInv = 0, subVen = 0, subUtil = 0;
         (data || []).forEach(function (r) {
           subInv += r.inversion_usd || 0;
@@ -1152,18 +1570,24 @@
           subUtil += r.utilidad_usd || 0;
         });
         var utilClass = subUtil < 0 ? "roas-neg" : "roas-pos";
-        // Margen del grupo = utilidad total / ventas totales (no el
-        // promedio de los márgenes por país)
         var subMargen = subVen ? (subUtil / subVen) * 100 : null;
         var margenClass = (subMargen === null) ? "" : (subMargen < 0 ? "roas-neg" : "roas-pos");
 
+        // Con el grupo colapsado por defecto (groupStartOpen: false), un
+        // grupo de 1 solo país no muestra su fila de detalle salvo que el
+        // usuario lo expanda -> el nombre del país se agrega acá para no
+        // perder esa info sin expandir (recomendación kpi-metrics-validator).
+        // Va en un span aparte (flex-shrink:0), NO dentro del título con
+        // ellipsis, para que no desaparezca si el nombre de campaña es largo.
+        var paisHtml = (count === 1 && data && data[0] && data[0].pais)
+          ? '<span class="group-header-pais">— ' + escapeHtml(data[0].pais) + '</span>'
+          : '';
+
         var html = '<span class="group-header-inner">';
-        html += '<span class="group-header-title">' + label + '</span>';
-        html += '<span class="group-header-count">(' + count + ' fila' + (count === 1 ? '' : 's') + ')</span>';
-        if (isUnlinked) {
-          html += '<span class="badge-unlinked"><i class="fas fa-triangle-exclamation"></i> Sin vincular</span>';
-          html += '<a class="roas-vincular" href="/ads/vincular/">vincular →</a>';
-        }
+        html += '<span class="group-header-title">' + escapeHtml(label) + '</span>';
+        html += paisHtml;
+        html += productBadgesHtml(productos);
+        html += '<span class="group-header-count">(' + count + ' país' + (count === 1 ? '' : 'es') + ')</span>';
         html += '<span class="group-header-spacer"></span>';
         html += '<span class="group-header-subtotals">';
         html += '<span><span class="gh-label">Inv.</span>' + fmtUsd(subInv) + '</span>';
@@ -1176,7 +1600,8 @@
       },
       placeholder: "No hay datos para mostrar",
       columns: [
-        { title: "País", field: "pais", widthGrow: 1.4, formatter: paisFmt },
+        { title: "País", field: "pais", widthGrow: 1.1, formatter: paisFmt },
+        { title: "Producto(s) vinculado(s)", field: "productos", widthGrow: 1.6, formatter: productosFmt, headerSort: false },
         { title: "Cant. ventas", field: "ventas_count", hozAlign: "right", formatter: intFmt, widthGrow: 1, bottomCalc: "sum", bottomCalcFormatter: intFmt },
         { title: "Importe gastado (USD)", field: "inversion_usd", hozAlign: "right", formatter: usdFmt, widthGrow: 1.3, bottomCalc: "sum", bottomCalcFormatter: usdFmt },
         { title: "Ventas (USD)", field: "ventas_usd", hozAlign: "right", formatter: usdFmt, widthGrow: 1.3, bottomCalc: "sum", bottomCalcFormatter: usdFmt },
@@ -1239,9 +1664,82 @@
         var checked = Array.prototype.filter.call(boxes, function (b) { return b.checked; });
         productFilterSelected = checked.map(function (b) { return b.value; });
         if (allCb) allCb.checked = checked.length === 0;
-        applyProductFilter(dateFrom, dateTo);
+        // El catálogo de campañas depende del producto seleccionado -> se
+        // recalcula acá (ver buildCampaignFilterOptions) antes de reaplicar.
+        buildCampaignFilterOptions();
+        applyFilters(dateFrom, dateTo);
       });
     });
+  }
+
+  // ── Filtro de Campaña (toolbar) ──────────────────────────────────────────
+  // Mismo patrón que buildProductFilterOptions, pero el catálogo depende del
+  // producto ya seleccionado (no se recalcula en base a la propia selección
+  // de campaña, para no autoexcluirse) — recomendación goberna-dashboard-data-flow.
+  // Incluye "Sin campaña con gasto en el rango" (mismo texto que
+  // SIN_CAMPANA_GROUP usado al agrupar) para dar paridad con lo que se ve en
+  // la tabla cuando hay ventas de un curso vinculado sin pauta activa.
+  function buildCampaignFilterOptions() {
+    var container = document.getElementById("campaignFilterOptions");
+    if (!container) return;
+
+    var baseRows = productFilterSelected.length
+      ? allLinkedRows.filter(function (r) { return productFilterSelected.indexOf(r.producto) > -1; })
+      : allLinkedRows;
+
+    var nombresSet = new Set();
+    var hasSinCampana = false;
+    baseRows.forEach(function (r) {
+      var campanas = r.campanas || [];
+      if (!campanas.length) { hasSinCampana = true; return; }
+      campanas.forEach(function (c) { nombresSet.add(c.nombre || c.campaign_id); });
+    });
+    var nombres = Array.from(nombresSet).sort(function (a, b) { return a.localeCompare(b, "es"); });
+    if (hasSinCampana) nombres.push(SIN_CAMPANA_GROUP);
+
+    // Poda defensiva: si el producto seleccionado cambió (o se desvinculó
+    // una campaña) y una campaña ya elegida dejó de existir en el catálogo,
+    // se descarta silenciosamente — mismo criterio que productFilterSelected.
+    campaignFilterSelected = campaignFilterSelected.filter(function (n) { return nombres.indexOf(n) > -1; });
+
+    var allCbTop = document.getElementById("campaignFilterAll");
+    if (allCbTop) allCbTop.checked = campaignFilterSelected.length === 0;
+
+    container.innerHTML = "";
+    nombres.forEach(function (nombre) {
+      var label = document.createElement("label");
+      label.className = "multi-check-row";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = nombre;
+      cb.checked = campaignFilterSelected.indexOf(nombre) > -1;
+      var span = document.createElement("span");
+      span.textContent = nombre;
+      label.appendChild(cb);
+      label.appendChild(span);
+      container.appendChild(label);
+
+      cb.addEventListener("change", function () {
+        var allCb = document.getElementById("campaignFilterAll");
+        var boxes = container.querySelectorAll('input[type="checkbox"]');
+        var checked = Array.prototype.filter.call(boxes, function (b) { return b.checked; });
+        campaignFilterSelected = checked.map(function (b) { return b.value; });
+        if (allCb) allCb.checked = checked.length === 0;
+        applyFilters(dateFrom, dateTo);
+      });
+    });
+  }
+
+  function summarizeCampaignSelection() {
+    var text = document.getElementById("campaignFilterSummaryText");
+    if (!text) return;
+    if (!campaignFilterSelected.length) {
+      text.textContent = "Todas las campañas";
+    } else if (campaignFilterSelected.length === 1) {
+      text.textContent = campaignFilterSelected[0];
+    } else {
+      text.textContent = campaignFilterSelected.length + " campañas seleccionadas";
+    }
   }
 
   function summarizeProductSelection() {
@@ -1256,23 +1754,118 @@
     }
   }
 
-  function applyProductFilter(dFrom, dTo) {
+  // Filtro combinado Producto + Campaña, en AND. Una fila sin campañas
+  // (SIN_CAMPANA_GROUP) solo pasa el filtro de Campaña si esa opción especial
+  // está seleccionada explícitamente.
+  function applyFilters(dFrom, dTo) {
     summarizeProductSelection();
-    var filtered = productFilterSelected.length
-      ? allLinkedRows.filter(function (r) { return productFilterSelected.indexOf(r.producto) > -1; })
-      : allLinkedRows;
+    summarizeCampaignSelection();
+
+    var filtered = allLinkedRows.filter(function (r) {
+      if (productFilterSelected.length && productFilterSelected.indexOf(r.producto) === -1) return false;
+      if (!campaignFilterSelected.length) return true;
+      var campanas = r.campanas || [];
+      if (!campanas.length) return campaignFilterSelected.indexOf(SIN_CAMPANA_GROUP) > -1;
+      return campanas.some(function (c) { return campaignFilterSelected.indexOf(c.nombre || c.campaign_id) > -1; });
+    });
 
     var empty = document.getElementById("gridEmpty");
     var grid = document.getElementById("cursosGrid");
+    var pager = document.getElementById("groupPager");
     renderSummary(filtered, dFrom, dTo);
     if (!filtered.length) {
       empty.style.display = "";
       grid.style.display = "none";
+      if (pager) pager.style.display = "none";
       return;
     }
     empty.style.display = "none";
     grid.style.display = "";
-    renderTable(filtered);
+    currentGroupedRows = buildCampaignGroupedRows(filtered);
+    // Cambió el filtro/fecha -> el set de campañas es otro, se vuelve a la
+    // página 1 (evita quedar "varado" en una página que ya no existe).
+    paginateAndRender(true);
+  }
+
+  // ── Paginación de grupos (campañas) ─────────────────────────────────────
+  // En vez de la paginación nativa de Tabulator (no combina bien con
+  // groupBy: un grupo puede quedar cortado entre dos páginas), acá se
+  // recorta `currentGroupedRows` a las campañas de la página actual ANTES
+  // de pasárselo a Tabulator -> cada grupo llega siempre completo. Las
+  // campañas se ordenan por inversión total descendente, así lo más
+  // relevante queda en la primera página en vez de un orden arbitrario.
+  function paginateAndRender(resetPage) {
+    if (resetPage) groupPage = 0;
+
+    var totals = {};
+    var order = [];
+    currentGroupedRows.forEach(function (r) {
+      if (!(r.campana_nombre in totals)) {
+        totals[r.campana_nombre] = 0;
+        order.push(r.campana_nombre);
+      }
+      totals[r.campana_nombre] += r.inversion_usd || 0;
+    });
+    order.sort(function (a, b) { return totals[b] - totals[a]; });
+
+    var totalGroups = order.length;
+    var totalPages = Math.max(1, Math.ceil(totalGroups / GROUP_PAGE_SIZE));
+    if (groupPage >= totalPages) groupPage = totalPages - 1;
+    if (groupPage < 0) groupPage = 0;
+
+    var pageNames = order.slice(groupPage * GROUP_PAGE_SIZE, (groupPage + 1) * GROUP_PAGE_SIZE);
+    var pageNamesSet = {};
+    pageNames.forEach(function (n) { pageNamesSet[n] = true; });
+
+    // Se reconstruye respetando el orden de pageNames (no el orden original
+    // de currentGroupedRows), así los grupos aparecen en la tabla en el
+    // mismo orden de mayor a menor inversión que muestra el pager.
+    var pageRows = [];
+    pageNames.forEach(function (name) {
+      currentGroupedRows.forEach(function (r) {
+        if (r.campana_nombre === name) pageRows.push(r);
+      });
+    });
+
+    renderTable(pageRows);
+    renderGroupPager(totalGroups, totalPages);
+  }
+
+  function renderGroupPager(totalGroups, totalPages) {
+    var pager = document.getElementById("groupPager");
+    var grid = document.getElementById("cursosGrid");
+    if (!pager) return;
+    if (grid) grid.classList.toggle("is-paginated", totalPages > 1);
+    if (totalPages <= 1) {
+      pager.style.display = "none";
+      return;
+    }
+    pager.style.display = "";
+    var info = document.getElementById("groupPagerInfo");
+    var pageLabel = document.getElementById("groupPagerPage");
+    var prevBtn = document.getElementById("groupPagerPrev");
+    var nextBtn = document.getElementById("groupPagerNext");
+    var from = groupPage * GROUP_PAGE_SIZE + 1;
+    var to = Math.min(totalGroups, (groupPage + 1) * GROUP_PAGE_SIZE);
+    if (info) info.textContent = "Campañas " + from + "–" + to + " de " + totalGroups;
+    if (pageLabel) pageLabel.textContent = "Página " + (groupPage + 1) + " de " + totalPages;
+    if (prevBtn) prevBtn.disabled = groupPage === 0;
+    if (nextBtn) nextBtn.disabled = groupPage >= totalPages - 1;
+  }
+
+  function setupGroupPager() {
+    var prevBtn = document.getElementById("groupPagerPrev");
+    var nextBtn = document.getElementById("groupPagerNext");
+    if (prevBtn) {
+      prevBtn.addEventListener("click", function () {
+        if (groupPage > 0) { groupPage--; paginateAndRender(false); }
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        groupPage++; paginateAndRender(false);
+      });
+    }
   }
 
   function setupProductFilterMenu() {
@@ -1284,7 +1877,8 @@
           document.querySelectorAll("#productFilterOptions input[type=checkbox]").forEach(function (cb) {
             cb.checked = false;
           });
-          applyProductFilter(dateFrom, dateTo);
+          buildCampaignFilterOptions();
+          applyFilters(dateFrom, dateTo);
         } else {
           // Destildar "Todos" sin nada más tildado no tiene sentido —
           // se vuelve a marcar (evita quedar en un estado "0 seleccionados").
@@ -1312,9 +1906,44 @@
     });
   }
 
+  function setupCampaignFilterMenu() {
+    var allCb = document.getElementById("campaignFilterAll");
+    if (allCb) {
+      allCb.addEventListener("change", function () {
+        if (allCb.checked) {
+          campaignFilterSelected = [];
+          document.querySelectorAll("#campaignFilterOptions input[type=checkbox]").forEach(function (cb) {
+            cb.checked = false;
+          });
+          applyFilters(dateFrom, dateTo);
+        } else {
+          allCb.checked = true;
+        }
+      });
+    }
+
+    var search = document.getElementById("campaignFilterSearch");
+    if (search) {
+      search.addEventListener("input", function () {
+        var q = search.value.trim().toLowerCase();
+        document.querySelectorAll("#campaignFilterOptions .multi-check-row").forEach(function (row) {
+          var label = row.querySelector("span").textContent.toLowerCase();
+          row.style.display = label.indexOf(q) > -1 ? "" : "none";
+        });
+      });
+    }
+
+    document.addEventListener("click", function (ev) {
+      var dd = document.getElementById("campaignFilterDropdown");
+      if (dd && dd.open && !dd.contains(ev.target)) dd.removeAttribute("open");
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     setupDatePicker();
     setupProductFilterMenu();
+    setupCampaignFilterMenu();
+    setupGroupPager();
     loadData();
   });
 })();
