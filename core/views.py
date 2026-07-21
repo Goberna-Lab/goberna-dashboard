@@ -2812,6 +2812,15 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
 
     Unlike _roas_por_producto, rows with inversion_usd == 0 but ventas_usd > 0
     are also included (sales without matching ad spend in that country).
+
+    Country used to bucket investment is `MetaAds.country` — the REAL
+    destination country from Meta's geographic breakdown (who the ad was
+    actually shown to), never empty in current data (api nor excel source).
+    `MetaAds.paid_country` (a heuristic guess from the ad account's NAME —
+    the origin/who-pays account, not who the ad reached) is only a defensive
+    fallback here, and is surfaced per-campaign as `cuenta_origen` in each
+    row's `campanas` list so it isn't lost, without affecting how spend is
+    grouped or summed.
     """
     month_after = date_to.month + 1
     year_after = date_to.year
@@ -2878,7 +2887,16 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
     # de Meta corresponde cada una, para poder verificar el vínculo.
     campanas_by_key: dict = {}
     for row in ads_rows:
-        pais = (row["paid_country"] or "").strip() or (row["country"] or "").strip() or "Sin país"
+        # País: se prioriza el DESTINO real de la pauta (`country`, breakdown
+        # geográfico de la Meta Graph API — a qué país efectivamente se le
+        # mostró el anuncio) sobre `paid_country` (heurística local que
+        # adivina el país leyendo el NOMBRE de la cuenta publicitaria — el
+        # país de ORIGEN/quién paga, no a quién le llegó). `country` nunca
+        # viene vacío en los datos reales (api ni excel); `paid_country`
+        # queda solo como fallback defensivo y como dato secundario de
+        # "cuenta de origen" más abajo (ver `cuenta_origen`).
+        pais = (row["country"] or "").strip() or (row["paid_country"] or "").strip() or "Sin país"
+        cuenta_origen = (row["paid_country"] or "").strip() or None
         usd = float(row["spend_usd"] or 0)
 
         targets = weight_map.get(row["campaign_id"])
@@ -2907,6 +2925,7 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
                     "gasto": 0.0,
                     "producto_meta": row["product"],
                     "nombre": (row["campaign_name"] or row["campaign_id"]).strip(),
+                    "cuenta_origen": cuenta_origen,
                     **({"peso_pct": float(peso)} if peso is not None else {}),
                 })
                 entry["gasto"] += usd_share
@@ -3036,10 +3055,13 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
             .values("campaign_id", "campaign_name", "product", "paid_country", "country")
         ):
             cid = row["campaign_id"]
-            pais = (row["paid_country"] or "").strip() or (row["country"] or "").strip() or "Sin país"
+            # Misma prioridad país destino real > cuenta de origen que en el
+            # bloque principal de arriba.
+            pais = (row["country"] or "").strip() or (row["paid_country"] or "").strip() or "Sin país"
             info = extra_info.setdefault(cid, {
                 "nombre": (row["campaign_name"] or cid).strip(),
                 "producto_meta": row["product"],
+                "cuenta_origen": (row["paid_country"] or "").strip() or None,
                 "paises": set(),
             })
             info["paises"].add(pais)
@@ -3055,6 +3077,7 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
                     "gasto": 0.0,
                     "producto_meta": info["producto_meta"],
                     "nombre": info["nombre"],
+                    "cuenta_origen": info["cuenta_origen"],
                 })
 
     out = []
@@ -3083,10 +3106,26 @@ def _roas_por_producto_pais(date_from: datetime.date, date_to: datetime.date) ->
                         "gasto_usd": round(info["gasto"], 2),
                         "producto_meta": info["producto_meta"],
                         "peso_pct": info.get("peso_pct"),
+                        # País de ORIGEN (heurística por nombre de cuenta
+                        # publicitaria) — dato secundario, ya no se usa para
+                        # agrupar/repartir inversión (eso usa `country`, el
+                        # destino real). Se expone acá para no perderlo: el
+                        # frontend lo muestra como info complementaria en el
+                        # modal "Ver campañas".
+                        "cuenta_origen": info.get("cuenta_origen"),
                     }
                     for cid, info in campanas_by_key.get((codigo, pais), {}).items()
                 ),
-                key=lambda c: -c["gasto_usd"],
+                # Desempate estable por campaign_id: `ads_rows` (arriba) usa
+                # `.order_by()` vacío, así que sin un segundo criterio acá,
+                # cuál campaña queda primera en un empate exacto de
+                # gasto_usd (posible tras el round() de arriba) dependería
+                # del orden de iteración de esa query, no garantizado por
+                # MySQL/MariaDB. Con campaign_id como desempate, el orden es
+                # siempre el mismo para los mismos datos — importante porque
+                # el frontend (pautas_cursos.html, buildCampaignGroupedRows)
+                # atribuye TODA la venta de la fila a `campanas[0]`.
+                key=lambda c: (-c["gasto_usd"], c["campaign_id"]),
             ),
         })
 
