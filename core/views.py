@@ -2033,6 +2033,15 @@ def ads_vincular(request):
                             from django.utils import timezone as tz
                             with transaction.atomic():
                                 for cid in bulk_ids:
+                                    # Re-vincular a 1 solo producto vía este flujo
+                                    # debe limpiar cualquier resto de un vínculo
+                                    # multi-producto previo — si no, quedan filas
+                                    # huérfanas en MetaCampaignProductWeight que
+                                    # el cálculo de ROAS seguiría leyendo,
+                                    # ignorando este nuevo vínculo en silencio.
+                                    MetaCampaignProductWeight.objects.filter(
+                                        campaign_id=cid
+                                    ).delete()
                                     MetaCampaignMap.objects.update_or_create(
                                         campaign_id=cid,
                                         defaults={
@@ -2087,6 +2096,12 @@ def ads_vincular(request):
             if codigo_producto is not None:
                 try:
                     from django.utils import timezone as tz
+                    # Mismo motivo que en el flujo bulk: re-vincular acá debe
+                    # limpiar cualquier resto de un vínculo multi-producto
+                    # previo, si no el ROAS sigue leyendo pesos viejos.
+                    MetaCampaignProductWeight.objects.filter(
+                        campaign_id=campaign_id
+                    ).delete()
                     MetaCampaignMap.objects.update_or_create(
                         campaign_id=campaign_id,
                         defaults={
