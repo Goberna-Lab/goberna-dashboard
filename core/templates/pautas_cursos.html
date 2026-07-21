@@ -78,6 +78,16 @@
       gap: 10px;
       padding: 14px 18px;
       border-bottom: 1px solid var(--border);
+      /* position+z-index explícitos: sin esto, el dropdown de Producto/
+         Campaña (.multi-check-menu, más abajo) queda en la misma capa de
+         apilamiento que la grilla Tabulator de más abajo y, según el
+         navegador/estado de scroll, el header navy de la tabla puede
+         pintarse ENCIMA del dropdown en vez de debajo — se veía la tabla
+         "por debajo" del dropdown abierto. Al darle su propio stacking
+         context con z-index alto al toolbar entero, el dropdown queda
+         garantizado por encima de la grilla sin depender de eso. */
+      position: relative;
+      z-index: 30;
     }
 
     .toolbar-spacer { flex: 1 1 auto; }
@@ -148,7 +158,7 @@
       border-radius: 10px;
       box-shadow: 0 10px 28px rgba(14, 42, 82, 0.16);
       padding: 8px;
-      z-index: 500;
+      z-index: 2000;
       max-height: 320px;
       overflow: auto;
     }
